@@ -1,20 +1,7 @@
-import type { ReactNode } from "react";
-import Container from "../Container/Container";
+import { SectionProps } from '@/types/components/layout/Section.types';
 
-type SectionProps = {
-  children: ReactNode;
-};
-
-const Section = ({
-  children,
-}: SectionProps) => {
-  return (
-    <section>
-      <Container >
-        {children}
-      </Container>
-    </section>
-  );
+const Section = ({ children }: SectionProps) => {
+  return <section className="tablet: py-16 py-28">{children}</section>;
 };
 
 export default Section;

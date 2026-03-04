@@ -1,8 +1,4 @@
-import type { ReactNode } from "react";
-
-type PrivateGuardProps = {
-  children: ReactNode;
-};
+import { PrivateGuardProps } from '@/types/components/guards/Guards.types';
 
 const PrivateGuard = ({ children }: PrivateGuardProps) => {
   return <>{children}</>;

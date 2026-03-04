@@ -1,20 +1,8 @@
-import type { ReactNode } from "react";
+import { ContainerProps } from '@/types/components/layout/Container.types';
 
-type ContainerProps = {
-  children: ReactNode;
-  className?: string;
-  as?: "div" | "section" | "main";
-};
-
-const Container = ({
-  children,
-  className = "",
-  as: Tag = "div",
-}: ContainerProps) => {
+const Container = ({ children, className = '', as: Tag = 'div' }: ContainerProps) => {
   return (
-    <Tag
-      className={`mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${className}`}
-    >
+    <Tag className={`mobile:px-15 tablet:px-20 mx-auto w-full max-w-7xl px-5 ${className}`}>
       {children}
     </Tag>
   );

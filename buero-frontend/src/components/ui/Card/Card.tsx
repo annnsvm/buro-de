@@ -1,16 +1,7 @@
-import type { ReactNode } from "react";
+import { CardProps } from '@/types/components/ui/Card.types';
 
-type CardProps = {
-  children: ReactNode;
-};
-
-const Card = ({ children}: CardProps) => {
-  return (
-    <div
-    >
-      {children}
-    </div>
-  );
+const Card = ({ children }: CardProps) => {
+  return <div>{children}</div>;
 };
 
 export default Card;
