@@ -1,15 +1,7 @@
 /// <reference types="vite/client" />
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, ReactNode, type ErrorInfo } from "react";
 import { ROUTES } from "../helpers/routes";
-
-type AppErrorBoundaryProps = {
-  children: ReactNode;
-};
-
-type AppErrorBoundaryState = {
-  hasError: boolean;
-  error: Error | null;
-};
+import { AppErrorBoundaryProps, AppErrorBoundaryState } from "@/types/errors/AppError.types";
 
 export class AppErrorBoundary extends Component<
   AppErrorBoundaryProps,

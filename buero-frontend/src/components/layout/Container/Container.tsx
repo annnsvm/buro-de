@@ -1,10 +1,5 @@
-import type { ReactNode } from "react";
+import { ContainerProps } from "@/types/components/layout/Container.types";
 
-type ContainerProps = {
-  children: ReactNode;
-  className?: string;
-  as?: "div" | "section" | "main";
-};
 
 const Container = ({
   children,

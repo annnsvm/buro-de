@@ -1,11 +1,6 @@
-import type { ImgHTMLAttributes } from "react";
+import { LogoProps } from "@/types/components/ui/Logo.types";
 
 const LOGO_SRC = "/images/home/logo.png";
-
-interface LogoProps extends ImgHTMLAttributes<HTMLImageElement> {
-  width?: number;
-  height?: number;
-}
 
 const Logo = ({
   width = 70,

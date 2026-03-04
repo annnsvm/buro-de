@@ -1,8 +1,4 @@
-import type { ReactNode } from "react";
-
-type SectionProps = {
-  children: ReactNode;
-};
+import { SectionProps } from "@/types/components/layout/Section.types";
 
 const Section = ({
   children,

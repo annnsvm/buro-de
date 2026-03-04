@@ -1,6 +1,4 @@
-type SpinnerProps = {
-  className?: string;
-};
+import { SpinnerProps } from "@/types/components/ui/Spinner.types";
 
 const Spinner = ({ className = "" }: SpinnerProps) => {
   return (

@@ -1,11 +1,4 @@
-import type { ReactNode } from "react";
-
-type FormFieldProps = {
-  label: string;
-  name: string;
-  error?: string;
-  children: ReactNode;
-};
+import { FormFieldProps } from "@/types/components/ui/FormField.type";
 
 const FormField = ({ label, name, error, children }: FormFieldProps) => {
   return (

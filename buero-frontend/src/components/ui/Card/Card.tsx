@@ -1,8 +1,4 @@
-import type { ReactNode } from "react";
-
-type CardProps = {
-  children: ReactNode;
-};
+import { CardProps } from "@/types/components/ui/Card.types";
 
 const Card = ({ children}: CardProps) => {
   return (
