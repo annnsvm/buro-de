@@ -18,7 +18,7 @@ const Header = () => {
         }`}
     >
       <Container>
-        <div className="tablet:px-16 flex items-center justify-between gap-6 py-12 text-lg">
+        <div className="px-8 md:px-16 flex items-center justify-between gap-6 py-12 text-lg">
           <Link
             to={ROUTES.HOME}
             className="flex items-center gap-2 transition-opacity hover:opacity-80"
