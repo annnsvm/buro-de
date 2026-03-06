@@ -14,14 +14,14 @@ const Header = () => {
 
   return (
     <header
-      className={`absolute top-0 right-0 left-0 transition-colors duration-200 ${isLight ? 'bg-transparent' : 'bg-[var(--color-surface-section)]'
+      className={`absolute z-50 top-0 right-0 left-0 transition-colors duration-200 ${isLight ? 'bg-transparent' : 'bg-[var(--color-surface-section)]'
         }`}
     >
       <Container>
         <div className="tablet:px-16 flex items-center justify-between gap-6 py-12 text-lg">
           <Link
             to={ROUTES.HOME}
-            className="flex items-center gap-2 transition-opacity hover:opacity-90"
+            className="flex items-center gap-2 transition-opacity hover:opacity-80"
             aria-label="buero.de go to home"
           >
             <Logo width={70} height={28} />
