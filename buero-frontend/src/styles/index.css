@@ -114,9 +114,13 @@
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-heading: 'Sora', 'Inter', system-ui, sans-serif;
 
-  --breakpoint-mobile: 20rem;
-  --breakpoint-tablet: 40rem;
-  --breakpoint-desktop: 90rem;
+  /* Mobile-first: mobile 0–480px, tablet 481–1024px, desktop 1024px+ */
+  --breakpoint-mobile: 30rem; /* 480px — верхня межа mobile */
+  --breakpoint-tablet: 30.0625rem; /* 481px — tablet min-width */
+  --breakpoint-desktop: 64rem; /* 1024px — desktop min-width */
+  /* Tailwind responsive: sm:=tablet, md:=desktop */
+  --breakpoint-sm: 30.0625rem;
+  --breakpoint-md: 64rem;
 }
 
 @keyframes skeleton-shimmer {
