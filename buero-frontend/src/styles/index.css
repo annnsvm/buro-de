@@ -170,6 +170,10 @@
   /* Tailwind responsive: sm:=tablet, md:=desktop */
   --breakpoint-sm: 30rem;
   --breakpoint-md: 64rem;
+
+  /* Custom animation: bounce-x */
+  --keyframes-bounce-x: bounce-x;
+  --animate-bounce-x: bounce-x 2s ease-in-out infinite;
 }
 
 @keyframes skeleton-shimmer {
@@ -313,13 +317,18 @@
   }
 }
 
+@keyframes bounce-x {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+}
+
 @layer utilities {
   .no-scroll {
     overflow: hidden;
   }
-
-  @keyframes bounce-x {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(4px); }
-}
 }

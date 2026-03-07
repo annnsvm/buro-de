@@ -34,4 +34,4 @@ const Hero: React.FC = () => {
   );
 };
 
-export { Hero };
+export default Hero;

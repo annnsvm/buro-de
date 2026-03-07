@@ -1,4 +1,5 @@
-import { Hero } from '@/features/landing/Hero/Hero';
+
+import { Hero } from '@/features/landing';
 import React from 'react';
 
 const HomePage: React.FC = () => {
