@@ -8,6 +8,7 @@ import { CoursesModule } from './modules/courses/courses.module';
 import { CourseMaterialsModule } from './modules/course-materials/course-materials.module';
 import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PrismaModule } from "./prisma/prisma.module";
       }),
       inject: [ConfigService],
     }),
+    SubscriptionsModule,
   ],
 })
 export class AppModule {}
