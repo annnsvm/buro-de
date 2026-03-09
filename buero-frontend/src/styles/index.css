@@ -167,10 +167,6 @@
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-heading: 'Sora', 'Inter', system-ui, sans-serif;
 
-  /* Tailwind responsive: sm:=tablet, md:=desktop */
-  --breakpoint-sm: 30rem;
-  --breakpoint-md: 64rem;
-
   /* Custom animation: bounce-x */
   --keyframes-bounce-x: bounce-x;
   --animate-bounce-x: bounce-x 2s ease-in-out infinite;
@@ -310,7 +306,7 @@
     width: 100%;
   }
 
-  ul{
+  ul {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -330,5 +326,9 @@
 @layer utilities {
   .no-scroll {
     overflow: hidden;
+  }
+
+  .grid-rows-content {
+    grid-auto-rows: min-content;
   }
 }
