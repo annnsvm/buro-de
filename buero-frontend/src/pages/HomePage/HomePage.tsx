@@ -1,4 +1,3 @@
-
 import { Hero, Proposition, WhyBuro } from '@/features/landing';
 import React from 'react';
 
