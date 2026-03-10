@@ -1,15 +1,9 @@
+import { AuthState } from '@/types/redux/auth.types';
 import { createSlice } from '@reduxjs/toolkit';
-
-export type AuthState = {
-  isAuthenticated: boolean;
-  accessToken: string | null;
-  status: 'idle' | 'loading' | 'error';
-  error: string | null;
-};
+import { loginThunk } from './authThunks';
 
 const initialState: AuthState = {
   isAuthenticated: false,
-  accessToken: null,
   status: 'idle',
   error: null,
 };
@@ -18,21 +12,30 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setAccessToken: (state, action: { payload: string | null }) => {
-      state.accessToken = action.payload;
-      state.isAuthenticated = action.payload !== null;
-    },
     resetAuthError: (state) => {
       state.error = null;
     },
     logout: (state) => {
       state.isAuthenticated = false;
-      state.accessToken = null;
       state.error = null;
     },
   },
-  extraReducers: () => {},
+  extraReducers: builder => 
+    builder
+      .addCase(loginThunk.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(loginThunk.fulfilled, (state) => {
+        state.status = 'idle';
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(loginThunk.rejected, (state, action) => {
+        state.status = 'error';
+        state.error = action.payload as string;
+      }),
 });
 
 export const authReducer = authSlice.reducer;
-export const { setAccessToken, resetAuthError, logout } = authSlice.actions;
+export const { resetAuthError, logout } = authSlice.actions;
