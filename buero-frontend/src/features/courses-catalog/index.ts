@@ -1,8 +1,5 @@
-/**
- * Feature: Courses Catalog
- * Docs: docs/frontend-features/03-courses-catalog-ui.md
- * Components: filters, course list, course cards
- * Redux: окремо в src/redux/slices/coursesCatalog
- */
-
-export {};
+export { default as CoursesCatalogHero } from './CoursesCatalogHero';
+export { default as CoursesCatalogFilters } from './CoursesCatalogFilters';
+export { default as CoursesCatalogList } from './CoursesCatalogList';
+export { default as CourseCard } from './CourseCard';
+export { default as CourseSearch } from './CourseSearch';
