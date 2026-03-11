@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui';
 import { ICON_NAMES } from '@/helpers/iconNames';
 
@@ -19,10 +20,10 @@ const FooterSocialLinks: React.FC = () => (
   <ul className="flex flex-col gap-3">
     {SOCIAL_LINKS.map(({ name, icon, href }) => (
       <li key={name}>
-        <a href={href} target="_blank" rel="noopener noreferrer" className={linkClass}>
+        <Link to={href} target="_blank" rel="noopener noreferrer" className={linkClass}>
           <Icon name={icon} size={18} color="currentColor" />
           {name}
-        </a>
+        </Link>
       </li>
     ))}
   </ul>
