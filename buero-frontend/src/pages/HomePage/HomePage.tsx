@@ -8,7 +8,7 @@ const HomePage: React.FC = () => {
       <Hero />
       <WhyBuro />
       <Proposition />
-      <CallToAction backgroundImage="/images/home/offer_result.webp" />
+      <CallToAction />
     </div>
   );
 };

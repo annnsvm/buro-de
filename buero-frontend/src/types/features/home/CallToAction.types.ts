@@ -11,8 +11,6 @@ type CallToActionProps = {
   primaryButtonTo?: string;
   /** Route or URL for secondary button */
   secondaryButtonTo?: string;
-  /** Background image URL (e.g. /images/cta-bg.jpg). User provides the asset. */
-  backgroundImage?: string;
 };
 
 export type { CallToActionProps };
