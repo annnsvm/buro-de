@@ -13,7 +13,12 @@ const Input = ({ label, error, id, ...rest }: InputProps) => {
           {label}
         </label>
       )}
-      <input id={id} aria-invalid={!!error} aria-describedby={error} {...rest} />
+      <input
+        id={id}
+        aria-invalid={!!error}
+        aria-describedby={error && id ? `${id}-error` : undefined}
+        {...rest}
+      />
       {error && (
         <p id={`${id}-error`} role="alert">
           {error}
