@@ -8,14 +8,22 @@ import {
   Param,
   Patch,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiOperation,
   ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Request } from 'express';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Role } from 'src/generated/prisma/enums';
 import { CourseMaterialService } from './course-material.service';
 import { CreateCourseMaterialDto } from './dto/create-course-material.dto';
 import { UpdateCourseMaterialDto } from './dto/update-course-material.dto';
@@ -26,44 +34,70 @@ export class CourseMaterialsController {
   constructor(private readonly courseMaterialService: CourseMaterialService) {}
 
   @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access_token')
   @ApiOperation({
     summary: 'Список матеріалів курсу',
     description:
-      'Список матеріалів курсу за course_id, відсортованих за order_index. 404, якщо курс не знайдено.',
+      'Список матеріалів курсу. Доступ: вчитель — завжди; студент — лише за наявності доступу (купівля/підписка/trial). 403 при відсутності доступу.',
   })
   @ApiParam({ name: 'courseId', description: 'UUID курсу' })
   @ApiResponse({ status: 200, description: 'Список матеріалів' })
+  @ApiResponse({ status: 403, description: 'Немає доступу до курсу' })
   @ApiResponse({ status: 404, description: 'Курс не знайдено' })
-  list(@Param('courseId') courseId: string) {
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  async list(@Req() req: Request, @Param('courseId') courseId: string) {
+    await this.courseMaterialService.assertCanAccessCourse(
+      req.user!.id,
+      req.user!.role,
+      courseId,
+    );
     return this.courseMaterialService.findAllByCourseId(courseId);
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access_token')
   @ApiOperation({
     summary: 'Один матеріал по id',
     description:
-      'Один матеріал по id; перевірка, що матеріал належить курсу (course_id = courseId). 404, якщо курс або матеріал не знайдено.',
+      'Один матеріал по id. Доступ: вчитель — завжди; студент — лише за наявності доступу до курсу. 403 при відсутності доступу.',
   })
   @ApiParam({ name: 'courseId', description: 'UUID курсу' })
   @ApiParam({ name: 'id', description: 'UUID матеріалу' })
   @ApiResponse({ status: 200, description: 'Матеріал знайдено' })
+  @ApiResponse({ status: 403, description: 'Немає доступу до курсу' })
   @ApiResponse({ status: 404, description: 'Курс або матеріал не знайдено' })
-  getById(@Param('courseId') courseId: string, @Param('id') id: string) {
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  async getById(
+    @Req() req: Request,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
+  ) {
+    await this.courseMaterialService.assertCanAccessCourse(
+      req.user!.id,
+      req.user!.role,
+      courseId,
+    );
     return this.courseMaterialService.findOne(courseId, id);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
   @ApiOperation({
     summary: 'Додати матеріал до курсу',
-    description:
-      'Body: type, title, content, order_index. Перевірка існування курсу; 404, якщо курс не знайдено. Повертає створений матеріал.',
+    description: 'Тільки для вчителів. Body: type, title, content, order_index. 404, якщо курс не знайдено.',
   })
   @ApiParam({ name: 'courseId', description: 'UUID курсу' })
   @ApiBody({ type: CreateCourseMaterialDto })
   @ApiResponse({ status: 201, description: 'Матеріал створено' })
   @ApiResponse({ status: 404, description: 'Курс не знайдено' })
   @ApiResponse({ status: 400, description: 'Помилка валідації' })
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
   create(
     @Param('courseId') courseId: string,
     @Body() dto: CreateCourseMaterialDto,
@@ -72,10 +106,12 @@ export class CourseMaterialsController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
   @ApiOperation({
     summary: 'Оновити матеріал',
-    description:
-      'Оновити матеріал (поля для оновлення). Перевірка, що матеріал належить курсу. 404, якщо не знайдено.',
+    description: 'Тільки для вчителів. Оновити матеріал (поля для оновлення). 404, якщо не знайдено.',
   })
   @ApiParam({ name: 'courseId', description: 'UUID курсу' })
   @ApiParam({ name: 'id', description: 'UUID матеріалу' })
@@ -83,6 +119,8 @@ export class CourseMaterialsController {
   @ApiResponse({ status: 200, description: 'Матеріал оновлено' })
   @ApiResponse({ status: 404, description: 'Курс або матеріал не знайдено' })
   @ApiResponse({ status: 400, description: 'Помилка валідації' })
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
   update(
     @Param('courseId') courseId: string,
     @Param('id') id: string,
@@ -92,15 +130,19 @@ export class CourseMaterialsController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
   @ApiOperation({
     summary: 'Видалити матеріал',
-    description:
-      'Видалити матеріал. Перевірка приналежності до курсу. 404, якщо не знайдено.',
+    description: 'Тільки для вчителів. Видалити матеріал. 404, якщо не знайдено.',
   })
   @ApiParam({ name: 'courseId', description: 'UUID курсу' })
   @ApiParam({ name: 'id', description: 'UUID матеріалу' })
   @ApiResponse({ status: 200, description: 'Матеріал видалено' })
   @ApiResponse({ status: 404, description: 'Курс або матеріал не знайдено' })
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
   delete(@Param('courseId') courseId: string, @Param('id') id: string) {
     return this.courseMaterialService.delete(courseId, id);
   }

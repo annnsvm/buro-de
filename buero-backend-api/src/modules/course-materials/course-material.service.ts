@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Role } from 'src/generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCourseMaterialDto } from './dto/create-course-material.dto';
 import { UpdateCourseMaterialDto } from './dto/update-course-material.dto';
@@ -10,6 +12,24 @@ import { UpdateCourseMaterialDto } from './dto/update-course-material.dto';
 @Injectable()
 export class CourseMaterialService {
   constructor(private readonly prisma: PrismaService) {}
+
+
+  async assertCanAccessCourse(
+    userId: string,
+    role: Role,
+    courseId: string,
+  ): Promise<void> {
+    await this.ensureCourseExists(courseId);
+    if (role === Role.teacher) return;
+    const access = await this.prisma.userCourseAccess.findUnique({
+      where: {
+        userId_courseId: { userId, courseId },
+      },
+    });
+    if (!access) {
+      throw new ForbiddenException('Немає доступу до цього курсу');
+    }
+  }
 
   private async ensureCourseExists(courseId: string): Promise<void> {
     const course = await this.prisma.course.findUnique({
