@@ -11,7 +11,7 @@ const SuccessPurchase: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (countdown === 0) navigate(ROUTES.PROFILE);
+    // if (countdown === 0) navigate(ROUTES.PROFILE);
 
     const timer = setTimeout(() => {
       setCountdown((prev) => prev - 1);
