@@ -1,69 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Container, Section } from '@/components/layout';
-import { Icon } from '@/components/ui';
-import { ICON_NAMES } from '@/helpers/iconNames';
+import React from 'react';
+import { PurchaseCard } from '@/features/subscriptions';
 import { ROUTES } from '@/helpers/routes';
-import LinkBtn from '@/components/ui/Link';
-
-const STRIPE_RETURN_KEY = 'stripe_return';
+import { ICON_NAMES } from '@/helpers/iconNames';
 
 const SuccessPurchase: React.FC = () => {
-  const [countdown, setCountdown] = useState(5);
-  const [allowed] = useState(() => sessionStorage.getItem(STRIPE_RETURN_KEY) === 'pending');
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (countdown === 0) navigate(ROUTES.PROFILE);
-
-    const timer = setTimeout(() => {
-      setCountdown((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [countdown, navigate]);
-
-  useEffect(() => {
-    if (!allowed) {
-      navigate('/', { replace: true });
-      return;
-    }
-    sessionStorage.removeItem(STRIPE_RETURN_KEY);
-  }, [allowed, navigate]);
-
-  if (!allowed) {
-    return null;
-  }
-
   return (
-    <Section className="pt-30 pb-10 sm:pb-20 lg:pt-35">
-      <Container>
-        <div className="flex flex-col items-center gap-3 rounded-[12px] border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-success)] px-6 py-10 sm:gap-4 lg:gap-6 lg:px-33 lg:py-15">
-          <div className="relative h-[120px] w-[120px] rounded-full bg-[var(--color-primary)]">
-            <Icon
-              name={ICON_NAMES.CHECK}
-              size={120}
-              color="var(--color-white)"
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-              strokeWidth={4}
-            />
-          </div>
-          <h1 className="font-family-[var(--font-sans)] text-center text-[1rem] leading-[1.5] font-[700] lg:text-[1.625rem]">
-            Order Confirmed!
-          </h1>
-          <p className="w-full max-w-[775px] text-center text-[.9rem] leading-[1.5] sm:text-[1rem] lg:text-[1.625rem]">
-            Thank you for your purchase. Your courses are now available in "My Learning".
-          </p>
-          <p className="text-center text-[.8rem] leading-[1.5] sm:text-[1rem] lg:text-[1.125rem]">
-            You will be redirected after {countdown} sec.
-          </p>
-
-          <LinkBtn to={ROUTES.PROFILE} variant="primary" className="w-full max-w-[206px]">
-            Go to My Learning
-          </LinkBtn>
-        </div>
-      </Container>
-    </Section>
+    <PurchaseCard
+      redirectTo={ROUTES.PROFILE}
+      type="confirmed"
+      title="Order Confirmed!"
+      iconName={ICON_NAMES.CHECK}
+      description='Thank you for your purchase. Your courses are now available in "My Learning".'
+      buttonLabel="Go to My Learning"
+    />
   );
 };
 
