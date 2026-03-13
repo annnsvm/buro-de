@@ -4,6 +4,7 @@ import { addUser } from '../user/userSlice';
 import { setAccessToken } from './authSlice';
 import { getCookie } from '@/helpers/cookies';
 import { API_ENDPOINTS } from '@/api/apiEndpoints';
+import { RootState } from '@/types/redux/store.types';
 
 export const loginThunk = createAsyncThunk<void, LoginPayload>(
   'auth/login',
@@ -107,5 +108,13 @@ export const refreshUserThunk = createAsyncThunk<void, void>(
             : 'Refresh failed';
       return rejectWithValue(message);
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const state = getState() as RootState;
+      const accessToken = state.auth.accessToken;
+      if (!accessToken) return false;
+      return true;
+    },
   },
 );
