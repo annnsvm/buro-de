@@ -22,7 +22,7 @@ const SuccessPurchase: React.FC = () => {
   return (
     <Section className="pt-30 pb-10 sm:pb-20 lg:pt-35">
       <Container>
-        <div className="rounded-[12px] flex flex-col items-center gap-3 sm:gap-4 lg:gap-6 border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-base)] px-6 py-10 lg:px-33 lg:py-15">
+        <div className="flex flex-col items-center gap-3 rounded-[12px] border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-success)] px-6 py-10 sm:gap-4 lg:gap-6 lg:px-33 lg:py-15">
           <div className="relative h-[120px] w-[120px] rounded-full bg-[var(--color-primary)]">
             <Icon
               name={ICON_NAMES.CHECK}
