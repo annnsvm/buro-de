@@ -10,6 +10,7 @@ import { CourseMaterialsModule } from './modules/course-materials/course-materia
 import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { ProgressQuizModule } from './modules/progress-quiz/progress-quiz.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
       inject: [ConfigService],
     }),
     SubscriptionsModule,
+    ProgressQuizModule,
   ],
 })
 export class AppModule {}
