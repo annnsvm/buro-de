@@ -51,7 +51,7 @@
 |-------|------|------|------|
 | GET | /api/progress/me | Загальний прогрес: курси, відсотки, поточний рівень. | студент |
 | GET | /api/courses/:courseId/progress | Прогрес по курсу (пройдені матеріали). | студент |
-| POST | /api/courses/:courseId/materials/:materialId/complete | Позначити матеріал пройденим (або оновити course_progress). | студент |
+| POST | /api/courses/:courseId/modules/:moduleId/materials/:materialId/complete | Позначити матеріал пройденим (або оновити course_progress). Перевірка курсу, модуля та матеріалу. | студент |
 | GET | /api/progress/recommended-next | Рекомендований наступний курс за рівнем. | студент |
 | POST | /api/quiz/attempts | Почати спробу квізу (course_material_id). | студент |
 | POST | /api/quiz/attempts/:attemptId/answers | Відправити одну відповідь (блок); зберегти для resume. | студент |
@@ -87,6 +87,8 @@ flowchart TB
         CP[(course_progress)]
         QA2[(quiz_attempts)]
         SP[(student_profiles)]
+        CM[(course_materials)]
+        MOD[(course_modules)]
     end
 
     P --> Ctrl
@@ -100,6 +102,7 @@ flowchart TB
     Prog --> SP
     Quiz --> QA2
     Quiz --> CP
+    Quiz --> CM
 ```
 
 ---
@@ -108,3 +111,4 @@ flowchart TB
 
 - Кожна відповідь квізу зберігається окремо (покроково), щоб можна було продовжити квіз після виходу.
 - Рівень студента оновлюється в процесі навчання (не вручну); правила оновлення level — у цьому модулі або в Placement Test / після завершення модульних тестів.
+- **Ієрархія Course → Module → Material:** матеріали прив'язані до модуля (course_materials.module_id), модулі — до курсу (course_modules.course_id). Прогрес і квізи працюють з course_material_id; ендпоінти з moduleId у шляху для консистентності API (перевірка приналежності матеріалу до модуля та курсу).
