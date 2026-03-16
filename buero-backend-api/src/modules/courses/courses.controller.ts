@@ -36,12 +36,10 @@ export class CoursesController {
   constructor(private readonly courseService: CourseService) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
   @ApiOperation({
     summary: 'Список опублікованих курсів (каталог)',
     description:
-      'Повертає **лише курси з is_published = true**. Потрібна авторизація (студент або вчитель). Опційні query: category (language | sociocultural), language (en | de).',
+      'Публічний каталог опублікованих курсів (is_published = true). Використовується на лендінгу. Опційні query: category (language | sociocultural), language (en | de).',
   })
   @ApiQuery({ name: 'category', required: false, enum: ['language', 'sociocultural'] })
   @ApiQuery({ name: 'language', required: false, enum: ['en', 'de'] })
@@ -49,7 +47,6 @@ export class CoursesController {
     status: 200,
     description: 'Масив опублікованих курсів ([] якщо немає опублікованих)',
   })
-  @ApiResponse({ status: 401, description: 'Не авторизовано' })
   list(@Query() query: ListCoursesQueryDto) {
     return this.courseService.findAll(query);
   }
