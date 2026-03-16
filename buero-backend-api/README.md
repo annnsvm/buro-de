@@ -86,6 +86,8 @@ curl http://localhost:3000/api/health/db
 
 **Документація API (Swagger):** після запуску сервера доступна за адресою [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
 
+**Rate limiting (Throttler):** кількість запитів обмежена глобально (`THROTTLE_TTL`, `THROTTLE_LIMIT` у `.env`). Для `POST /api/auth/register` та `POST /api/auth/login` діє жорсткіший ліміт (5 спроб за 60 с). При перевищенні — відповідь **429 Too Many Requests**. Маршрути `GET /api/health`, `GET /api/health/db` та `POST /webhooks/stripe` виключені з обмеження.
+
 ---
 
 ## Модулі та ендпоінти
