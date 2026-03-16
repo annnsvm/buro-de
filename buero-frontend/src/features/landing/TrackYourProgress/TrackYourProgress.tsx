@@ -15,8 +15,8 @@ const propositionStats: TrackYourProgresStat[] = [
 
 const TrackYourProgress: React.FC = () => {
   return (
-    <Section className="bg-[#f5f3f1] px-6 py-16 md:px-10 lg:px-16 lg:py-24">
-      <Container className="mx-auto grid max-w-[1440px] grid-cols-1 items-center gap-12 lg:grid-cols-[1fr_1.05fr] lg:gap-16">
+    <Section className="bg-[var(--color-soapstone-base)] py-14 sm:py-16 md:py-20 lg:py-24">
+      <Container className="grid grid-cols-1 items-center gap-10 sm:gap-12 lg:grid-cols-[1fr_1.05fr] lg:gap-16">
         <div className="max-w-[680px]">
           <SectionTitle label="Track your journey" className="mb-4">
             TRACK YOUR JOURNEY
@@ -32,7 +32,7 @@ const TrackYourProgress: React.FC = () => {
             streaks, and milestone celebrations.
           </Text>
 
-          <div className="mt-12">
+          <div className="mt-8 sm:mt-10 lg:mt-12">
             <TrackYourProgressList items={propositionStats} />
           </div>
         </div>
