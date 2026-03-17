@@ -5,7 +5,7 @@ import { List } from './List';
 
 const WhyBuro: React.FC = () => {
   return (
-    <Section>
+    <Section className="bg-[var(--color-soapstone-base)] pt-20 pb-28 sm:pt-16 sm:pb-16">
       <Container>
         <SectionTitle label="WHY BÜRO.DE">WHY BÜRO.DE</SectionTitle>
         <Title isHome className="mb-6 sm:max-w-[700px] lg:max-w-[869px]">

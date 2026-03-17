@@ -1,7 +1,9 @@
 
 import { CallToAction, Hero, Proposition, WhyBuro } from '@/features/landing';
+import Review from '@/features/landing/Review';
 import { TrackYourProgress } from '@/features/landing/TrackYourProgress';
 // import { CheckoutButton, PortalButton } from '@/features/subscriptions';
+
 
 import React from 'react';
 
@@ -12,6 +14,7 @@ const HomePage: React.FC = () => {
       <WhyBuro />
       <Proposition />
       <TrackYourProgress />
+      <Review/>
       <CallToAction />
       {/* <CheckoutButton courseId="f65717d8-2b75-4e93-87f0-a810b1cf2ddc" />
       <PortalButton /> */}

@@ -6,8 +6,8 @@ import HeroStatistic from './HeroStatistic';
 
 const Hero: React.FC = () => {
   return (
-    <Section>
-      <div className="relative w-full overflow-hidden sm:h-auto">
+    <Section className="relative">
+      <div className="relative w-full overflow-hidden min-h-screen sm:min-h-[600px]">
         <HeroBackground />
         <Container className="relative z-10 flex justify-center pt-40 pb-32 text-[var(--color-white)] lg:pt-46 lg:pb-36">
           <div
