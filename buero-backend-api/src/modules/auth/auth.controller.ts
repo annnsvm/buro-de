@@ -9,6 +9,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { LoginDto } from "./dto/login.dto";
 import { CookieService } from "./cookie.service";
 import { UserService } from "../user/user.service";
@@ -24,6 +25,7 @@ export class AuthController {
   ) {}
 
   @Post("register")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: "Реєстрація",
@@ -34,6 +36,7 @@ export class AuthController {
   @ApiResponse({ status: 201, description: "Користувача створено, токени в cookie" })
   @ApiResponse({ status: 400, description: "Невалідні дані (email, пароль, role)" })
   @ApiResponse({ status: 409, description: "Email вже зареєстрований" })
+  @ApiResponse({ status: 429, description: "Too Many Requests — перевищено ліміт спроб" })
   async register(
     @Body() dto: CreateUserDto,
     @Res({ passthrough: true }) res: Response,
@@ -46,6 +49,7 @@ export class AuthController {
   }
 
   @Post("login")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Вхід",
@@ -54,6 +58,7 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 200, description: "Успішний вхід, токени в cookie" })
   @ApiResponse({ status: 401, description: "Невірний email або пароль" })
+  @ApiResponse({ status: 429, description: "Too Many Requests — перевищено ліміт спроб" })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.userService.findUserByEmailWithPassword(dto.email);
     if (!user) throw new UnauthorizedException("Invalid credentials");

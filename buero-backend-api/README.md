@@ -86,18 +86,20 @@ curl http://localhost:3000/api/health/db
 
 **Документація API (Swagger):** після запуску сервера доступна за адресою [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
 
+**Rate limiting (Throttler):** кількість запитів обмежена глобально (`THROTTLE_TTL`, `THROTTLE_LIMIT` у `.env`). Для `POST /api/auth/register` та `POST /api/auth/login` діє жорсткіший ліміт (5 спроб за 60 с). При перевищенні — відповідь **429 Too Many Requests**. Маршрути `GET /api/health`, `GET /api/health/db` та `POST /webhooks/stripe` виключені з обмеження.
+
 ---
 
 ## Модулі та ендпоінти
 
-| Модуль   | Базовий шлях      | Опис |
-|----------|-------------------|------|
-| Health   | `/api/health`     | Перевірка життєздатності сервісу та БД (`GET /`, `GET /db`). |
-| Courses         | `/api/courses` | CRUD курсів: список опублікованих (фільтри `category`, `language`), один по id (з модулями), створення, оновлення, видалення. |
-| Course Modules  | `/api/courses/:courseId/modules` | CRUD модулів курсу: список за order_index, один по id, створення, оновлення, видалення. Доступ за user_course_access. |
-| Course Materials | `/api/courses/:courseId/modules/:moduleId/materials` | CRUD матеріалів модуля: список за order_index, один по id, створення, оновлення, видалення. Доступ за user_course_access до курсу. |
-| Progress         | `/api/progress`, `/api/courses/:courseId/progress` | Загальний прогрес (`GET /me`), прогрес по курсу (`GET /courses/:id/progress`), позначити матеріал пройденим (`POST .../materials/:id/complete`), рекомендований наступний курс (`GET /recommended-next`). JWT: користувач з `request.user`. |
-| Quiz             | `/api/quiz/attempts` | Почати спробу (`POST`), відправити відповідь (`POST /:attemptId/answers`), завершити (`POST /:attemptId/complete`), стан спроби для resume (`GET /:attemptId`). JWT. Покрокове збереження в answers_snapshot. |
+| Модуль           | Базовий шлях                                         | Опис                                                                                                                                                                                                                                        |
+| ---------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Health           | `/api/health`                                        | Перевірка життєздатності сервісу та БД (`GET /`, `GET /db`).                                                                                                                                                                                |
+| Courses          | `/api/courses`                                       | CRUD курсів: список опублікованих (фільтри `category`, `language`), один по id (з модулями), створення, оновлення, видалення.                                                                                                               |
+| Course Modules   | `/api/courses/:courseId/modules`                     | CRUD модулів курсу: список за order_index, один по id, створення, оновлення, видалення. Доступ за user_course_access.                                                                                                                       |
+| Course Materials | `/api/courses/:courseId/modules/:moduleId/materials` | CRUD матеріалів модуля: список за order_index, один по id, створення, оновлення, видалення. Доступ за user_course_access до курсу.                                                                                                          |
+| Progress         | `/api/progress`, `/api/courses/:courseId/progress`   | Загальний прогрес (`GET /me`), прогрес по курсу (`GET /courses/:id/progress`), позначити матеріал пройденим (`POST .../materials/:id/complete`), рекомендований наступний курс (`GET /recommended-next`). JWT: користувач з `request.user`. |
+| Quiz             | `/api/quiz/attempts`                                 | Почати спробу (`POST`), відправити відповідь (`POST /:attemptId/answers`), завершити (`POST /:attemptId/complete`), стан спроби для resume (`GET /:attemptId`). JWT. Покрокове збереження в answers_snapshot.                               |
 
 У Swagger UI (`/api-docs`) всі ендпоінти задокументовані з прикладами запитів та відповідей.
 
@@ -105,17 +107,17 @@ curl http://localhost:3000/api/health/db
 
 ## Скрипти
 
-| Команда | Опис |
-|--------|------|
-| `npm run start:dev` | Запуск у dev-режимі (`nest start --watch`, перезапуск при змінах, перевірка типів) |
-| `npm run build` | Збірка в `dist/` (`nest build`) |
-| `npm run start` | Запуск зібраного додатку (`nest start`) |
-| `npm run prisma:generate` | Генерація Prisma Client |
-| `npm run prisma:seed`     | Опційно: заповнення БД для перевірки (наприклад placement_questions) |
+| Команда                   | Опис                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------- |
+| `npm run start:dev`       | Запуск у dev-режимі (`nest start --watch`, перезапуск при змінах, перевірка типів) |
+| `npm run build`           | Збірка в `dist/` (`nest build`)                                                    |
+| `npm run start`           | Запуск зібраного додатку (`nest start`)                                            |
+| `npm run prisma:generate` | Генерація Prisma Client                                                            |
+| `npm run prisma:seed`     | Опційно: заповнення БД для перевірки (наприклад placement_questions)               |
 
 ---
 
 ## Структура та документація
 
-- Джерела правди (у корені репозиторію): **docs/architecture.md**, **docs/api-plan.md**, **docs/auth-spec.md**, **docs/auth-config.md**, **docs/modules/*.md**.
+- Джерела правди (у корені репозиторію): **docs/architecture.md**, **docs/api-plan.md**, **docs/auth-spec.md**, **docs/auth-config.md**, **docs/modules/\*.md**.
 - Модулі API: Auth, Users, Placement Test, Courses, Course Materials, Progress & Quizzes, Subscriptions & Billing, Lesson Requests (порядок реалізації — у `docs/api-plan.md`).

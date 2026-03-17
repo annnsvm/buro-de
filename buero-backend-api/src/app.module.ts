@@ -1,7 +1,9 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import type { StringValue } from "ms";
+import { APP_GUARD } from "@nestjs/core";
 import { AuthModule } from "./modules/auth/auth.module";
 import { UserModule } from "./modules/user/user.module";
 import { CoursesModule } from './modules/courses/courses.module';
@@ -16,6 +18,18 @@ import { ProgressQuizModule } from './modules/progress-quiz/progress-quiz.module
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    ThrottlerModule.forRootAsync({
+      useFactory: (config: ConfigService) => {
+        const ttlSec = Number(config.get("THROTTLE_TTL")) || 60;
+        const limit = Number(config.get("THROTTLE_LIMIT")) || 100;
+        return {
+          throttlers: [
+            { name: "default", ttl: ttlSec * 1000, limit },
+          ],
+        };
+      },
+      inject: [ConfigService],
     }),
     PrismaModule,
     HealthModule,
@@ -37,6 +51,12 @@ import { ProgressQuizModule } from './modules/progress-quiz/progress-quiz.module
     }),
     SubscriptionsModule,
     ProgressQuizModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}
