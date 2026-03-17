@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
-import { UserModule } from '../user/user.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ProgressService } from './progress.service';
 import { QuizService } from './quiz.service';
@@ -9,7 +8,7 @@ import { CourseProgressController } from './course-progress.controller';
 import { QuizController } from './quiz.controller';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UserModule],
+  imports: [PrismaModule, AuthModule],
   controllers: [
     ProgressController,
     CourseProgressController,
