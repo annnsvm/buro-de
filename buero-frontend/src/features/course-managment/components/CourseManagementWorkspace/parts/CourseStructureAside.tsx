@@ -46,8 +46,8 @@ const CourseStructureAside: React.FC<Props> = ({ modules, createdCourseId }) => 
         </button>
       </div>
 
-      <aside className="hidden border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:block lg:w-[320px] lg:shrink-0">
-        <div className="h-full p-4">
+      <aside className="hidden h-full overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:block lg:w-[320px] lg:shrink-0">
+        <div className="min-h-full p-4">
           <h2 className="text-base font-bold text-[var(--color-text-primary)]">Course structure</h2>
           {!hasStructure ? (
             EmptyState
@@ -69,7 +69,7 @@ const CourseStructureAside: React.FC<Props> = ({ modules, createdCourseId }) => 
             onClick={handleClose}
             className="absolute inset-0 bg-black/40"
           />
-          <div className="absolute top-0 left-0 h-full w-[320px] max-w-[85vw] translate-x-0 bg-[var(--color-neutral-white)] shadow-2xl">
+          <div className="absolute top-0 left-0 h-full w-[320px] max-w-[85vw] translate-x-0 overflow-y-auto bg-[var(--color-neutral-white)] shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] p-4">
               <h2 className="text-base font-bold text-[var(--color-text-primary)]">Course structure</h2>
               <button

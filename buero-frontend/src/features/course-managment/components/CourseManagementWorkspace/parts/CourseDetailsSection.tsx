@@ -1,25 +1,33 @@
 import React from 'react';
-import { FormField, Input } from '@/components/ui';
+import { FormField, Input, Select } from '@/components/ui';
 import { SectionTitle } from '@/components/layout';
+import { COURSE_LEVEL_OPTIONS } from '@/features/course-managment/helpers/courseCreation.consts';
+import type { CourseLevel } from '@/types/features/courseManagment/CourseLevel.types';
 
 type Props = {
   courseName: string;
   courseDescription: string;
+  level: CourseLevel;
   nameError?: string;
   descriptionError?: string;
+  levelError?: string;
   disabled?: boolean;
   onChangeName: (value: string) => void;
   onChangeDescription: (value: string) => void;
+  onChangeLevel: (value: CourseLevel) => void;
 };
 
 const CourseDetailsSection: React.FC<Props> = ({
   courseName,
   courseDescription,
+  level,
   nameError,
   descriptionError,
+  levelError,
   disabled,
   onChangeName,
   onChangeDescription,
+  onChangeLevel,
 }) => {
   return (
     <section aria-label="Course card">
@@ -55,6 +63,22 @@ const CourseDetailsSection: React.FC<Props> = ({
             rows={3}
             disabled={disabled}
             className="w-full rounded-[12px] border border-[var(--color-border-default)] px-4 py-2 outline-none focus-visible:shadow-[var(--shadow-input-default)] focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-70"
+          />
+        </FormField>
+        <FormField
+          label="Course level"
+          name="courseLevel"
+          error={levelError}
+          className="space-y-4 rounded-2xl bg-[var(--color-surface-background)] p-6"
+        >
+          <Select
+            ariaLabel="Course level"
+            value={level}
+            options={COURSE_LEVEL_OPTIONS}
+            onChange={(nextValue) => onChangeLevel(nextValue)}
+            placeholderValue=""
+            disabled={disabled}
+            triggerClassName="w-full"
           />
         </FormField>
       </div>

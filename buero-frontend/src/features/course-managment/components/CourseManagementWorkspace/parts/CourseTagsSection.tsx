@@ -2,20 +2,8 @@ import React, { useState } from 'react';
 import Icon from '@/components/ui/Icon';
 import { ICON_NAMES } from '@/helpers/iconNames';
 import { Button, Input } from '@/components/ui';
-
-const TAG_SUGGESTIONS = [
-  'Beginner',
-  'Grammar',
-  'Vocabulary',
-  'Listening',
-  'Speaking',
-  'Reading',
-  'Writing',
-  'A1',
-  'A2',
-  'B1',
-  'B2',
-] as const;
+import { TAG_SUGGESTIONS } from '@/features/course-managment/helpers/courseCreation.consts';
+import { normalizeTag } from '@/features/course-managment/helpers/courseTags.helpers';
 
 type TagActionMode = 'none' | 'edit';
 
@@ -24,8 +12,6 @@ type Props = {
   disabled?: boolean;
   onChangeTags: (next: string[]) => void;
 };
-
-const normalizeTag = (value: string) => value.trim().replace(/\s+/g, ' ');
 
 const CourseTagsSection: React.FC<Props> = ({ tags, disabled, onChangeTags }) => {
   const [tagInput, setTagInput] = useState('');

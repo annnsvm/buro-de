@@ -1,9 +1,7 @@
 import React from 'react';
-import { Input } from '@/components/ui';
-
-export type CurrencySymbol = '€' | '$' | '£';
-
-const CURRENCY_SYMBOLS: readonly CurrencySymbol[] = ['€', '$', '£'] as const;
+import { Input, Select } from '@/components/ui';
+import { CURRENCY_OPTIONS } from '@/features/course-managment/helpers/courseCreation.consts';
+import type { CurrencySymbol } from '@/types/features/courseManagment/CoursePricing.types';
 
 type Props = {
   amount: string;
@@ -30,20 +28,16 @@ const CoursePriceSection: React.FC<Props> = ({
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-[var(--color-text-primary)]">Course price</p>
 
-        <div className="mt-4 flex items-stretch overflow-hidden">
-          <select
-            aria-label="Currency"
-            className="w-[72px] shrink-0 bg-white px-3 outline-none focus-visible:shadow-[var(--shadow-input-default)] focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-70"
+        <div className="mt-4 flex items-stretch overflow-visible">
+          <Select
+            ariaLabel="Currency"
             value={currencySymbol}
-            onChange={(e) => onChangeCurrencySymbol(e.target.value as CurrencySymbol)}
+            options={CURRENCY_OPTIONS}
+            onChange={onChangeCurrencySymbol}
             disabled={disabled}
-          >
-            {CURRENCY_SYMBOLS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+            triggerClassName="h-full w-[84px] border-r-0 rounded-r-none px-3"
+            listClassName="w-[84px]"
+          />
           <div className="w-[100px] flex-1">
             <Input
               type="number"
@@ -54,7 +48,7 @@ const CoursePriceSection: React.FC<Props> = ({
               onChange={(e) => onChangeAmount(e.target.value)}
               aria-label="Price amount"
               disabled={disabled}
-              className="rounded-none border-0 focus-visible:shadow-none"
+              className="rounded-l-none border-l-0 focus-visible:shadow-none"
             />
           </div>
         </div>
