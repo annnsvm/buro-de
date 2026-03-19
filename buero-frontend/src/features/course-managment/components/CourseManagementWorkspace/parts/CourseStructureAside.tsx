@@ -6,12 +6,15 @@ import type { Modules } from '@/types/components/ui/ModuleMaterial.types';
 
 type Props = {
   modules: Modules[];
-  createdCourseId: string | null;
+  courseId: string | null;
+  courseTitle: string | null;
+  onSelectCourse: () => void;
 };
 
-const CourseStructureAside: React.FC<Props> = ({ modules, createdCourseId }) => {
+const CourseStructureAside: React.FC<Props> = ({ modules, courseId, courseTitle, onSelectCourse }) => {
   const [isOpenMobile, setIsOpenMobile] = useState(false);
   const hasStructure = modules.length > 0;
+  const hasCourse = courseId != null;
 
   const handleOpen = () => setIsOpenMobile(true);
   const handleClose = () => setIsOpenMobile(false);
@@ -19,10 +22,10 @@ const CourseStructureAside: React.FC<Props> = ({ modules, createdCourseId }) => 
   const EmptyState = (
     <div className="mt-4 rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-surface-section)] p-4">
       <p className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">
-        {createdCourseId ? 'No modules yet' : 'Nothing here yet'}
+        {hasCourse ? 'No modules yet' : 'Nothing here yet'}
       </p>
       <p className="text-xs text-[var(--color-text-secondary)]">
-        {createdCourseId
+        {hasCourse
           ? 'Create your first module to start building the course structure.'
           : 'Create your course first, then add modules and lessons.'}
       </p>
@@ -49,6 +52,29 @@ const CourseStructureAside: React.FC<Props> = ({ modules, createdCourseId }) => 
       <aside className="hidden h-full overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:block lg:w-[320px] lg:shrink-0">
         <div className="min-h-full p-4">
           <h2 className="text-base font-bold text-[var(--color-text-primary)]">Course structure</h2>
+
+          {hasCourse ? (
+            <div className="mt-4">
+              <div className="rounded-lg bg-[var(--color-surface-card)]">
+                <button
+                  type="button"
+                  onClick={onSelectCourse}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelectCourse()}
+                  aria-label="Edit course"
+                  className="flex w-full items-center justify-between px-4 py-3 text-left"
+                >
+                  <div>
+                    <div className="flex flex-col font-bold text-[var(--color-text-primary)]">
+                      <span className="text-[0.75rem] text-[var(--color-text-secondary)]">COURSE</span>
+                      <h2 className="text-[1.2rem]">{courseTitle?.trim() ? courseTitle.trim() : 'Untitled course'}</h2>
+                    </div>
+                  </div>
+                  <Icon name={ICON_NAMES.EDIT} size={20} className="text-[var(--color-text-secondary)]" ariaHidden />
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           {!hasStructure ? (
             EmptyState
           ) : (
@@ -82,6 +108,35 @@ const CourseStructureAside: React.FC<Props> = ({ modules, createdCourseId }) => 
               </button>
             </div>
             <div className="p-4">
+              {hasCourse ? (
+                <div className="mb-4">
+                  <div className="rounded-lg bg-[var(--color-surface-card)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectCourse();
+                        handleClose();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        onSelectCourse();
+                        handleClose();
+                      }}
+                      aria-label="Edit course"
+                      className="flex w-full items-center justify-between px-4 py-3 text-left"
+                    >
+                      <div>
+                        <div className="flex flex-col font-bold text-[var(--color-text-primary)]">
+                          <span className="text-[var(--color-text-secondary)]">COURSE</span>
+                          <span>{courseTitle?.trim() ? courseTitle.trim() : 'Untitled course'}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">Edit course</p>
+                      </div>
+                      <Icon name={ICON_NAMES.EDIT} size={20} className="text-[var(--color-text-secondary)]" ariaHidden />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {!hasStructure ? (
                 EmptyState
               ) : (

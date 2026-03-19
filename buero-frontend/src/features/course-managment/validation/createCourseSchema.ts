@@ -33,10 +33,9 @@ export const createCourseSchema = z.object({
   price: z
     .string()
     .trim()
-    .optional()
+    .refine((value) => value.length > 0, { message: 'Price is required' })
     .refine(
       (value) => {
-        if (!value) return true;
         const n = Number(value);
         return !Number.isNaN(n) && n >= 0;
       },
@@ -50,9 +49,11 @@ export const createCourseSchema = z.object({
         .trim()
         .min(1, { message: 'Tag cannot be empty' }),
     )
-    .optional(),
+    .min(1, { message: 'At least one tag is required' }),
 
-  level: z.union([levelSchema, z.literal('')]).optional(),
+  level: z
+    .union([levelSchema, z.literal('')])
+    .refine((value) => value !== '', { message: 'Level is required' }),
 });
 
 export type CreateCourseFormValues = z.infer<typeof createCourseSchema>;

@@ -11,9 +11,10 @@ type Props = {
   tags: string[];
   disabled?: boolean;
   onChangeTags: (next: string[]) => void;
+  error?: string;
 };
 
-const CourseTagsSection: React.FC<Props> = ({ tags, disabled, onChangeTags }) => {
+const CourseTagsSection: React.FC<Props> = ({ tags, disabled, onChangeTags, error }) => {
   const [tagInput, setTagInput] = useState('');
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [tagActionMode, setTagActionMode] = useState<TagActionMode>('none');
@@ -178,6 +179,12 @@ const CourseTagsSection: React.FC<Props> = ({ tags, disabled, onChangeTags }) =>
           </button>
         ))}
       </div>
+
+      {error ? (
+        <p role="alert" className="mt-2 text-sm text-[var(--color-error)]">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 };

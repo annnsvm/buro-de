@@ -6,7 +6,7 @@ import Footer from '../Footer/Footer';
 const SharedLayout = () => {
   const { pathname } = useLocation();
   const hideHeader =
-    pathname === ROUTES.PROFILE || pathname === ROUTES.MY_LEARNING;
+    pathname === ROUTES.TEACHER_COURSES_EDIT || pathname === ROUTES.TEACHER_COURSES_CREATE || pathname === ROUTES.MY_LEARNING;
 
   return (
     <div>

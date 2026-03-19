@@ -1,21 +1,52 @@
 import React from 'react';
 import { Button, Spinner } from '@/components/ui';
+import type { CourseEditorMode } from '@/types/features/courseManagment/CourseEditorMode.types';
 
 type Props = {
+  mode: CourseEditorMode;
   canCreate: boolean;
   isCreating: boolean;
-  createdCourseId: string | null;
+  canUpdate: boolean;
+  isUpdating: boolean;
   error: string | null;
   onCreateCourse: () => void;
+  onUpdateCourse: () => void;
 };
 
 const CourseCreateActions: React.FC<Props> = ({
+  mode,
   canCreate,
   isCreating,
-  createdCourseId,
+  canUpdate,
+  isUpdating,
   error,
   onCreateCourse,
+  onUpdateCourse,
 }) => {
+  const isEditMode = mode === 'edit';
+
+  const buttonLabel = isUpdating ? (
+    <span className="inline-flex items-center gap-2">
+      <Spinner variant="onPrimary" className="size-5" />
+      Updating
+    </span>
+  ) : isEditMode ? (
+    canUpdate ? (
+      'Update'
+    ) : (
+      'Created'
+    )
+  ) : isCreating ? (
+    <span className="inline-flex items-center gap-2">
+      <Spinner variant="onPrimary" className="size-5" />
+      Creating
+    </span>
+  ) : (
+    'Create course'
+  );
+
+  const buttonDisabled = isEditMode ? !canUpdate || isUpdating : !canCreate || isCreating;
+
   return (
     <section
       className="rounded-2xl bg-[var(--color-surface-background)] p-6"
@@ -32,19 +63,10 @@ const CourseCreateActions: React.FC<Props> = ({
         <Button
           type="button"
           variant="solid"
-          onClick={onCreateCourse}
-          disabled={!canCreate || isCreating}
+          onClick={() => (isEditMode ? onUpdateCourse() : onCreateCourse())}
+          disabled={buttonDisabled}
         >
-          {isCreating ? (
-            <span className="inline-flex items-center gap-2">
-              <Spinner variant="onPrimary" className="size-5" />
-              Creating
-            </span>
-          ) : createdCourseId ? (
-            'Created'
-          ) : (
-            'Create course'
-          )}
+          {buttonLabel}
         </Button>
       </div>
 

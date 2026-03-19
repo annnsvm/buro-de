@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -19,22 +19,26 @@ import {
 } from '@/features/course-managment/validation/createCourseSchema';
 
 const CourseManagmentPage: React.FC = () => {
-  const modules: Modules[] = useMemo(() => [], []);
+  const [modules, setModules] = useState<Modules[]>([]);
 
   const {
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    reset,
+    formState: { errors, isDirty, isValid },
   } = useForm<CreateCourseFormValues>({
     resolver: zodResolver(createCourseSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+    shouldFocusError: true,
     defaultValues: {
       title: '',
       description: '',
       language: 'en',
       category: 'language',
       price: '',
-      tags: ['Grammar', 'Vocabulary', 'A1'],
+      tags: [],
       level: '',
     },
   });
@@ -49,32 +53,41 @@ const CourseManagmentPage: React.FC = () => {
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
   const [priceCurrencySymbol, setPriceCurrencySymbol] = useState<CurrencySymbol>('€');
 
-  const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
+  const [courseId, setCourseId] = useState<string | null>(null);
+  const [isEditingCourse, setIsEditingCourse] = useState(false);
   const [isCreatingCourse, setIsCreatingCourse] = useState(false);
+  const [isUpdatingCourse, setIsUpdatingCourse] = useState(false);
   const [createCourseError, setCreateCourseError] = useState<string | null>(null);
 
-  const onSubmit = async (values: CreateCourseFormValues) => {
+  const isFormDisabled = courseId !== null && !isEditingCourse;
+
+  // Create button should remain clickable; RHF + zod will block submit
+  // and show field errors if the form is invalid.
+  const canCreate = !courseId && !isCreatingCourse && !isUpdatingCourse;
+  const canUpdate = !!courseId && isEditingCourse && !isCreatingCourse && !isUpdatingCourse && isDirty && isValid;
+
+  const handleCreateCourseSubmit = async (values: CreateCourseFormValues) => {
     setCreateCourseError(null);
     setIsCreatingCourse(true);
+
     try {
       const payload: Record<string, unknown> = {
         title: values.title.trim(),
-        description: values.description?.trim() || undefined,
+        description: values.description?.trim() ?? '',
         language: values.language,
         category: values.category,
         is_published: false,
         tags: values.tags,
+        price: Number(values.price.trim()),
+        level: values.level,
       };
 
-      if (values.price?.trim()) {
-        payload.price = Number(values.price.trim());
-      }
-      if (values.level) {
-        payload.level = values.level;
-      }
-
       const res = await apiInstance.post<{ id: string }>(API_ENDPOINTS.courses.create, payload);
-      setCreatedCourseId(res.data.id);
+      setCourseId(res.data.id);
+      setModules([]);
+      setIsEditingCourse(false);
+      setCreateCourseError(null);
+      reset(values);
     } catch (err: unknown) {
       const message =
         err && typeof err === 'object' && 'response' in err
@@ -88,36 +101,81 @@ const CourseManagmentPage: React.FC = () => {
     }
   };
 
+  const handleUpdateCourseSubmit = async (values: CreateCourseFormValues) => {
+    if (!courseId) return;
+
+    setCreateCourseError(null);
+    setIsUpdatingCourse(true);
+
+    try {
+      const payload: Record<string, unknown> = {
+        title: values.title.trim(),
+        description: values.description?.trim() ?? '',
+        language: values.language,
+        category: values.category,
+        tags: values.tags,
+        price: Number(values.price.trim()),
+        level: values.level,
+      };
+
+      await apiInstance.patch(API_ENDPOINTS.courses.update(courseId), payload);
+      reset(values);
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : err instanceof Error
+            ? err.message
+            : 'Failed to update course';
+      setCreateCourseError(Array.isArray(message) ? message.join(', ') : String(message));
+    } finally {
+      setIsUpdatingCourse(false);
+    }
+  };
+
+  const handleFormSubmit = async (values: CreateCourseFormValues) => {
+    if (!courseId) return handleCreateCourseSubmit(values);
+    if (!isEditingCourse) return;
+    return handleUpdateCourseSubmit(values);
+  };
+
   return (
-    <div className="mt-16 flex h-[calc(100vh-4rem)] overflow-hidden bg-[var(--color-surface-section)]">
-      <CourseStructureAside modules={modules} createdCourseId={createdCourseId} />
+    <div>
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-[var(--color-surface-section)]">
+        <CourseStructureAside
+          modules={modules}
+          courseId={courseId}
+          courseTitle={watchedTitle}
+          onSelectCourse={() => {
+            if (isEditingCourse) return;
+            setIsEditingCourse(true);
+          }}
+        />
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="shrink-0">
-          <Container className="py-6 lg:py-0">
-            <div className="flex w-full flex-col items-center gap-2 text-[var(--color-neutral-darkest)]">
-              <Title className="text-center text-[2rem] sm:text-[3rem] lg:text-[3.75rem]">
-                {watchedTitle.trim() ? watchedTitle.trim() : 'New course'}
-              </Title>
-              <Text
-                className="text-center text-[0.9rem] sm:text-[0.9rem] lg:text-[1.25rem]"
-                label="create course text"
-              >
-                {watchedDescription.trim()
-                  ? watchedDescription.trim()
-                  : 'Add a description to help students understand what they will learn.'}
-              </Text>
-            </div>
-          </Container>
-        </header>
-
-        <main className="min-w-0 flex-1 overflow-y-auto">
+        <div className="py-8 min-w-0 flex-1 overflow-y-auto">
+          <header className="shrink-0">
+            <Container className="px-4 sm:px-6">
+              <div className="flex w-full flex-col items-center gap-2 text-[var(--color-neutral-darkest)]">
+                <Title className="text-center text-[2rem] sm:text-[3rem] lg:text-[3.75rem]">
+                  {watchedTitle.trim() ? watchedTitle.trim() : 'New course'}
+                </Title>
+                <Text
+                  className="text-center text-[0.9rem] sm:text-[0.9rem] lg:text-[1.25rem]"
+                  label="create course text"
+                >
+                  {watchedDescription.trim()
+                    ? watchedDescription.trim()
+                    : 'Add a description to help students understand what they will learn.'}
+                </Text>
+              </div>
+            </Container>
+          </header>
           <Section className="py-8">
-            <Container className="max-w-[1100px]">
-              <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            <Container className="max-w-[1100px] px-4 sm:px-6">
+              <form className="space-y-6" onSubmit={handleSubmit(handleFormSubmit)}>
                 <CourseCoverSection
                   coverPreviewUrl={coverPreviewUrl}
-                  disabled={!!createdCourseId}
+                  disabled={isFormDisabled}
                   onPick={(file, previewUrl) => {
                     setCoverFile(file);
                     setCoverPreviewUrl(previewUrl);
@@ -135,40 +193,46 @@ const CourseManagmentPage: React.FC = () => {
                   nameError={errors.title?.message}
                   descriptionError={errors.description?.message}
                   levelError={errors.level?.message}
-                  disabled={!!createdCourseId}
-                  onChangeName={(value) => setValue('title', value)}
-                  onChangeDescription={(value) => setValue('description', value)}
-                  onChangeLevel={(value) => setValue('level', value)}
+                  disabled={isFormDisabled}
+                  onChangeName={(value) => setValue('title', value, { shouldDirty: true, shouldValidate: true })}
+                  onChangeDescription={(value) =>
+                    setValue('description', value, { shouldDirty: true, shouldValidate: true })
+                  }
+                  onChangeLevel={(value) => setValue('level', value, { shouldDirty: true, shouldValidate: true })}
                 />
 
                 <CourseTagsSection
                   tags={watchedTags}
-                  disabled={!!createdCourseId}
-                  onChangeTags={(next) => setValue('tags', next)}
+                  disabled={isFormDisabled}
+                  onChangeTags={(next) => setValue('tags', next, { shouldDirty: true, shouldValidate: true })}
+                  error={errors.tags?.message}
                 />
 
                 <CoursePriceSection
                   amount={watchedPrice}
                   currencySymbol={priceCurrencySymbol}
                   error={errors.price?.message}
-                  disabled={!!createdCourseId}
-                  onChangeAmount={(value) => setValue('price', value)}
+                  disabled={isFormDisabled}
+                  onChangeAmount={(value) => setValue('price', value, { shouldDirty: true, shouldValidate: true })}
                   onChangeCurrencySymbol={setPriceCurrencySymbol}
                 />
 
                 <CourseCreateActions
                   isCreating={isCreatingCourse}
-                  createdCourseId={createdCourseId}
                   error={createCourseError}
-                  canCreate={!isCreatingCourse}
-                  onCreateCourse={handleSubmit(onSubmit)}
+                  mode={courseId ? 'edit' : 'create'}
+                  canCreate={canCreate}
+                  canUpdate={canUpdate}
+                  isUpdating={isUpdatingCourse}
+                  onCreateCourse={handleSubmit(handleCreateCourseSubmit)}
+                  onUpdateCourse={handleSubmit(handleUpdateCourseSubmit)}
                 />
 
                 <input type="hidden" value={coverFile ? coverFile.name : ''} readOnly />
               </form>
             </Container>
           </Section>
-        </main>
+        </div>
       </div>
     </div>
   );
