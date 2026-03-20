@@ -23,6 +23,12 @@ export const API_ENDPOINTS = {
     update: (courseId: string, id: string) => `/courses/${courseId}/materials/${id}`, 
     delete: (courseId: string, id: string) => `/courses/${courseId}/materials/${id}`, 
   },
+  courseModules: {
+    list: (courseId: string) => `/courses/${courseId}/modules`,
+    create: (courseId: string) => `/courses/${courseId}/modules`,
+    update: (courseId: string, moduleId: string) => `/courses/${courseId}/modules/${moduleId}`,
+    delete: (courseId: string, moduleId: string) => `/courses/${courseId}/modules/${moduleId}`,
+  },
   subscriptions: {
     checkout: '/subscriptions/checkout',
     myAccess: '/subscriptions/me', 

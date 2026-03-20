@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -13,6 +13,7 @@ import CourseTagsSection from '@/features/course-managment/components/CourseMana
 import CoursePriceSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CoursePriceSection';
 import type { CurrencySymbol } from '@/types/features/courseManagment/CoursePricing.types';
 import CourseCreateActions from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseCreateActions';
+import CreateCourseModuleModal from '@/features/course-managment/components/CreateCourseModuleModal/CreateCourseModuleModal';
 import {
   createCourseSchema,
   type CreateCourseFormValues,
@@ -58,11 +59,18 @@ const CourseManagmentPage: React.FC = () => {
   const [isCreatingCourse, setIsCreatingCourse] = useState(false);
   const [isUpdatingCourse, setIsUpdatingCourse] = useState(false);
   const [createCourseError, setCreateCourseError] = useState<string | null>(null);
+  const [isCreateModuleOpen, setIsCreateModuleOpen] = useState(false);
+
+  const fetchCourseTree = useCallback(
+    async (id: string) => {
+      const res = await apiInstance.get<{ modules?: Modules[] }>(API_ENDPOINTS.courses.byId(id));
+      setModules(res.data.modules ?? []);
+    },
+    [],
+  );
 
   const isFormDisabled = courseId !== null && !isEditingCourse;
 
-  // Create button should remain clickable; RHF + zod will block submit
-  // and show field errors if the form is invalid.
   const canCreate = !courseId && !isCreatingCourse && !isUpdatingCourse;
   const canUpdate = !!courseId && isEditingCourse && !isCreatingCourse && !isUpdatingCourse && isDirty && isValid;
 
@@ -84,10 +92,10 @@ const CourseManagmentPage: React.FC = () => {
 
       const res = await apiInstance.post<{ id: string }>(API_ENDPOINTS.courses.create, payload);
       setCourseId(res.data.id);
-      setModules([]);
       setIsEditingCourse(false);
       setCreateCourseError(null);
       reset(values);
+      await fetchCourseTree(res.data.id);
     } catch (err: unknown) {
       const message =
         err && typeof err === 'object' && 'response' in err
@@ -149,6 +157,10 @@ const CourseManagmentPage: React.FC = () => {
           onSelectCourse={() => {
             if (isEditingCourse) return;
             setIsEditingCourse(true);
+          }}
+          onCreateModule={() => {
+            if (!courseId) return;
+            setIsCreateModuleOpen(true);
           }}
         />
 
@@ -234,6 +246,24 @@ const CourseManagmentPage: React.FC = () => {
           </Section>
         </div>
       </div>
+
+      <CreateCourseModuleModal
+        isOpen={isCreateModuleOpen}
+        handleOpenChange={(open) => {
+          if (!open) setIsCreateModuleOpen(false);
+          else setIsCreateModuleOpen(open);
+        }}
+        onCreateModule={async ({ title }) => {
+          if (!courseId) return;
+          const currentOrders = modules.map((m) => m.orderIndex ?? 0);
+          const nextOrderIndex = currentOrders.length ? Math.max(...currentOrders) + 1 : 0;
+          await apiInstance.post(API_ENDPOINTS.courseModules.create(courseId), {
+            title,
+            order_index: nextOrderIndex,
+          });
+          await fetchCourseTree(courseId);
+        }}
+      />
     </div>
   );
 };

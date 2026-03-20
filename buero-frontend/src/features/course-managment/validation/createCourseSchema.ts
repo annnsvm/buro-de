@@ -30,30 +30,49 @@ export const createCourseSchema = z.object({
 
   category: categorySchema,
 
-  price: z
-    .string()
-    .trim()
-    .refine((value) => value.length > 0, { message: 'Price is required' })
-    .refine(
-      (value) => {
-        const n = Number(value);
-        return !Number.isNaN(n) && n >= 0;
-      },
-      { message: 'Price must be a non‑negative number' },
-    ),
+  price: z.string().trim(),
 
-  tags: z
-    .array(
-      z
-        .string()
-        .trim()
-        .min(1, { message: 'Tag cannot be empty' }),
-    )
-    .min(1, { message: 'At least one tag is required' }),
+  tags: z.array(
+    z.string().trim().min(1, { message: 'Tag cannot be empty' }),
+  ),
 
-  level: z
-    .union([levelSchema, z.literal('')])
-    .refine((value) => value !== '', { message: 'Level is required' }),
+  // Note: keep '' in the input type, and validate it at object-level
+  // so RHF defaultValues (level: '') remain type-safe.
+  level: z.union([levelSchema, z.literal('')]),
+}).superRefine((values, ctx) => {
+  if (!values.price.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['price'],
+      message: 'Price is required',
+    });
+    return;
+  }
+
+  const n = Number(values.price.trim());
+  if (Number.isNaN(n) || n < 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['price'],
+      message: 'Price must be a non‑negative number',
+    });
+  }
+
+  if (values.tags.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['tags'],
+      message: 'At least one tag is required',
+    });
+  }
+
+  if (values.level === '') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['level'],
+      message: 'Level is required',
+    });
+  }
 });
 
 export type CreateCourseFormValues = z.infer<typeof createCourseSchema>;
