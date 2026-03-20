@@ -4,17 +4,12 @@ import { ICON_NAMES } from '@/helpers/iconNames';
 import { Button, Input } from '@/components/ui';
 import { TAG_SUGGESTIONS } from '@/features/course-managment/helpers/courseCreation.consts';
 import { normalizeTag } from '@/features/course-managment/helpers/courseTags.helpers';
+import type {
+  CourseTagsSectionProps,
+  TagActionMode,
+} from '@/types/features/courseManagment/CourseTagsSection.types';
 
-type TagActionMode = 'none' | 'edit';
-
-type Props = {
-  tags: string[];
-  disabled?: boolean;
-  onChangeTags: (next: string[]) => void;
-  error?: string;
-};
-
-const CourseTagsSection: React.FC<Props> = ({ tags, disabled, onChangeTags, error }) => {
+const CourseTagsSection: React.FC<CourseTagsSectionProps> = ({ tags, disabled, onChangeTags, error }) => {
   const [tagInput, setTagInput] = useState('');
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [tagActionMode, setTagActionMode] = useState<TagActionMode>('none');

@@ -19,3 +19,13 @@ export type CourseAsideActionButtonProps = {
   className?: string;
 };
 
+export type CourseStructureAsideCourseHeaderProps = {
+  courseTitle: string | null;
+  onSelectCourse: () => void;
+  onAfterClick?: () => void;
+};
+
+export type CourseStructureAsideEmptyStateProps = {
+  hasCourse: boolean;
+};
+

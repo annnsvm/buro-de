@@ -1,15 +1,14 @@
 import React from 'react';
 import Icon from '@/components/ui/Icon';
 import { ICON_NAMES } from '@/helpers/iconNames';
+import type { CourseCoverSectionProps } from '@/types/features/courseManagment/CourseCoverSection.types';
 
-type Props = {
-  coverPreviewUrl: string | null;
-  disabled?: boolean;
-  onPick: (file: File, previewUrl: string) => void;
-  onClear: () => void;
-};
-
-const CourseCoverSection: React.FC<Props> = ({ coverPreviewUrl, disabled, onPick, onClear }) => {
+const CourseCoverSection: React.FC<CourseCoverSectionProps> = ({
+  coverPreviewUrl,
+  disabled,
+  onPick,
+  onClear,
+}) => {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handlePick = (e: React.ChangeEvent<HTMLInputElement>) => {

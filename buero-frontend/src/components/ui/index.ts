@@ -8,3 +8,4 @@ export { default as Spinner } from './Spinner';
 export { default as Skeleton } from './Skeleton';
 export { default as GlobalLoader } from './GlobalLoader';
 export { default as Select } from './Select';
+export { default as Line } from './Line';

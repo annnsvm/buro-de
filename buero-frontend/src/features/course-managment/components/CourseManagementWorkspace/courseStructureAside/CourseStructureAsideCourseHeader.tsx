@@ -1,12 +1,8 @@
+import { Line } from '@/components/ui';
 import React from 'react';
+import type { CourseStructureAsideCourseHeaderProps } from '@/types/features/courseManagment/CourseStructureAside.types';
 
-type Props = {
-  courseTitle: string | null;
-  onSelectCourse: () => void;
-  onAfterClick?: () => void;
-};
-
-const CourseStructureAsideCourseHeader: React.FC<Props> = ({
+const CourseStructureAsideCourseHeader: React.FC<CourseStructureAsideCourseHeaderProps> = ({
   courseTitle,
   onSelectCourse,
   onAfterClick,
@@ -31,11 +27,10 @@ const CourseStructureAsideCourseHeader: React.FC<Props> = ({
         <h3 className="mt-1 text-[1.15rem] font-bold text-[var(--color-text-primary)]">
           {courseTitle?.trim() ? courseTitle.trim() : 'Untitled course'}
         </h3>
-        <div className="mt-1 h-[2px] w-full rounded-full bg-[var(--color-cod-gray-lightest)]" />
+        <Line />
       </div>
     </button>
   );
 };
 
 export default CourseStructureAsideCourseHeader;
-

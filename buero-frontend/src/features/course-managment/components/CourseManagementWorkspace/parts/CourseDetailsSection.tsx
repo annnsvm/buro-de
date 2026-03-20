@@ -2,22 +2,9 @@ import React from 'react';
 import { FormField, Input, Select } from '@/components/ui';
 import { SectionTitle } from '@/components/layout';
 import { COURSE_LEVEL_OPTIONS } from '@/features/course-managment/helpers/courseCreation.consts';
-import type { CourseLevel } from '@/types/features/courseManagment/CourseLevel.types';
+import type { CourseDetailsSectionProps } from '@/types/features/courseManagment/CourseDetailsSection.types';
 
-type Props = {
-  courseName: string;
-  courseDescription: string;
-  level: CourseLevel;
-  nameError?: string;
-  descriptionError?: string;
-  levelError?: string;
-  disabled?: boolean;
-  onChangeName: (value: string) => void;
-  onChangeDescription: (value: string) => void;
-  onChangeLevel: (value: CourseLevel) => void;
-};
-
-const CourseDetailsSection: React.FC<Props> = ({
+const CourseDetailsSection: React.FC<CourseDetailsSectionProps> = ({
   courseName,
   courseDescription,
   level,

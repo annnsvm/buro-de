@@ -6,7 +6,7 @@ import { API_ENDPOINTS } from '@/api/apiEndpoints';
 import { apiInstance } from '@/api/apiInstance';
 import { Container, Section, Text, Title } from '@/components/layout';
 import type { Modules } from '@/types/components/ui/ModuleMaterial.types';
-import CourseStructureAside from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseStructureAside';
+import CourseStructureAside from '@/features/course-managment/components/CourseManagementWorkspace/courseStructureAside';
 import CourseCoverSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseCoverSection';
 import CourseDetailsSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseDetailsSection';
 import CourseTagsSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseTagsSection';
@@ -14,13 +14,21 @@ import CoursePriceSection from '@/features/course-managment/components/CourseMan
 import CourseDurationSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseDurationSection';
 import type { CurrencySymbol } from '@/types/features/courseManagment/CoursePricing.types';
 import CourseCreateActions from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseCreateActions';
-import CreateCourseModuleModal from '@/features/course-managment/components/CreateCourseModuleModal/CreateCourseModuleModal';
-import CourseMaterialCreateTab from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseMaterialCreateTab';
+import CreateCourseModuleModal from '@/features/course-managment/components/CourseManagementWorkspace/CreateCourseModuleModal';
+import CourseMaterialCreateTab from '@/features/course-managment/components/CourseManagementWorkspace/courseMaterial';
 import type { CreateCourseMaterialModalValues } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
 import {
   createCourseSchema,
   type CreateCourseFormValues,
 } from '@/features/course-managment/validation/createCourseSchema';
+import {
+  countVideoLessonMaterials,
+  sumVideoDurationMinutesAcrossModules,
+} from '@/features/course-managment/helpers/courseTreeStats.helpers';
+import type {
+  CourseManagementRightTab,
+  CourseModuleModalMode,
+} from '@/types/features/courseManagment/CourseManagementPage.types';
 
 const CourseManagmentPage: React.FC = () => {
   const [modules, setModules] = useState<Modules[]>([]);
@@ -53,24 +61,8 @@ const CourseManagmentPage: React.FC = () => {
   const watchedTags = watch('tags') ?? [];
   const watchedPrice = watch('price') ?? '';
   const watchedLevel = watch('level') ?? '';
-  const watchedVideoLessonsCount = modules.reduce(
-    (acc, moduleItem) =>
-      acc + (moduleItem.materials ?? []).filter((material) => material.type === 'video').length,
-    0,
-  );
-  const watchedDurationMinutes = modules.reduce((acc, moduleItem) => {
-    const moduleDurationSeconds = (moduleItem.materials ?? []).reduce((sum, material) => {
-      if (material.type !== 'video') return sum;
-      const rawDuration =
-        typeof material.content?.duration === 'string' ? material.content.duration.trim() : '';
-      const match = rawDuration.match(/^(\d+):([0-5]\d)$/);
-      if (!match) return sum;
-      const seconds = Number(match[1]) * 60 + Number(match[2]);
-      return sum + seconds;
-    }, 0);
-    return acc + moduleDurationSeconds;
-  }, 0);
-  const computedDurationMinutes = Math.floor(watchedDurationMinutes / 60);
+  const watchedVideoLessonsCount = countVideoLessonMaterials(modules);
+  const computedDurationMinutes = sumVideoDurationMinutesAcrossModules(modules);
 
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
@@ -82,11 +74,11 @@ const CourseManagmentPage: React.FC = () => {
   const [isUpdatingCourse, setIsUpdatingCourse] = useState(false);
   const [createCourseError, setCreateCourseError] = useState<string | null>(null);
   const [isCreateModuleOpen, setIsCreateModuleOpen] = useState(false);
-  const [moduleModalMode, setModuleModalMode] = useState<'create' | 'edit'>('create');
+  const [moduleModalMode, setModuleModalMode] = useState<CourseModuleModalMode>('create');
   const [activeModuleIdForEdit, setActiveModuleIdForEdit] = useState<string | null>(null);
   const [moduleInitialTitle, setModuleInitialTitle] = useState('');
   const [isCreatingMaterial, setIsCreatingMaterial] = useState(false);
-  const [activeRightTab, setActiveRightTab] = useState<'course' | 'material'>('course');
+  const [activeRightTab, setActiveRightTab] = useState<CourseManagementRightTab>('course');
   const [activeModuleIdForMaterial, setActiveModuleIdForMaterial] = useState<string | null>(null);
   const [activeMaterialIdForEdit, setActiveMaterialIdForEdit] = useState<string | null>(null);
 
@@ -339,17 +331,22 @@ const CourseManagmentPage: React.FC = () => {
                               duration: payload.youtubeVideoDuration,
                             }
                           : {
-                              questions: [
-                                {
-                                  id: 'q1',
-                                  text: payload.quizQuestionText,
-                                  options: payload.quizOptions.map((opt, idx) => ({
-                                    id: `opt_${idx + 1}`,
-                                    text: opt,
-                                  })),
-                                  correct: `opt_${payload.quizCorrectOptionIndex + 1}`,
-                                },
-                              ],
+                              questions: payload.quizQuestions.map((questionItem, qIdx) => {
+                                const normalizedQuestionId = questionItem.id || `q${qIdx + 1}`;
+                                const options = questionItem.answers.map((answerItem, aIdx) => ({
+                                  id: answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`,
+                                  text: answerItem.text,
+                                }));
+                                const correctIds = questionItem.answers
+                                  .filter((answerItem) => answerItem.isCorrect)
+                                  .map((answerItem, aIdx) => answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`);
+                                return {
+                                  id: normalizedQuestionId,
+                                  text: questionItem.question,
+                                  options,
+                                  correct: correctIds.length > 1 ? correctIds : (correctIds[0] ?? ''),
+                                };
+                              }),
                             };
 
                       const created = await apiInstance.post<{ id: string }>(
@@ -397,17 +394,22 @@ const CourseManagmentPage: React.FC = () => {
                               duration: payload.youtubeVideoDuration,
                             }
                           : {
-                              questions: [
-                                {
-                                  id: 'q1',
-                                  text: payload.quizQuestionText,
-                                  options: payload.quizOptions.map((opt, idx) => ({
-                                    id: `opt_${idx + 1}`,
-                                    text: opt,
-                                  })),
-                                  correct: `opt_${payload.quizCorrectOptionIndex + 1}`,
-                                },
-                              ],
+                              questions: payload.quizQuestions.map((questionItem, qIdx) => {
+                                const normalizedQuestionId = questionItem.id || `q${qIdx + 1}`;
+                                const options = questionItem.answers.map((answerItem, aIdx) => ({
+                                  id: answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`,
+                                  text: answerItem.text,
+                                }));
+                                const correctIds = questionItem.answers
+                                  .filter((answerItem) => answerItem.isCorrect)
+                                  .map((answerItem, aIdx) => answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`);
+                                return {
+                                  id: normalizedQuestionId,
+                                  text: questionItem.question,
+                                  options,
+                                  correct: correctIds.length > 1 ? correctIds : (correctIds[0] ?? ''),
+                                };
+                              }),
                             };
 
                       await apiInstance.patch(

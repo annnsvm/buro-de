@@ -1,10 +1,9 @@
 import React from 'react';
+import type { CourseStructureAsideEmptyStateProps } from '@/types/features/courseManagment/CourseStructureAside.types';
 
-type Props = {
-  hasCourse: boolean;
-};
-
-const CourseStructureAsideEmptyState: React.FC<Props> = ({ hasCourse }) => (
+const CourseStructureAsideEmptyState: React.FC<CourseStructureAsideEmptyStateProps> = ({
+  hasCourse,
+}) => (
   <div className="mt-4 rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-surface-section)] p-4">
     <p className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">
       {hasCourse ? 'No modules yet' : 'Nothing here yet'}
@@ -18,4 +17,3 @@ const CourseStructureAsideEmptyState: React.FC<Props> = ({ hasCourse }) => (
 );
 
 export default CourseStructureAsideEmptyState;
-

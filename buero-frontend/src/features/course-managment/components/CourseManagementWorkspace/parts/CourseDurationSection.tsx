@@ -1,12 +1,12 @@
 import React from 'react';
 import { Icon } from '@/components/ui';
+import { ICON_NAMES } from '@/helpers/iconNames';
+import type { CourseDurationSectionProps } from '@/types/features/courseManagment/CourseDurationSection.types';
 
-type Props = {
-  durationMinutes: number;
-  videoLessonsCount: number;
-};
-
-const CourseDurationSection: React.FC<Props> = ({ durationMinutes, videoLessonsCount }) => {
+const CourseDurationSection: React.FC<CourseDurationSectionProps> = ({
+  durationMinutes,
+  videoLessonsCount,
+}) => {
   const safeDurationMinutes = Number.isFinite(durationMinutes) ? durationMinutes : 0;
   const safeLessonsCount = Number.isFinite(videoLessonsCount) ? videoLessonsCount : 0;
   const durationHoursPart = Math.floor(safeDurationMinutes / 60);
@@ -22,7 +22,7 @@ const CourseDurationSection: React.FC<Props> = ({ durationMinutes, videoLessonsC
           Duration
         </p>
         <div className="flex items-center gap-3">
-          <Icon name="icon-schedule" size={24} className="text-[var(--color-neutral-light)]" />
+          <Icon name={ICON_NAMES.SCHEDULE} size={24} className="text-[var(--color-neutral-light)]" />
           <p className="text-lg font-bold text-[var(--color-text-primary)]">
             {durationHoursPart}h {durationMinutesPart}m
           </p>
@@ -33,7 +33,7 @@ const CourseDurationSection: React.FC<Props> = ({ durationMinutes, videoLessonsC
           Lessons
         </p>
         <div className="flex items-center gap-3">
-          <Icon name="icon-book" size={24} className="text-[var(--color-neutral-light)]" />
+          <Icon name={ICON_NAMES.BOOK} size={24} className="text-[var(--color-neutral-light)]" />
           <p className="text-lg font-bold text-[var(--color-text-primary)]">{safeLessonsCount}</p>
         </div>
       </div>

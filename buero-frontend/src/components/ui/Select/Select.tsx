@@ -30,6 +30,10 @@ const Select = <T extends string>({
   const isPlaceholder = placeholderValue !== undefined ? value === placeholderValue : false;
 
   useEffect(() => {
+    if (disabled) setIsOpen(false);
+  }, [disabled]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!wrapRef.current) return;
       if (!wrapRef.current.contains(event.target as Node)) setIsOpen(false);

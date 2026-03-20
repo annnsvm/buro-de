@@ -1,18 +1,9 @@
 import React from 'react';
 import { Input, Select } from '@/components/ui';
 import { CURRENCY_OPTIONS } from '@/features/course-managment/helpers/courseCreation.consts';
-import type { CurrencySymbol } from '@/types/features/courseManagment/CoursePricing.types';
+import type { CoursePriceSectionProps } from '@/types/features/courseManagment/CoursePriceSection.types';
 
-type Props = {
-  amount: string;
-  currencySymbol: CurrencySymbol;
-  error?: string;
-  disabled?: boolean;
-  onChangeAmount: (value: string) => void;
-  onChangeCurrencySymbol: (value: CurrencySymbol) => void;
-};
-
-const CoursePriceSection: React.FC<Props> = ({
+const CoursePriceSection: React.FC<CoursePriceSectionProps> = ({
   amount,
   currencySymbol,
   error,

@@ -1,19 +1,8 @@
 import React from 'react';
 import { Button, Spinner } from '@/components/ui';
-import type { CourseEditorMode } from '@/types/features/courseManagment/CourseEditorMode.types';
+import type { CourseCreateActionsProps } from '@/types/features/courseManagment/CourseCreateActions.types';
 
-type Props = {
-  mode: CourseEditorMode;
-  canCreate: boolean;
-  isCreating: boolean;
-  canUpdate: boolean;
-  isUpdating: boolean;
-  error: string | null;
-  onCreateCourse: () => void;
-  onUpdateCourse: () => void;
-};
-
-const CourseCreateActions: React.FC<Props> = ({
+const CourseCreateActions: React.FC<CourseCreateActionsProps> = ({
   mode,
   canCreate,
   isCreating,

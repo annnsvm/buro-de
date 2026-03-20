@@ -3,7 +3,7 @@ import Icon from '../../Icon';
 import ModuleMaterial from '../ModuleMaterial/ModuleMaterial';
 import { ICON_NAMES } from '@/helpers/iconNames';
 import { ModuleMaterialType, ModulesProps } from '@/types/components/ui/ModuleMaterial.types';
-import CourseStructureAsideActionButton from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseStructureAsideActionButton';
+import { CourseStructureAsideActionButton } from '@/features/course-managment/components/CourseManagementWorkspace/courseStructureAside';
 
 const CourseModule: React.FC<ModulesProps> = ({
   module,

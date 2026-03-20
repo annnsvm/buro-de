@@ -1,3 +1,15 @@
+export type QuizAnswerFormItem = {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+};
+
+export type QuizQuestionFormItem = {
+  id: string;
+  question: string;
+  answers: QuizAnswerFormItem[];
+};
+
 export type CreateCourseMaterialModalValues =
   | {
       type: 'video';
@@ -8,9 +20,7 @@ export type CreateCourseMaterialModalValues =
   | {
       type: 'quiz';
       title: string;
-      quizQuestionText: string;
-      quizOptions: string[];
-      quizCorrectOptionIndex: number;
+      quizQuestions: QuizQuestionFormItem[];
     };
 
 export type CreateCourseMaterialModalProps = {
