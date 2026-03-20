@@ -12,6 +12,9 @@ export type CourseStructureAsideProps = {
   onRequestDeleteCourse?: () => void;
   onRequestDeleteModule?: (moduleId: string, moduleTitle: string) => void;
   onRequestDeleteMaterial?: (moduleId: string, materialId: string) => void;
+  /** Показувати «Publish course», якщо є матеріали і курс ще не опублікований */
+  showPublishCourseButton?: boolean;
+  onRequestPublishCourse?: () => void;
 };
 
 export type CourseAsideActionButtonProps = {

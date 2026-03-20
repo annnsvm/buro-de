@@ -29,3 +29,19 @@ export const countVideoLessonMaterials = (modules: Modules[]): number =>
       acc + (moduleItem.materials ?? []).filter((material) => material.type === 'video').length,
     0,
   );
+
+/** Усі матеріали у всіх модулях (для умови показу «Опублікувати курс»). */
+export const countTotalMaterialsAcrossModules = (modules: Modules[]): number =>
+  modules.reduce((acc, moduleItem) => acc + (moduleItem.materials?.length ?? 0), 0);
+
+/**
+ * Години тривалості курсу з усіх video-матеріалів (MM:SS → хв → ceil до годин).
+ * Якщо відео немає або тривалості 0 — `null` (скинути duration_hours на бекенді).
+ */
+export const computeCourseDurationHoursFromVideoModules = (
+  modules: Modules[],
+): number | null => {
+  const totalMinutes = sumVideoDurationMinutesAcrossModules(modules);
+  if (totalMinutes <= 0) return null;
+  return Math.ceil(totalMinutes / 60);
+};

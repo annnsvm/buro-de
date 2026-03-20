@@ -6,7 +6,7 @@ import type { CourseStructureAsideProps } from '@/types/features/courseManagment
 import CourseStructureAsideCourseHeader from './CourseStructureAsideCourseHeader';
 import CourseStructureAsideActionButton from './CourseStructureAsideActionButton';
 import CourseStructureAsideEmptyState from './CourseStructureAsideEmptyState';
-import { Logo } from '@/components/ui';
+import { Button, Logo } from '@/components/ui';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '@/helpers/routes';
 
@@ -22,6 +22,8 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
   onRequestDeleteCourse,
   onRequestDeleteModule,
   onRequestDeleteMaterial,
+  showPublishCourseButton,
+  onRequestPublishCourse,
 }) => {
   const [isOpenMobile, setIsOpenMobile] = useState(false);
   const hasStructure = modules.length > 0;
@@ -30,10 +32,20 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
   const handleOpen = () => setIsOpenMobile(true);
   const handleClose = () => setIsOpenMobile(false);
 
-  const renderAsideContent = (isMobile: boolean) => (
+  const handleRequestPublish = () => {
+    onRequestPublishCourse?.();
+  };
+
+  const handlePublishKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    handleRequestPublish();
+  };
+
+  const renderScrollableBody = (isMobile: boolean) => (
     <>
       {hasCourse ? (
-        <div className={isMobile ? 'mb-4' : 'mt-4'}>
+        <div className={isMobile ? 'mb-4' : ''}>
           <CourseStructureAsideCourseHeader
             courseTitle={courseTitle}
             onSelectCourse={onSelectCourse}
@@ -60,19 +72,34 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
           ))}
         </ul>
       )}
-
-      {hasCourse ? (
-        <div className="mt-4">
-          <CourseStructureAsideActionButton
-            label="Add module"
-            ariaLabel="Add module"
-            onClick={onCreateModule}
-            onAfterClick={isMobile ? handleClose : undefined}
-          />
-        </div>
-      ) : null}
     </>
   );
+
+  const renderFooter = (isMobile: boolean) => {
+    if (!hasCourse) return null;
+    return (
+      <div className="mt-4 shrink-0 space-y-3">
+        <CourseStructureAsideActionButton
+          label="Add module"
+          ariaLabel="Add module"
+          onClick={onCreateModule}
+          onAfterClick={isMobile ? handleClose : undefined}
+        />
+        {showPublishCourseButton && onRequestPublishCourse ? (
+          <Button
+            type="button"
+            variant="solid"
+            className="w-full"
+            onClick={handleRequestPublish}
+            onKeyDown={handlePublishKeyDown}
+            aria-label="Publish course"
+          >
+            Publish course
+          </Button>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -91,15 +118,20 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
         </button>
       </div>
 
-      <aside className="hidden overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:block lg:w-[320px] lg:shrink-0">
-        <div className="px-26 py-4">
+      <aside className="hidden h-full min-h-0 w-[320px] shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:flex">
+        <div className="shrink-0 px-26 py-4">
           <Link to={ROUTES.HOME}>
             <Logo isLight={false} width={100} height={30} />
           </Link>
         </div>
-        <div className="p-4">
-          <h2 className="text-base font-bold text-[var(--color-text-primary)]">Course structure</h2>
-          {renderAsideContent(false)}
+        <div className="flex min-h-0 flex-1 flex-col p-4">
+          <h2 className="shrink-0 text-base font-bold text-[var(--color-text-primary)]">
+            Course structure
+          </h2>
+          <div className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+            {renderScrollableBody(false)}
+          </div>
+          {renderFooter(false)}
         </div>
       </aside>
 
@@ -111,8 +143,8 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
             onClick={handleClose}
             className="absolute inset-0 bg-black/40"
           />
-          <div className="absolute top-0 left-0 h-full w-[320px] max-w-[85vw] translate-x-0 overflow-y-auto bg-[var(--color-neutral-white)] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] p-4">
+          <div className="absolute top-0 left-0 flex h-full max-h-[100vh] w-[320px] max-w-[85vw] flex-col bg-[var(--color-neutral-white)] shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-subtle)] p-4">
               <Link to={ROUTES.HOME} className="px-10 py-4">
                 <Logo isLight={false} width={100} height={30} />
               </Link>
@@ -125,10 +157,13 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
                 <Icon name={ICON_NAMES.X} size={30} ariaHidden />
               </button>
             </div>
-            <h2 className="text-base font-bold text-[var(--color-text-primary)]">
+            <h2 className="shrink-0 px-4 pt-2 text-base font-bold text-[var(--color-text-primary)]">
               Course structure
             </h2>
-            <div className="p-4">{renderAsideContent(true)}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-2">
+              {renderScrollableBody(true)}
+            </div>
+            <div className="shrink-0 px-4 pb-4">{renderFooter(true)}</div>
           </div>
         </div>
       ) : null}

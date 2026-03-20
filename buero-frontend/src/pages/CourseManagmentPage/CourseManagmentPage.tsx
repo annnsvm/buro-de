@@ -22,6 +22,8 @@ import {
   type CreateCourseFormValues,
 } from '@/features/course-managment/validation/createCourseSchema';
 import {
+  computeCourseDurationHoursFromVideoModules,
+  countTotalMaterialsAcrossModules,
   countVideoLessonMaterials,
   sumVideoDurationMinutesAcrossModules,
 } from '@/features/course-managment/helpers/courseTreeStats.helpers';
@@ -33,12 +35,14 @@ import type {
 import { NavLink, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/helpers/routes';
 import ConfirmDeleteEntityModal from '@/features/course-managment/components/CourseManagementWorkspace/ConfirmDeleteEntityModal';
+import ConfirmPublishCourseModal from '@/features/course-managment/components/CourseManagementWorkspace/ConfirmPublishCourseModal';
 import {
   buildDeleteCourseDescription,
   buildDeleteMaterialDescription,
   buildDeleteModuleDescription,
 } from '@/features/course-managment/helpers/courseEntityDeleteCopy.helpers';
 import { countModuleMaterialsByKind } from '@/features/course-managment/helpers/courseModuleMaterialCounts.helpers';
+import { PUBLISH_COURSE_MODAL_DESCRIPTION } from '@/features/course-managment/helpers/courseEntityPublishCopy.helpers';
 
 const CourseManagmentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -96,13 +100,48 @@ const CourseManagmentPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<CourseEntityDeleteTarget | null>(null);
   const [isDeletingEntity, setIsDeletingEntity] = useState(false);
 
+  const [isCoursePublished, setIsCoursePublished] = useState(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isPublishingCourse, setIsPublishingCourse] = useState(false);
+
+  const totalMaterialsCount = useMemo(
+    () => countTotalMaterialsAcrossModules(modules),
+    [modules],
+  );
+
   const activeModuleTitle =
     modules.find((m) => m.id === activeModuleIdForMaterial)?.title ?? 'No module selected';
 
-  const fetchCourseTree = useCallback(async (id: string) => {
-    const res = await apiInstance.get<{ modules?: Modules[] }>(API_ENDPOINTS.courses.byId(id));
-    setModules(res.data.modules ?? []);
-  }, []);
+  const syncCourseDurationHours = useCallback(
+    async (cid: string, nextModules: Modules[]) => {
+      const hours = computeCourseDurationHoursFromVideoModules(nextModules);
+      try {
+        await apiInstance.patch(API_ENDPOINTS.courses.update(cid), {
+          duration_hours: hours ?? null,
+        });
+        setValue('durationHours', hours === null ? '' : String(hours), { shouldDirty: false });
+      } catch {
+        /* ignore — локальний стан модулів уже оновлено */
+      }
+    },
+    [setValue],
+  );
+
+  const fetchCourseTree = useCallback(
+    async (id: string) => {
+      const res = await apiInstance.get<{
+        modules?: Modules[];
+        is_published?: boolean;
+        isPublished?: boolean;
+      }>(API_ENDPOINTS.courses.byId(id));
+      const mods = res.data.modules ?? [];
+      setModules(mods);
+      const published = res.data.is_published ?? res.data.isPublished ?? false;
+      setIsCoursePublished(published === true);
+      await syncCourseDurationHours(id, mods);
+    },
+    [syncCourseDurationHours],
+  );
 
   const isFormDisabled = courseId !== null && !isEditingCourse;
 
@@ -131,6 +170,7 @@ const CourseManagmentPage: React.FC = () => {
 
       const res = await apiInstance.post<{ id: string }>(API_ENDPOINTS.courses.create, payload);
       setCourseId(res.data.id);
+      setIsCoursePublished(false);
       setIsEditingCourse(false);
       setCreateCourseError(null);
       reset(values);
@@ -220,6 +260,18 @@ const CourseManagmentPage: React.FC = () => {
     [modules],
   );
 
+  const handleConfirmPublishCourse = async () => {
+    const cid = courseId;
+    if (!cid) return;
+    setIsPublishingCourse(true);
+    try {
+      await apiInstance.patch(API_ENDPOINTS.courses.update(cid), { is_published: true });
+      setIsCoursePublished(true);
+    } finally {
+      setIsPublishingCourse(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     const target = deleteTarget;
     const cid = courseId;
@@ -231,6 +283,8 @@ const CourseManagmentPage: React.FC = () => {
         await apiInstance.delete(API_ENDPOINTS.courses.delete(cid));
         navigate(ROUTES.COURSES);
         setCourseId(null);
+        setIsCoursePublished(false);
+        setIsPublishModalOpen(false);
         setModules([]);
         setActiveModuleIdForMaterial(null);
         setActiveMaterialIdForEdit(null);
@@ -254,7 +308,9 @@ const CourseManagmentPage: React.FC = () => {
 
       if (target.kind === 'module') {
         await apiInstance.delete(API_ENDPOINTS.courseModules.delete(cid, target.moduleId));
-        setModules((prev) => prev.filter((m) => m.id !== target.moduleId));
+        const nextModules = modules.filter((m) => m.id !== target.moduleId);
+        setModules(nextModules);
+        await syncCourseDurationHours(cid, nextModules);
         if (activeModuleIdForMaterial === target.moduleId) {
           setActiveModuleIdForMaterial(null);
           setActiveMaterialIdForEdit(null);
@@ -266,15 +322,15 @@ const CourseManagmentPage: React.FC = () => {
       await apiInstance.delete(
         API_ENDPOINTS.courseMaterials.delete(cid, target.moduleId, target.materialId),
       );
-      setModules((prev) =>
-        prev.map((m) => {
-          if (m.id !== target.moduleId) return m;
-          return {
-            ...m,
-            materials: (m.materials ?? []).filter((mat) => mat.id !== target.materialId),
-          };
-        }),
-      );
+      const nextModulesAfterMaterialDelete = modules.map((m) => {
+        if (m.id !== target.moduleId) return m;
+        return {
+          ...m,
+          materials: (m.materials ?? []).filter((mat) => mat.id !== target.materialId),
+        };
+      });
+      setModules(nextModulesAfterMaterialDelete);
+      await syncCourseDurationHours(cid, nextModulesAfterMaterialDelete);
       if (activeMaterialIdForEdit === target.materialId) {
         setActiveMaterialIdForEdit(null);
       }
@@ -360,6 +416,10 @@ const CourseManagmentPage: React.FC = () => {
           }
           onRequestDeleteModule={courseId ? handleRequestDeleteModule : undefined}
           onRequestDeleteMaterial={courseId ? handleRequestDeleteMaterial : undefined}
+          showPublishCourseButton={
+            Boolean(courseId) && totalMaterialsCount > 0 && !isCoursePublished
+          }
+          onRequestPublishCourse={() => setIsPublishModalOpen(true)}
         />
 
         <div className="min-w-0 flex-1 overflow-y-auto">
@@ -528,24 +588,24 @@ const CourseManagmentPage: React.FC = () => {
                         },
                       );
 
-                      setModules((prev) =>
-                        prev.map((m) => {
-                          if (m.id !== activeModuleIdForMaterial) return m;
-                          return {
-                            ...m,
-                            materials: [
-                              ...(m.materials ?? []),
-                              {
-                                id: created.data.id,
-                                type: payload.type,
-                                title: payload.title,
-                                content,
-                                orderIndex: nextOrderIndex,
-                              },
-                            ],
-                          };
-                        }),
-                      );
+                      const nextModulesAfterCreate = modules.map((m) => {
+                        if (m.id !== activeModuleIdForMaterial) return m;
+                        return {
+                          ...m,
+                          materials: [
+                            ...(m.materials ?? []),
+                            {
+                              id: created.data.id,
+                              type: payload.type,
+                              title: payload.title,
+                              content,
+                              orderIndex: nextOrderIndex,
+                            },
+                          ],
+                        };
+                      });
+                      setModules(nextModulesAfterCreate);
+                      await syncCourseDurationHours(courseId, nextModulesAfterCreate);
                       setActiveMaterialIdForEdit(created.data.id);
                       return { id: created.data.id };
                     } finally {
@@ -601,23 +661,23 @@ const CourseManagmentPage: React.FC = () => {
                         },
                       );
 
-                      setModules((prev) =>
-                        prev.map((m) => {
-                          if (m.id !== activeModuleIdForMaterial) return m;
-                          return {
-                            ...m,
-                            materials: (m.materials ?? []).map((mat) => {
-                              if (mat.id !== materialId) return mat;
-                              return {
-                                ...mat,
-                                type: payload.type,
-                                title: payload.title,
-                                content,
-                              };
-                            }),
-                          };
-                        }),
-                      );
+                      const nextModulesAfterUpdate = modules.map((m) => {
+                        if (m.id !== activeModuleIdForMaterial) return m;
+                        return {
+                          ...m,
+                          materials: (m.materials ?? []).map((mat) => {
+                            if (mat.id !== materialId) return mat;
+                            return {
+                              ...mat,
+                              type: payload.type,
+                              title: payload.title,
+                              content,
+                            };
+                          }),
+                        };
+                      });
+                      setModules(nextModulesAfterUpdate);
+                      await syncCourseDurationHours(courseId, nextModulesAfterUpdate);
                     } finally {
                       setIsCreatingMaterial(false);
                     }
@@ -674,6 +734,17 @@ const CourseManagmentPage: React.FC = () => {
         description={deleteModalCopy.description}
         isSubmitting={isDeletingEntity}
         onConfirm={handleConfirmDelete}
+      />
+
+      <ConfirmPublishCourseModal
+        isOpen={isPublishModalOpen}
+        handleOpenChange={(open) => {
+          if (!open && !isPublishingCourse) setIsPublishModalOpen(false);
+        }}
+        title="Publish course?"
+        description={PUBLISH_COURSE_MODAL_DESCRIPTION}
+        isSubmitting={isPublishingCourse}
+        onConfirm={handleConfirmPublishCourse}
       />
     </div>
   );
