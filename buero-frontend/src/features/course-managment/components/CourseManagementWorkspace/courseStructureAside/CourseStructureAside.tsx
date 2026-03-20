@@ -6,6 +6,7 @@ import type { CourseStructureAsideProps } from '@/types/features/courseManagment
 import CourseStructureAsideCourseHeader from './CourseStructureAsideCourseHeader';
 import CourseStructureAsideActionButton from './CourseStructureAsideActionButton';
 import CourseStructureAsideEmptyState from './CourseStructureAsideEmptyState';
+import { Logo } from '@/components/ui';
 
 const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
   modules,
@@ -82,8 +83,11 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
         </button>
       </div>
 
-      <aside className="hidden h-full overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:block lg:w-[320px] lg:shrink-0">
-        <div className="min-h-full p-4">
+      <aside className="hidden overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:block lg:w-[320px] lg:shrink-0">
+        <header className="px-26 py-4">
+          <Logo isLight={false} width={100} height={30} />
+        </header>
+        <div className="p-4">
           <h2 className="text-base font-bold text-[var(--color-text-primary)]">Course structure</h2>
           {renderAsideContent(false)}
         </div>
@@ -99,18 +103,21 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
           />
           <div className="absolute top-0 left-0 h-full w-[320px] max-w-[85vw] translate-x-0 overflow-y-auto bg-[var(--color-neutral-white)] shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] p-4">
-              <h2 className="text-base font-bold text-[var(--color-text-primary)]">
-                Course structure
-              </h2>
+              <header className="px-10 py-4">
+                <Logo isLight={false} width={100} height={30} />
+              </header>
               <button
                 type="button"
                 onClick={handleClose}
                 aria-label="Close"
-                className="rounded-full p-2 hover:bg-[var(--color-surface-section)]"
+                className="w-8 shrink-0 rounded-full p-2 hover:bg-[var(--color-surface-section)]"
               >
-                <Icon name={ICON_NAMES.X} size={20} ariaHidden />
+                <Icon name={ICON_NAMES.X} size={30} ariaHidden />
               </button>
             </div>
+            <h2 className="text-base font-bold text-[var(--color-text-primary)]">
+              Course structure
+            </h2>
             <div className="p-4">{renderAsideContent(true)}</div>
           </div>
         </div>

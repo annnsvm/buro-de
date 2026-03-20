@@ -29,6 +29,8 @@ import type {
   CourseManagementRightTab,
   CourseModuleModalMode,
 } from '@/types/features/courseManagment/CourseManagementPage.types';
+import { NavLink } from 'react-router-dom';
+import { ROUTES } from '@/helpers/routes';
 
 const CourseManagmentPage: React.FC = () => {
   const [modules, setModules] = useState<Modules[]>([]);
@@ -85,18 +87,16 @@ const CourseManagmentPage: React.FC = () => {
   const activeModuleTitle =
     modules.find((m) => m.id === activeModuleIdForMaterial)?.title ?? 'No module selected';
 
-  const fetchCourseTree = useCallback(
-    async (id: string) => {
-      const res = await apiInstance.get<{ modules?: Modules[] }>(API_ENDPOINTS.courses.byId(id));
-      setModules(res.data.modules ?? []);
-    },
-    [],
-  );
+  const fetchCourseTree = useCallback(async (id: string) => {
+    const res = await apiInstance.get<{ modules?: Modules[] }>(API_ENDPOINTS.courses.byId(id));
+    setModules(res.data.modules ?? []);
+  }, []);
 
   const isFormDisabled = courseId !== null && !isEditingCourse;
 
   const canCreate = !courseId && !isCreatingCourse && !isUpdatingCourse;
-  const canUpdate = !!courseId && isEditingCourse && !isCreatingCourse && !isUpdatingCourse && isDirty && isValid;
+  const canUpdate =
+    !!courseId && isEditingCourse && !isCreatingCourse && !isUpdatingCourse && isDirty && isValid;
 
   const handleCreateCourseSubmit = async (values: CreateCourseFormValues) => {
     setCreateCourseError(null);
@@ -179,7 +179,7 @@ const CourseManagmentPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-[var(--color-surface-section)]">
+      <div className="flex h-[100vh] overflow-hidden bg-[var(--color-surface-section)]">
         <CourseStructureAside
           modules={modules}
           courseId={courseId}
@@ -216,8 +216,16 @@ const CourseManagmentPage: React.FC = () => {
           }}
         />
 
-        <div className="py-8 min-w-0 flex-1 overflow-y-auto">
-          <header className="shrink-0">
+        <div className="min-w-0 flex-1 overflow-y-auto">
+          <div className="flex w-full justify-center lg:justify-start border-b border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-lighter)] px-4 lg:px-10 py-8 ">
+            <NavLink
+              to={ROUTES.COURSES}
+              className="text-[var(--color-text-primary)] text-[1.25rem] hover:text-[var(--color-primary)]"
+            >
+              All courses
+            </NavLink>
+          </div>
+          <header className="shrink-0 pt-8">
             <Container className="px-4 sm:px-6">
               <div className="flex w-full flex-col items-center gap-2 text-[var(--color-neutral-darkest)]">
                 <Title className="text-center text-[2rem] sm:text-[3rem] lg:text-[3.75rem]">
@@ -275,7 +283,9 @@ const CourseManagmentPage: React.FC = () => {
                   <CourseTagsSection
                     tags={watchedTags}
                     disabled={isFormDisabled}
-                    onChangeTags={(next) => setValue('tags', next, { shouldDirty: true, shouldValidate: true })}
+                    onChangeTags={(next) =>
+                      setValue('tags', next, { shouldDirty: true, shouldValidate: true })
+                    }
                     error={errors.tags?.message}
                   />
 
@@ -339,12 +349,16 @@ const CourseManagmentPage: React.FC = () => {
                                 }));
                                 const correctIds = questionItem.answers
                                   .filter((answerItem) => answerItem.isCorrect)
-                                  .map((answerItem, aIdx) => answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`);
+                                  .map(
+                                    (answerItem, aIdx) =>
+                                      answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`,
+                                  );
                                 return {
                                   id: normalizedQuestionId,
                                   text: questionItem.question,
                                   options,
-                                  correct: correctIds.length > 1 ? correctIds : (correctIds[0] ?? ''),
+                                  correct:
+                                    correctIds.length > 1 ? correctIds : (correctIds[0] ?? ''),
                                 };
                               }),
                             };
@@ -383,7 +397,10 @@ const CourseManagmentPage: React.FC = () => {
                       setIsCreatingMaterial(false);
                     }
                   }}
-                  onUpdate={async (materialId: string, payload: CreateCourseMaterialModalValues) => {
+                  onUpdate={async (
+                    materialId: string,
+                    payload: CreateCourseMaterialModalValues,
+                  ) => {
                     if (!courseId || !activeModuleIdForMaterial) return;
                     setIsCreatingMaterial(true);
                     try {
@@ -402,12 +419,16 @@ const CourseManagmentPage: React.FC = () => {
                                 }));
                                 const correctIds = questionItem.answers
                                   .filter((answerItem) => answerItem.isCorrect)
-                                  .map((answerItem, aIdx) => answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`);
+                                  .map(
+                                    (answerItem, aIdx) =>
+                                      answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`,
+                                  );
                                 return {
                                   id: normalizedQuestionId,
                                   text: questionItem.question,
                                   options,
-                                  correct: correctIds.length > 1 ? correctIds : (correctIds[0] ?? ''),
+                                  correct:
+                                    correctIds.length > 1 ? correctIds : (correctIds[0] ?? ''),
                                 };
                               }),
                             };
@@ -467,9 +488,12 @@ const CourseManagmentPage: React.FC = () => {
 
           if (moduleModalMode === 'edit') {
             if (!activeModuleIdForEdit) return;
-            await apiInstance.patch(API_ENDPOINTS.courseModules.update(courseId, activeModuleIdForEdit), {
-              title,
-            });
+            await apiInstance.patch(
+              API_ENDPOINTS.courseModules.update(courseId, activeModuleIdForEdit),
+              {
+                title,
+              },
+            );
             setModules((prev) =>
               prev.map((m) => (m.id === activeModuleIdForEdit ? { ...m, title } : m)),
             );
@@ -485,7 +509,6 @@ const CourseManagmentPage: React.FC = () => {
           await fetchCourseTree(courseId);
         }}
       />
-
     </div>
   );
 };
