@@ -1,4 +1,4 @@
-import { RootState } from "@/types/redux/store.types";
+import type { RootState } from '@/redux/rootReducer';
 
 
 export const selectCurrentUser = (state: RootState) => state.user.currentUser;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BaseDialog, useModal } from '@/components/modal';
 import Icon from '@/components/ui/Icon';
 import CheckoutButton from '@/features/subscriptions/components/CheckoutButton';
@@ -42,12 +42,6 @@ const MOCK_MODULES = [
   },
 ];
 
-const MOCK_ADDONS = [
-  { id: '1', title: 'Integration', description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', price: '35$' },
-  { id: '2', title: 'Visa support', description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', price: '45$' },
-  { id: '3', title: 'Visa support', description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', price: '45$' },
-];
-
 type CourseInfoModalProps = {
   isOpen: boolean;
   handleOpenChange: (open: boolean) => void;
@@ -62,8 +56,6 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
   course,
 }) => {
   const { pushUiModal } = useModal();
-  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set(['1']));
-
   const handleClose = () => handleOpenChange(false);
 
   const handleContactSupport = () => {
@@ -74,23 +66,12 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
     });
   };
 
-  const toggleAddon = (id: string) => {
-    setSelectedAddons((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const safeTitle = course?.title || 'German A2-Basics';
   const safeCategory = course?.category || 'Language';
   const safeDescription =
     course?.description ||
     'Start your German journey from zero. Build a solid base in pronunciation, grammar, and essential vocabulary.';
-  const safeImageUrl =
-    course?.imageUrl ||
-    '/images/courses/course-1.webp';
+  const safeImageUrl = course?.imageUrl || '/images/courses/course-1.webp';
   const safeLevelLabel = course?.levelLabel || 'A2';
   const safeBadge = course?.badge || undefined;
   const safeLessonsCount = course?.lessonsCount || 12;
@@ -101,12 +82,10 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
       : ['Beginner', 'Grammar', 'Vocabulary']) ?? [];
 
   const modules = course?.modules ?? MOCK_MODULES;
-  const addOns = course?.addOns ?? MOCK_ADDONS;
-
   const basePrice = course?.price
     ? parseFloat(String(course.price).replace(/[^\d.]/g, '')) || 84
     : 84;
-  
+
   const totalPrice = `$${basePrice}`;
 
   const contentClassName =
@@ -122,26 +101,21 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
       contentClassName={contentClassName}
     >
       <div className="flex flex-1 flex-col overflow-y-auto">
-        
         <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden">
-          <img
-            src={safeImageUrl}
-            alt={safeTitle}
-            className="h-full w-full object-cover"
-          />
-          <div className="absolute left-4 top-4 flex items-center gap-2">
+          <img src={safeImageUrl} alt={safeTitle} className="h-full w-full object-cover" />
+          <div className="absolute top-4 left-4 flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-[25px] bg-[var(--color-neutral-white)] text-[11px] font-bold text-[var(--color-text-primary)] shadow-sm">
               {safeLevelLabel}
             </span>
             {safeBadge && (
-              <span className="rounded-full bg-[var(--color-primary)] px-3 py-1.5 text-[10px] font-bold text-[var(--color-text-on-accent)] uppercase tracking-wider">
+              <span className="rounded-full bg-[var(--color-primary)] px-3 py-1.5 text-[10px] font-bold tracking-wider text-[var(--color-text-on-accent)] uppercase">
                 {safeBadge}
               </span>
             )}
           </div>
 
           <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
-            {safeTags.map((tag) => (
+            {safeTags.map((tag: string) => (
               <span
                 key={tag}
                 className="rounded-full bg-[var(--color-neutral-white)]/90 px-3 py-1 text-[10px] font-medium text-[var(--color-text-primary)] shadow-sm"
@@ -153,30 +127,34 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
         </div>
 
         <div className="flex flex-1 flex-col px-4 pb-6 sm:px-6">
-          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--color-primary)]">
+          <p className="mt-4 text-[10px] font-bold tracking-[0.15em] text-[var(--color-primary)] uppercase">
             {safeCategory.toUpperCase()}
           </p>
-          <h2 className="mt-2 text-[22px] font-bold text-[var(--color-text-primary)] leading-tight sm:text-[24px]">
+          <h2 className="mt-2 text-[22px] leading-tight font-bold text-[var(--color-text-primary)] sm:text-[24px]">
             {safeTitle}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">
             {safeDescription}
           </p>
 
-          <div className="mt-6 flex align-items-left gap-20 pb-6"> 
-            <div className="align-items-left"> 
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
+          <div className="align-items-left mt-6 flex gap-20 pb-6">
+            <div className="align-items-left">
+              <p className="text-[10px] font-bold tracking-wider text-[var(--color-text-secondary)] uppercase">
                 Duration
               </p>
               <div className="flex items-center gap-3">
-                <Icon name="icon-schedule" size={24} className="text-[var(--color-neutral-light)]" />
+                <Icon
+                  name="icon-schedule"
+                  size={24}
+                  className="text-[var(--color-neutral-light)]"
+                />
                 <p className="text-lg font-bold text-[var(--color-text-primary)]">
                   {safeDurationHours}h
                 </p>
               </div>
             </div>
             <div className="align-items-left">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
+              <p className="text-[10px] font-bold tracking-wider text-[var(--color-text-secondary)] uppercase">
                 Lessons
               </p>
               <div className="flex items-center gap-3">
@@ -193,12 +171,15 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
           <div className="mt-8">
             <h3 className="text-base font-bold text-[var(--color-text-primary)]">Add on top</h3>
             <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in
+              eros.
             </p>
           </div>
 
           <div className="mt-6 rounded-lg bg-[var(--color-burnt-siena-lightest)] p-4">
-            <p className="font-bold text-[var(--color-text-primary)]">Have questions about this course?</p>
+            <p className="font-bold text-[var(--color-text-primary)]">
+              Have questions about this course?
+            </p>
             <button
               type="button"
               onClick={handleContactSupport}
@@ -221,17 +202,10 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
           >
             Try for free
           </button>
-          <button
-            type="button"
-            className="rounded-full bg-[var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-[var(--color-text-on-accent)] hover:bg-[var(--color-primary-hover)]"
-          >
-            Buy Course
-          </button>
-          {/* <CheckoutButton
+          <CheckoutButton
             courseId={courseId}
-            successUrl={`${window.location.origin}/success`} 
-            cancelUrl={`${window.location.origin}/courses`}
-          /> */}
+            className="rounded-full bg-[var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-[var(--color-text-on-accent)] hover:bg-[var(--color-primary-hover)]"
+          />
         </div>
       </div>
     </BaseDialog>
