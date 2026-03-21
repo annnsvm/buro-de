@@ -202,13 +202,10 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
           >
             Try for free
           </button>
-          <button
-            type="button"
+          <CheckoutButton
+            courseId={courseId}
             className="rounded-full bg-[var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-[var(--color-text-on-accent)] hover:bg-[var(--color-primary-hover)]"
-          >
-            Buy Course
-          </button>
-          <CheckoutButton courseId={courseId} />
+          />
         </div>
       </div>
     </BaseDialog>
