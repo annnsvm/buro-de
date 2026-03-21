@@ -1,17 +1,15 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  fetchMyLearningCoursesFromCatalog,
+  filterMyLearningCourses,
+} from '@/api/myLearningCourses';
 import { CoursesCatalogFilters } from '@/features/courses-catalog';
 import { MyCoursesList } from '@/features/my-courses-catalog';
 import { useSelector } from 'react-redux';
-import {
-  fetchCoursesCatalogThunk,
-  selectCoursesCatalogItems,
-  setFilters,
-} from '@/redux/slices/coursesCatalog';
+import { setFilters } from '@/redux/slices/coursesCatalog';
 import { useAppDispatch } from '@/redux/hooks';
-import {
-  selectCoursesCatalogFilters,
-  selectCoursesCatalogTotalCount,
-} from '@/redux/slices/coursesCatalog/coursesCatalogSelectors';
+import { selectCoursesCatalogFilters } from '@/redux/slices/coursesCatalog/coursesCatalogSelectors';
+import type { CourseInfoData } from '@/types/components/modal/UIModalType.types';
 import { Input } from '@/components/ui';
 
 const filterTabs = [
@@ -23,10 +21,11 @@ const filterTabs = [
 
 const MyLearningPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const courses = useSelector(selectCoursesCatalogItems);
-  const totalCount = useSelector(selectCoursesCatalogTotalCount);
   const filters = useSelector(selectCoursesCatalogFilters);
   const filtersRef = useRef(filters);
+
+  const [myCourses, setMyCourses] = useState<CourseInfoData[]>([]);
+  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   const activeFilterId =
     filters.category === 'language'
@@ -42,8 +41,30 @@ const MyLearningPage: React.FC = () => {
   }, [filters]);
 
   useEffect(() => {
-    dispatch(fetchCoursesCatalogThunk());
-  }, [dispatch, filters]);
+    let cancelled = false;
+    const load = async () => {
+      setLoadStatus('loading');
+      try {
+        const data = await fetchMyLearningCoursesFromCatalog();
+        if (!cancelled) {
+          setMyCourses(data);
+          setLoadStatus('idle');
+        }
+      } catch {
+        if (!cancelled) setLoadStatus('error');
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleCourses = useMemo(
+    () => filterMyLearningCourses(myCourses, filters),
+    [myCourses, filters],
+  );
+  const totalCount = visibleCourses.length;
 
   const handleFilterChange = (id: string) => {
     if (id === 'all') {
@@ -88,7 +109,13 @@ const MyLearningPage: React.FC = () => {
           </div>
         }
       />
-      <MyCoursesList courses={courses} />
+      {loadStatus === 'loading' ? (
+        <p className="py-12 text-center text-[var(--color-text-secondary)]">Loading your courses…</p>
+      ) : loadStatus === 'error' ? (
+        <p className="py-12 text-center text-[var(--color-error)]">Could not load your courses.</p>
+      ) : (
+        <MyCoursesList courses={visibleCourses} />
+      )}
     </div>
   );
 };

@@ -7,7 +7,10 @@ import type { LearningPageProps } from '@/types/features/learning/LearningPage.t
 
 const MaterialWindow: React.FC<LearningPageProps> = ({ lesson = lessonContent }) => {
   return (
-    <main className="flex-1 bg-[var(--color-soapstone-base)] py-4 sm:py-6 lg:py-8">
+    <article
+      className="flex-1 bg-[var(--color-soapstone-base)] py-4 sm:py-6 lg:py-8"
+      aria-label={lesson.title}
+    >
       <Container className="max-w-5xl">
         <section className="rounded-[20px] bg-[var(--color-neutral-white)] p-4 shadow-sm sm:rounded-[22px] sm:p-5 md:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
@@ -136,7 +139,7 @@ const MaterialWindow: React.FC<LearningPageProps> = ({ lesson = lessonContent })
           </button>
         </section>
       </Container>
-    </main>
+    </article>
   );
 };
 
