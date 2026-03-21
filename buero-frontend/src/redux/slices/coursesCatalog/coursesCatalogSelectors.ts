@@ -1,4 +1,4 @@
-import type { RootState } from '../../store';
+import type { RootState } from '../../rootReducer';
 
 export const selectCoursesCatalogItems = (state: RootState) => state.coursesCatalog.items;
 export const selectCoursesCatalogStatus = (state: RootState) => state.coursesCatalog.status;

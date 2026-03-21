@@ -1,4 +1,4 @@
-## 10. Teacher Course Management UI (створення / редагування курсу)
+{25F6DEAE-CB26-46CB-AF27-025E119FC556}.png## 10. Teacher Course Management UI (створення / редагування курсу)
 
 ### 1. Призначення feature
 
