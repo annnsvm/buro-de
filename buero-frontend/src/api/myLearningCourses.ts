@@ -3,24 +3,13 @@ import { API_ENDPOINTS } from '@/api/apiEndpoints';
 import { subscriptionApi } from '@/api/subscriptionApi';
 import type { CoursesCatalogFilters } from '@/redux/slices/coursesCatalog/coursesCatalogSlice';
 import type { CourseInfoData } from '@/types/components/modal/UIModalType.types';
+import type {
+  CatalogCourse,
+  NormalizedAccess,
+  RawCourseAccess,
+} from '@/types/api/myLearningCourses.types';
 
-/** Як бек реально віддає GET /subscriptions/me (snake_case) */
-export type RawCourseAccess = {
-  id: string;
-  course_id: string;
-  access_type: 'trial' | 'purchase' | 'subscription';
-  trial_ends_at?: string | null;
-  payment_id?: string | null;
-  subscription_id?: string | null;
-  created_at: string;
-};
-
-export type NormalizedAccess = {
-  id: string;
-  courseId: string;
-  accessType: 'trial' | 'purchase' | 'subscription';
-  trialEndsAt: Date | null;
-};
+export type { CatalogCourse, NormalizedAccess, RawCourseAccess } from '@/types/api/myLearningCourses.types';
 
 export const normalizeAccess = (row: RawCourseAccess): NormalizedAccess => ({
   id: row.id,
@@ -36,8 +25,6 @@ export const isAccessCurrentlyValid = (a: NormalizedAccess, now = new Date()): b
   }
   return true;
 };
-
-type CatalogCourse = { id: string } & Record<string, unknown>;
 
 /** GET /courses відповідь — приводимо до CourseInfoData для CourseCard */
 export const mapApiCourseToCourseInfo = (course: CatalogCourse): CourseInfoData => {
@@ -105,7 +92,7 @@ export const fetchMyLearningCoursesFromCatalog = async (): Promise<CourseInfoDat
   const normalized = list
     .map(normalizeAccessRow)
     .filter((a): a is NormalizedAccess => a != null)
-    .filter(isAccessCurrentlyValid);
+    .filter((a) => isAccessCurrentlyValid(a));
   const allowedIds = new Set(normalized.map((a) => a.courseId));
 
   const { data } = await apiInstance.get<CatalogCourse[]>(API_ENDPOINTS.courses.list);
@@ -133,7 +120,7 @@ export const filterMyLearningCourses = (
     );
   } else if (category === 'integration') {
     out = out.filter((c) =>
-      c.tags.some((t) => t.toLowerCase().includes('integration')),
+      c.tags.some((t: string) => t.toLowerCase().includes('integration')),
     );
   }
 
@@ -143,7 +130,7 @@ export const filterMyLearningCourses = (
       (c) =>
         c.title.toLowerCase().includes(q) ||
         c.description.toLowerCase().includes(q) ||
-        c.tags.some((t) => t.toLowerCase().includes(q)),
+        c.tags.some((t: string) => t.toLowerCase().includes(q)),
     );
   }
 

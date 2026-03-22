@@ -10,9 +10,13 @@ import { setFilters } from '@/redux/slices/coursesCatalog';
 import { useAppDispatch } from '@/redux/hooks';
 import { selectCoursesCatalogFilters } from '@/redux/slices/coursesCatalog/coursesCatalogSelectors';
 import type { CourseInfoData } from '@/types/components/modal/UIModalType.types';
+import type {
+  MyLearningCatalogFilterTab,
+  MyLearningLoadStatus,
+} from '@/types/pages/MyLearningPage/MyLearningPage.types';
 import { Input } from '@/components/ui';
 
-const filterTabs = [
+const filterTabs: MyLearningCatalogFilterTab[] = [
   { id: 'all', label: 'All Courses' },
   { id: 'language', label: 'Language' },
   { id: 'integration', label: 'Integration' },
@@ -25,7 +29,7 @@ const MyLearningPage: React.FC = () => {
   const filtersRef = useRef(filters);
 
   const [myCourses, setMyCourses] = useState<CourseInfoData[]>([]);
-  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [loadStatus, setLoadStatus] = useState<MyLearningLoadStatus>('idle');
 
   const activeFilterId =
     filters.category === 'language'

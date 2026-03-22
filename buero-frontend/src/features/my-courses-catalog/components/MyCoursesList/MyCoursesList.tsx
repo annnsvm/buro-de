@@ -1,9 +1,9 @@
 import { Container, Section } from '@/components/layout';
 import { CourseCard } from '@/features/courses-catalog';
-import { MyCoursesListProp } from '@/types/features/my-course-catalog/MyCourseList.types';
+import type { MyCoursesListProps } from '@/types/features/my-courses-catalog/MyCoursesList.types';
 import React from 'react';
 
-const MyCoursesList: React.FC<MyCoursesListProp> = ({ courses }) => {
+const MyCoursesList: React.FC<MyCoursesListProps> = ({ courses }) => {
   return (
     <Section className="bg-white pb-28">
       <Container className="md:px-20">
