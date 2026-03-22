@@ -8,7 +8,7 @@ const SharedLayout = () => {
   const hideHeader =
     pathname === ROUTES.TEACHER_COURSES_EDIT ||
     pathname === ROUTES.TEACHER_COURSES_CREATE ||
-    pathname === ROUTES.MY_LEARNING;
+    pathname.startsWith('/courses/');
   const hideFooter = pathname.includes('/teacher/courses/');
 
   return (

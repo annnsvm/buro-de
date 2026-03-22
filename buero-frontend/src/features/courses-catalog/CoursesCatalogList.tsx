@@ -20,7 +20,7 @@ const CoursesCatalogList = ({ courses }: CoursesGridProps) => {
           }
           {courses.map((course) => (
             <li key={course.id}> 
-              <CourseCard {...course} />
+              <CourseCard {...course} variant="catalog" />
             </li>
           ))}
         </ul>

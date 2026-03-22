@@ -1,65 +1,166 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { NavLink, useParams } from 'react-router-dom';
 
-// import { useParams } from 'react-router-dom';
+import { apiInstance } from '@/api/apiInstance';
+import { API_ENDPOINTS } from '@/api/apiEndpoints';
+import { CourseLearningSidebar, MaterialWindow } from '@/features/course-learning';
 
-import { MaterialWindow } from "@/features/course-learning";
-import { CourseStructure } from "@/features/courses-catalog";
+import type { LearningLesson } from '@/types/features/learning/LearningPage.types';
+import { ROUTES } from '@/helpers/routes';
+import {
+  type ApiCourseWithTree,
+  buildLearningLessonFromMaterial,
+  findNextVideoMaterialId,
+  flattenMaterialsInOrder,
+  mapApiModulesToCourseStructure,
+} from './coursePageMappers';
 
-const MOCK_MODULES = [
-  {
-    id: '1',
-    title: 'Getting Started',
-    lessonsCount: 4,
-    lessons: [
-      { id: '1', title: 'Welcome to German A1', duration: '5:30' },
-      { id: '2', title: 'The German Alphabet & Pronunciation', duration: '12:15' },
-      { id: '3', title: 'Pronunciation Practice', duration: '8:00' },
-      { id: '4', title: 'Your First German Words', duration: '10:45' },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Greetings & Introductions',
-    lessonsCount: 4,
-    lessons: [
-      { id: '5', title: 'Saying Hello and Goodbye', duration: '6:20' },
-      { id: '6', title: 'Introducing Yourself', duration: '9:15' },
-      { id: '7', title: 'Asking Names', duration: '7:40' },
-      { id: '8', title: 'Formal vs Informal', duration: '11:00' },
-    ],
-  },
-  {
-    id: '3',
-    title: 'Getting Started',
-    lessonsCount: 4,
-    lessons: [],
-  },
-  {
-    id: '4',
-    title: 'Getting Started',
-    lessonsCount: 4,
-    lessons: [],
-  },
-];
+const CoursePage: React.FC = () => {
+  const { courseId } = useParams<{ courseId: string }>();
 
+  const [course, setCourse] = useState<ApiCourseWithTree | null>(null);
+  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
 
-const CoursePage = () => {
-  // const { courseId } = useParams<{ courseId: string }>();
+  useEffect(() => {
+    if (!courseId) return;
+
+    let cancelled = false;
+    const load = async () => {
+      setLoadStatus('loading');
+      setLoadError(null);
+      try {
+        const { data } = await apiInstance.get<ApiCourseWithTree>(API_ENDPOINTS.courses.byId(courseId));
+        if (cancelled) return;
+        setCourse(data);
+        const flat = flattenMaterialsInOrder(data);
+        const firstId = flat[0]?.material.id ?? null;
+        setSelectedMaterialId(firstId);
+        setLoadStatus('idle');
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const message =
+          err && typeof err === 'object' && 'response' in err
+            ? String((err as { response?: { data?: { message?: unknown } } }).response?.data?.message ?? '')
+            : err instanceof Error
+              ? err.message
+              : 'Failed to load course';
+        setLoadError(message || 'Failed to load course');
+        setLoadStatus('error');
+        setCourse(null);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId]);
+
+  const structureModules = useMemo(
+    () => mapApiModulesToCourseStructure(course?.modules),
+    [course?.modules],
+  );
+
+  const flatMaterials = useMemo(() => (course ? flattenMaterialsInOrder(course) : []), [course]);
+
+  const nextVideoMaterialId = useMemo(
+    () => findNextVideoMaterialId(flatMaterials, selectedMaterialId),
+    [flatMaterials, selectedMaterialId],
+  );
+
+  const currentLesson: LearningLesson | undefined = useMemo(() => {
+    if (!course?.title) return undefined;
+    const idx = flatMaterials.findIndex((r) => r.material.id === selectedMaterialId);
+    const ref = idx >= 0 ? flatMaterials[idx] : flatMaterials[0];
+    if (!ref) return undefined;
+    return buildLearningLessonFromMaterial(
+      course.title,
+      ref.material,
+      idx >= 0 ? idx : 0,
+      flatMaterials.length,
+    );
+  }, [course, flatMaterials, selectedMaterialId]);
+
+  const handleSelectLesson = useCallback((payload: { moduleId: string; materialId: string }) => {
+    setSelectedMaterialId(payload.materialId);
+  }, []);
+
+  const handleNextVideoLesson = useCallback(() => {
+    if (!nextVideoMaterialId) return;
+    setSelectedMaterialId(nextVideoMaterialId);
+  }, [nextVideoMaterialId]);
+
+  useEffect(() => {
+    mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [selectedMaterialId]);
+
+  if (!courseId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-neutral-white)]">
+        <p className="text-[var(--color-text-secondary)]">Course id is missing.</p>
+      </div>
+    );
+  }
+
+  if (loadStatus === 'loading') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-neutral-white)]">
+        <p className="text-[var(--color-text-secondary)]">Loading course…</p>
+      </div>
+    );
+  }
+
+  if (loadStatus === 'error' || !course) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-[var(--color-neutral-white)] px-4">
+        <p className="text-center text-[var(--color-error)]">{loadError ?? 'Course not found.'}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen bg-[var(--color-neutral-white)] pt-16">
-      <aside className="hidden border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:block lg:w-[240px] lg:shrink-0">
-        {/* Sidebar component will be added here  */}
-        <CourseStructure modules={MOCK_MODULES}/>
-      </aside>
+    <div className="flex h-[100vh] overflow-hidden bg-[var(--color-surface-section)]">
+      <CourseLearningSidebar
+        modules={structureModules}
+        onSelectLesson={handleSelectLesson}
+        selectedMaterialId={selectedMaterialId}
+      />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="shrink-0 border-b border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)]">
-          {/* Header component will be added here  */}
-        </header>
+      <div ref={mainScrollRef} className="min-w-0 flex-1 overflow-y-auto">
+        <div className="fixed top-0 z-10 flex gap-4 w-full justify-center border-b border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-lighter)] px-4 py-6 lg:justify-start lg:px-10">
+          <button
+           type="button"
+            className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
+          >
+            Vocabulary
+          </button>
+          <NavLink
+            to={ROUTES.COURSES}
+            className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
+          >
+            All courses
+          </NavLink>
+        </div>
 
-        <main className="min-w-0 flex-1 bg-[var(--color-soapstone-base)]">
-          <MaterialWindow />
-        </main>
+        <section
+          className="min-w-0 flex-1 bg-[var(--color-soapstone-base)]"
+          aria-label="Lesson content"
+        >
+          {currentLesson ? (
+            <MaterialWindow
+              lesson={currentLesson}
+              hasNextVideoLesson={Boolean(nextVideoMaterialId)}
+              onNextVideoLesson={handleNextVideoLesson}
+            />
+          ) : (
+            <div className="flex justify-center p-8 text-[var(--color-text-secondary)]">
+              No lessons in this course yet.
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
