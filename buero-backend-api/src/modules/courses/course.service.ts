@@ -64,20 +64,21 @@ export class CourseService {
         language?: Language;
         tags?: { hasSome: string[] };
         level?: Level;
-        title?: { contains: string; mode: "insensitive" };
-        description?: { contains: string; mode: "insensitive" };
+        OR?: Array<
+          | { title: { contains: string; mode: "insensitive" } }
+          | { description: { contains: string; mode: "insensitive" } }
+        >;
       } = {
         isPublished: true,
       };
       if (filters?.language) where.language = filters.language;
       if (filters?.level) where.level = filters.level;
-      const titleTrim = filters?.title?.trim();
-      if (titleTrim) {
-        where.title = { contains: titleTrim, mode: "insensitive" };
-      }
-      const descTrim = filters?.description?.trim();
-      if (descTrim) {
-        where.description = { contains: descTrim, mode: "insensitive" };
+      const searchTrim = filters?.search?.trim();
+      if (searchTrim) {
+        where.OR = [
+          { title: { contains: searchTrim, mode: "insensitive" } },
+          { description: { contains: searchTrim, mode: "insensitive" } },
+        ];
       }
       if (filters?.tags) {
         const tagsArray = filters.tags

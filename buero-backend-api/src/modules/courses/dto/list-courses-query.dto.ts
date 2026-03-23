@@ -4,22 +4,14 @@ import { Language, Level } from "../../../generated/prisma/enums";
 
 export class ListCoursesQueryDto {
   @ApiPropertyOptional({
-    description: "Підрядок у назві курсу (без урахування регістру)",
+    description:
+      "Пошук по назві або опису курсу (OR, без урахування регістру)",
     example: "German",
   })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
-  title?: string;
-
-  @ApiPropertyOptional({
-    description: "Підрядок у описі курсу (без урахування регістру)",
-    example: "beginner",
-  })
-  @IsOptional()
-  @IsString()
   @MaxLength(2000)
-  description?: string;
+  search?: string;
 
   @ApiPropertyOptional({
     enum: Language,
