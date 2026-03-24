@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { BookOpen, CircleHelp, FileText, Flame, Play, SkipForward, Trophy } from 'lucide-react';
 
 import { Container, Text, Title } from '@/components/layout';
+import { loadYoutubeIframeApi } from '@/helpers/youtubeIframeApi';
 import { lessonContent } from './MaterialWindow.data';
 import type { LearningPageProps } from '@/types/features/learning/LearningPage.types';
 
@@ -18,19 +19,128 @@ const buildAutoplayEmbedSrc = (embedUrl: string): string => {
 type LazyYouTubeEmbedProps = {
   videoUrl: string;
   title: string;
+  onVideoEnded?: () => void;
+  fallbackMarkReadyAfterSeconds?: number | null;
 };
 
-
-const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({ videoUrl, title }) => {
+const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
+  videoUrl,
+  title,
+  onVideoEnded,
+  fallbackMarkReadyAfterSeconds,
+}) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [usePlainIframe, setUsePlainIframe] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<{ destroy: () => void } | undefined>(undefined);
+  const hostId = useId().replace(/:/g, '');
+  const onEndedRef = useRef(onVideoEnded);
+  const endedEmittedRef = useRef(false);
+
   const videoId = useMemo(() => extractYouTubeEmbedVideoId(videoUrl), [videoUrl]);
   const posterSrc = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
+
+  useEffect(() => {
+    onEndedRef.current = onVideoEnded;
+  }, [onVideoEnded]);
+
+  const signalEnded = useCallback(() => {
+    if (endedEmittedRef.current) return;
+    endedEmittedRef.current = true;
+    onEndedRef.current?.();
+  }, []);
 
   const handlePlayClick = () => {
     setIsPlaying(true);
   };
 
-  if (isPlaying) {
+  useEffect(() => {
+    if (!isPlaying || usePlainIframe || !videoId) return;
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    let cancelled = false;
+    const host = document.createElement('div');
+    host.id = `yt-host-${hostId}`;
+    host.style.width = '100%';
+    host.style.height = '100%';
+    wrapper.appendChild(host);
+
+    const clearHost = () => {
+      try {
+        playerRef.current?.destroy();
+      } catch {
+        /* noop */
+      }
+      playerRef.current = undefined;
+      wrapper.innerHTML = '';
+    };
+
+    const failToIframe = () => {
+      if (!cancelled) {
+        clearHost();
+        setUsePlainIframe(true);
+      }
+    };
+
+    void loadYoutubeIframeApi()
+      .then(() => {
+        if (cancelled || !window.YT?.Player || !window.YT.PlayerState) {
+          failToIframe();
+          return;
+        }
+        try {
+          const player = new window.YT.Player(host, {
+            videoId,
+            width: '100%',
+            height: '100%',
+            playerVars: {
+              autoplay: 1,
+              rel: 0,
+              modestbranding: 1,
+              playsinline: 1,
+            },
+            events: {
+              onStateChange: (event: { data: number }) => {
+                if (event.data === window.YT!.PlayerState.ENDED) {
+                  signalEnded();
+                }
+              },
+            },
+          });
+          if (cancelled) {
+            try {
+              player.destroy();
+            } catch {
+              /* noop */
+            }
+            wrapper.innerHTML = '';
+            return;
+          }
+          playerRef.current = player;
+        } catch {
+          failToIframe();
+        }
+      })
+      .catch(() => {
+        failToIframe();
+      });
+
+    return () => {
+      cancelled = true;
+      clearHost();
+    };
+  }, [isPlaying, usePlainIframe, videoId, hostId, signalEnded]);
+
+  useEffect(() => {
+    if (!isPlaying || !usePlainIframe) return;
+    const sec = fallbackMarkReadyAfterSeconds;
+    if (sec == null || sec < 1) return;
+    const t = window.setTimeout(() => signalEnded(), sec * 1000);
+    return () => window.clearTimeout(t);
+  }, [isPlaying, usePlainIframe, fallbackMarkReadyAfterSeconds, signalEnded]);
+
+  if (isPlaying && usePlainIframe) {
     return (
       <iframe
         className="h-full w-full"
@@ -39,6 +149,17 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({ videoUrl, title }) 
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         referrerPolicy="strict-origin-when-cross-origin"
         allowFullScreen
+      />
+    );
+  }
+
+  if (isPlaying) {
+    return (
+      <div
+        ref={wrapperRef}
+        className="h-full w-full min-h-[200px]"
+        title={title}
+        aria-label={title}
       />
     );
   }
@@ -74,11 +195,38 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
   lesson = lessonContent,
   hasNextVideoLesson = false,
   onNextVideoLesson,
+  isVideoLessonCompleted = false,
+  onMarkVideoComplete,
+  isVideoCompletionSaving = false,
+  videoCompletionError = null,
+  fallbackMarkReadyAfterSeconds = null,
 }) => {
+  const [videoEnded, setVideoEnded] = useState(false);
+
+  const isVideoLesson = String(lesson.type).toLowerCase() === 'video';
+
+  const handleVideoEnded = useCallback(() => {
+    setVideoEnded(true);
+  }, []);
+
   const handleNextVideoLessonClick = () => {
     if (!hasNextVideoLesson || !onNextVideoLesson) return;
     onNextVideoLesson();
   };
+
+  const handleMarkCompleteClick = () => {
+    if (!onMarkVideoComplete || isVideoCompletionSaving || isVideoLessonCompleted) return;
+    void onMarkVideoComplete();
+  };
+
+  const lessonStatusLabel = isVideoLesson
+    ? isVideoLessonCompleted
+      ? 'Completed'
+      : 'In progress'
+    : lesson.status;
+
+  const markButtonDisabled = isVideoCompletionSaving || !videoEnded;
+
   return (
     <article className="flex-1 bg-[var(--color-surface-section)] py-31" aria-label={lesson.title}>
       <Container className="max-w-5xl px-6 lg:px-12">
@@ -126,7 +274,13 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
         <section className="mt-6 bg-[var(--color-neutral-white)] sm:mt-5 md:mt-12">
           <div className="overflow-hidden rounded-[20px] bg-[#8f8f8f] sm:rounded-[22px]">
             <div className="aspect-video w-full">
-              <LazyYouTubeEmbed key={lesson.videoUrl} videoUrl={lesson.videoUrl} title={lesson.title} />
+              <LazyYouTubeEmbed
+                key={lesson.materialId ?? lesson.videoUrl}
+                videoUrl={lesson.videoUrl}
+                title={lesson.title}
+                onVideoEnded={isVideoLesson ? handleVideoEnded : undefined}
+                fallbackMarkReadyAfterSeconds={fallbackMarkReadyAfterSeconds}
+              />
             </div>
           </div>
         </section>
@@ -138,7 +292,7 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
             </span>
             <span className="inline-flex items-center gap-1 rounded-full border border-[#d7cbc5] px-3 py-1 text-[11px] font-medium text-[#5f5854] sm:text-xs">
               <FileText className="h-3.5 w-3.5" />
-              {lesson.status}
+              {lessonStatusLabel}
             </span>
           </div>
 
@@ -148,13 +302,24 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
             {lesson.description}
           </Text>
 
+          {videoCompletionError ? (
+            <p className="mt-3 text-sm text-[var(--color-error)]" role="alert">
+              {videoCompletionError}
+            </p>
+          ) : null}
+
           <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:flex-wrap">
-            <button
-              type="button"
-              className="inline-flex w-full items-center justify-center rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 sm:w-auto"
-            >
-              Mark as complete
-            </button>
+            {isVideoLesson && onMarkVideoComplete && !isVideoLessonCompleted ? (
+              <button
+                type="button"
+                onClick={handleMarkCompleteClick}
+                disabled={markButtonDisabled}
+                aria-label="Mark as complete"
+                className="inline-flex w-full items-center justify-center rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
+              >
+                {isVideoCompletionSaving ? 'Saving…' : 'Mark as complete'}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={handleNextVideoLessonClick}

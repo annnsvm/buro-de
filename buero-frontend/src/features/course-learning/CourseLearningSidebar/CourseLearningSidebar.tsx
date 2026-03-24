@@ -13,12 +13,14 @@ export type CourseLearningSidebarProps = {
   modules: CourseModule[];
   onSelectLesson: (payload: { moduleId: string; materialId: string }) => void;
   selectedMaterialId: string | null;
+  completedMaterialIds?: ReadonlySet<string>;
 };
 
 const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
   modules,
   onSelectLesson,
   selectedMaterialId,
+  completedMaterialIds,
 }) => {
   const [isOpenMobile, setIsOpenMobile] = useState(false);
 
@@ -38,6 +40,7 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
       modules={modules}
       onSelectLesson={isMobile ? handleLessonSelect : onSelectLesson}
       selectedMaterialId={selectedMaterialId}
+      completedMaterialIds={completedMaterialIds}
     />
   );
 

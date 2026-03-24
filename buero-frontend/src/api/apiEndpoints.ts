@@ -48,6 +48,11 @@ export const API_ENDPOINTS = {
     getAttempt: (attemptId: string) => `/quiz/attempts/${attemptId}`,
     submit: (attemptId: string) => `/quiz/attempts/${attemptId}/submit`,
   },
+  progress: {
+    course: (courseId: string) => `/courses/${courseId}/progress`,
+    complete: (courseId: string, moduleId: string, materialId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/complete`,
+  },
 } as const;
 
 export const PUBLIC_ENDPOINT_PREFIXE = [

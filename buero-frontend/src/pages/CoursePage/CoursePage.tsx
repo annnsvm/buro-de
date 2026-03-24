@@ -4,10 +4,12 @@ import { NavLink, useParams } from 'react-router-dom';
 
 import { apiInstance } from '@/api/apiInstance';
 import { API_ENDPOINTS } from '@/api/apiEndpoints';
+import { completeCourseMaterial, fetchCourseProgress } from '@/api/progressApi';
 import { CourseLearningSidebar, MaterialWindow, QuizLessonModal } from '@/features/course-learning';
 import type { QuizResultSummary } from '@/features/course-learning/QuizLessonModal';
 
 import type { LearningLesson } from '@/types/features/learning/LearningPage.types';
+import { getErrorMessage } from '@/helpers/getErrorMessage';
 import { ROUTES } from '@/helpers/routes';
 import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
 import {
@@ -15,7 +17,9 @@ import {
   buildLearningLessonFromMaterial,
   findNextVideoMaterialId,
   flattenMaterialsInOrder,
+  formatMaterialDuration,
   mapApiModulesToCourseStructure,
+  parseDurationLabelToSeconds,
   parseQuizMaterialContent,
 } from './coursePageMappers';
 
@@ -28,6 +32,9 @@ const CoursePage: React.FC = () => {
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [quizModalOpen, setQuizModalOpen] = useState(false);
   const [quizPlaceholderResult, setQuizPlaceholderResult] = useState<QuizResultSummary | null>(null);
+  const [completedMaterialIds, setCompletedMaterialIds] = useState<Set<string>>(() => new Set());
+  const [videoCompletionSaving, setVideoCompletionSaving] = useState(false);
+  const [videoCompletionError, setVideoCompletionError] = useState<string | null>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const currentUser = useSelector(selectCurrentUser);
 
@@ -77,6 +84,27 @@ const CoursePage: React.FC = () => {
     };
   }, [courseId]);
 
+  useEffect(() => {
+    if (!courseId || !course || currentUser?.role !== 'student') {
+      setCompletedMaterialIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    void fetchCourseProgress(courseId)
+      .then((res) => {
+        if (cancelled) return;
+        setCompletedMaterialIds(
+          new Set(res.completed_materials.map((row) => row.course_material_id)),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setCompletedMaterialIds(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, course, currentUser?.role]);
+
   const structureModules = useMemo(
     () => mapApiModulesToCourseStructure(course?.modules),
     [course?.modules],
@@ -86,6 +114,11 @@ const CoursePage: React.FC = () => {
 
   const selectedMaterial = useMemo(
     () => flatMaterials.find((r) => r.material.id === selectedMaterialId)?.material,
+    [flatMaterials, selectedMaterialId],
+  );
+
+  const selectedModuleId = useMemo(
+    () => flatMaterials.find((r) => r.material.id === selectedMaterialId)?.moduleId ?? null,
     [flatMaterials, selectedMaterialId],
   );
 
@@ -108,13 +141,57 @@ const CoursePage: React.FC = () => {
     const idx = flatMaterials.findIndex((r) => r.material.id === selectedMaterialId);
     const ref = idx >= 0 ? flatMaterials[idx] : flatMaterials[0];
     if (!ref) return undefined;
-    return buildLearningLessonFromMaterial(
+    const base = buildLearningLessonFromMaterial(
       course.title,
       ref.material,
       idx >= 0 ? idx : 0,
       flatMaterials.length,
     );
-  }, [course, flatMaterials, selectedMaterialId]);
+    const total = flatMaterials.length;
+    const completedCount = flatMaterials.filter((r) =>
+      completedMaterialIds.has(r.material.id),
+    ).length;
+    return {
+      ...base,
+      progress: total > 0 ? Math.round((completedCount / total) * 100) : 0,
+      progressText:
+        total > 0 ? `${completedCount} of ${total} lessons completed` : '0 of 0 lessons completed',
+    };
+  }, [course, flatMaterials, selectedMaterialId, completedMaterialIds]);
+
+  const isStudentVideoProgress =
+    currentUser?.role === 'student' &&
+    Boolean(
+      selectedMaterialId &&
+        selectedMaterial &&
+        String(selectedMaterial.type).toLowerCase() === 'video',
+    );
+
+  const videoFallbackSeconds = useMemo(() => {
+    if (!selectedMaterial || String(selectedMaterial.type).toLowerCase() !== 'video') return null;
+    return parseDurationLabelToSeconds(formatMaterialDuration(selectedMaterial)) ?? 480;
+  }, [selectedMaterial]);
+
+  const handleMarkVideoComplete = useCallback(async () => {
+    if (
+      !courseId ||
+      !selectedMaterialId ||
+      !selectedModuleId ||
+      currentUser?.role !== 'student'
+    ) {
+      return;
+    }
+    setVideoCompletionError(null);
+    setVideoCompletionSaving(true);
+    try {
+      await completeCourseMaterial(courseId, selectedModuleId, selectedMaterialId);
+      setCompletedMaterialIds((prev) => new Set(prev).add(selectedMaterialId));
+    } catch (err: unknown) {
+      setVideoCompletionError(getErrorMessage(err, 'Could not update lesson progress.'));
+    } finally {
+      setVideoCompletionSaving(false);
+    }
+  }, [courseId, selectedMaterialId, selectedModuleId, currentUser?.role]);
 
   const handleSelectLesson = useCallback(
     (payload: { moduleId: string; materialId: string }) => {
@@ -138,6 +215,10 @@ const CoursePage: React.FC = () => {
 
   useEffect(() => {
     mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [selectedMaterialId]);
+
+  useEffect(() => {
+    setVideoCompletionError(null);
   }, [selectedMaterialId]);
 
   if (!courseId) {
@@ -170,6 +251,7 @@ const CoursePage: React.FC = () => {
         modules={structureModules}
         onSelectLesson={handleSelectLesson}
         selectedMaterialId={selectedMaterialId}
+        completedMaterialIds={completedMaterialIds}
       />
 
       <div ref={mainScrollRef} className="min-w-0 flex-1 overflow-y-auto">
@@ -199,9 +281,21 @@ const CoursePage: React.FC = () => {
           ) : null}
           {flatMaterials.length > 0 && currentLesson && !isQuizSelected ? (
             <MaterialWindow
+              key={selectedMaterialId ?? currentLesson.materialId ?? currentLesson.videoUrl}
               lesson={currentLesson}
               hasNextVideoLesson={Boolean(nextVideoMaterialId)}
               onNextVideoLesson={handleNextVideoLesson}
+              isVideoLessonCompleted={
+                isStudentVideoProgress && selectedMaterialId
+                  ? completedMaterialIds.has(selectedMaterialId)
+                  : false
+              }
+              onMarkVideoComplete={
+                isStudentVideoProgress && selectedModuleId ? handleMarkVideoComplete : undefined
+              }
+              isVideoCompletionSaving={videoCompletionSaving}
+              videoCompletionError={videoCompletionError}
+              fallbackMarkReadyAfterSeconds={videoFallbackSeconds}
             />
           ) : null}
           {flatMaterials.length > 0 && isQuizSelected ? (
