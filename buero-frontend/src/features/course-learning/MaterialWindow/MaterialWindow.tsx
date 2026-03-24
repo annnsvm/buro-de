@@ -1,9 +1,74 @@
-import React from 'react';
-import { BookOpen, CircleHelp, FileText, Flame, SkipForward, Trophy } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { BookOpen, CircleHelp, FileText, Flame, Play, SkipForward, Trophy } from 'lucide-react';
 
 import { Container, Text, Title } from '@/components/layout';
 import { lessonContent } from './MaterialWindow.data';
 import type { LearningPageProps } from '@/types/features/learning/LearningPage.types';
+
+const extractYouTubeEmbedVideoId = (embedUrl: string): string | null => {
+  const m = embedUrl.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+  return m?.[1] ?? null;
+};
+
+const buildAutoplayEmbedSrc = (embedUrl: string): string => {
+  const hasQuery = embedUrl.includes('?');
+  return `${embedUrl}${hasQuery ? '&' : '?'}autoplay=1`;
+};
+
+type LazyYouTubeEmbedProps = {
+  videoUrl: string;
+  title: string;
+};
+
+
+const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({ videoUrl, title }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoId = useMemo(() => extractYouTubeEmbedVideoId(videoUrl), [videoUrl]);
+  const posterSrc = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
+
+  const handlePlayClick = () => {
+    setIsPlaying(true);
+  };
+
+  if (isPlaying) {
+    return (
+      <iframe
+        className="h-full w-full"
+        src={buildAutoplayEmbedSrc(videoUrl)}
+        title={title}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerPolicy="strict-origin-when-cross-origin"
+        allowFullScreen
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handlePlayClick}
+      className="group relative flex h-full w-full items-center justify-center bg-[#2a2a2a] outline-none focus-visible:ring-2 focus-visible:ring-[#e87753] focus-visible:ring-offset-2"
+      aria-label={`Play video: ${title}`}
+    >
+      {posterSrc ? (
+        <img
+          src={posterSrc}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
+      ) : null}
+      <span
+        className="absolute inset-0 bg-black/35 transition group-hover:bg-black/45"
+        aria-hidden
+      />
+      <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[#e87753] text-white shadow-lg transition group-hover:scale-105 group-hover:opacity-95 sm:h-20 sm:w-20">
+        <Play className="ml-1 h-8 w-8 fill-current sm:h-10 sm:w-10" strokeWidth={0} aria-hidden />
+      </span>
+    </button>
+  );
+};
 
 const MaterialWindow: React.FC<LearningPageProps> = ({
   lesson = lessonContent,
@@ -61,14 +126,7 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
         <section className="mt-6 bg-[var(--color-neutral-white)] sm:mt-5 md:mt-12">
           <div className="overflow-hidden rounded-[20px] bg-[#8f8f8f] sm:rounded-[22px]">
             <div className="aspect-video w-full">
-              <iframe
-                className="h-full w-full"
-                src={lesson.videoUrl}
-                title={lesson.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-              />
+              <LazyYouTubeEmbed key={lesson.videoUrl} videoUrl={lesson.videoUrl} title={lesson.title} />
             </div>
           </div>
         </section>
