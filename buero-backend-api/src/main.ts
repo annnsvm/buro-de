@@ -46,7 +46,6 @@ async function bootstrap() {
     "JWT_REFRESH_SECRET",
     "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET",
-    "STRIPE_PRICE_ID",
   ] as const;
   const optionalEnv = [
     "PORT",

@@ -2,10 +2,16 @@ import { ApiPropertyOptional } from "@nestjs/swagger";
 import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
 import { Language, Level } from "../../../generated/prisma/enums";
 
+/** Фільтр публікації. Використовується в GET /courses/manage. */
+export enum PublicationStatus {
+  all = "all",
+  published = "published",
+  unpublished = "unpublished",
+}
+
 export class ListCoursesQueryDto {
   @ApiPropertyOptional({
-    description:
-      "Пошук по назві або опису курсу (OR, без урахування регістру)",
+    description: "Пошук по назві або опису курсу (OR, без урахування регістру)",
     example: "German",
   })
   @IsOptional()
@@ -37,4 +43,14 @@ export class ListCoursesQueryDto {
   @IsOptional()
   @IsEnum(Level)
   level?: Level;
+
+  /** Тільки для GET /courses/manage: all | published | unpublished. За замовчуванням all. */
+  @ApiPropertyOptional({
+    enum: PublicationStatus,
+    description:
+      "Фільтр публікації (manage): all — усі, published — тільки опубліковані, unpublished — тільки неопубліковані",
+  })
+  @IsOptional()
+  @IsEnum(PublicationStatus)
+  publication_status?: PublicationStatus;
 }

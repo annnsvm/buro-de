@@ -2,24 +2,38 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import {CourseMaterialType, Language, Level, Role, UserCourseAccessType } from "../../generated/prisma/enums";
+import {
+  CourseMaterialType,
+  Language,
+  Level,
+  Role,
+  UserCourseAccessType,
+} from "../../generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
+import { StripeService } from "../stripe/stripe.service";
 import { CreateCourseDto } from "./dto/create-course.dto";
-import { ListCoursesQueryDto } from "./dto/list-courses-query.dto";
+import {
+  ListCoursesQueryDto,
+  PublicationStatus,
+} from "./dto/list-courses-query.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { UserService } from "../user/user.service";
 
 @Injectable()
 export class CourseService {
+  private readonly logger = new Logger(CourseService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly stripeService: StripeService
   ) {}
 
   /**
@@ -57,10 +71,14 @@ export class CourseService {
     }
   }
 
-  async findAll(filters?: ListCoursesQueryDto) {
+  async findAll(
+    filters?: ListCoursesQueryDto,
+    opts?: { publicationFilter?: PublicationStatus },
+  ) {
     try {
+      const pubFilter = opts?.publicationFilter ?? PublicationStatus.published;
       const where: {
-        isPublished: boolean;
+        isPublished?: boolean;
         language?: Language;
         tags?: { hasSome: string[] };
         level?: Level;
@@ -68,9 +86,10 @@ export class CourseService {
           | { title: { contains: string; mode: "insensitive" } }
           | { description: { contains: string; mode: "insensitive" } }
         >;
-      } = {
-        isPublished: true,
-      };
+      } = {};
+      if (pubFilter === PublicationStatus.published) where.isPublished = true;
+      else if (pubFilter === PublicationStatus.unpublished)
+        where.isPublished = false;
       if (filters?.language) where.language = filters.language;
       if (filters?.level) where.level = filters.level;
       const searchTrim = filters?.search?.trim();
@@ -187,31 +206,118 @@ export class CourseService {
 
   async update(id: string, dto: UpdateCourseDto) {
     try {
-      await this.findById(id);
+      const existing = await this.prisma.course.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          stripeProductId: true,
+          stripePriceId: true,
+          isPublished: true,
+        },
+      });
+      if (!existing) {
+        throw new NotFoundException(`Курс з id ${id} не знайдено`);
+      }
+
+      const updateData: Record<string, unknown> = {
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.description !== undefined && {
+          description: dto.description,
+        }),
+        ...(dto.language !== undefined && { language: dto.language }),
+        ...(dto.is_published !== undefined && {
+          isPublished: dto.is_published,
+        }),
+        ...(dto.price !== undefined && { price: dto.price }),
+        ...(dto.tags !== undefined && { tags: dto.tags }),
+        ...(dto.level !== undefined && { level: dto.level }),
+        ...(dto.duration_hours !== undefined && {
+          durationHours: dto.duration_hours,
+        }),
+      };
+
+      const isPublishing =
+        dto.is_published === true && existing.isPublished === false;
+      if (isPublishing) {
+        const effectivePriceRaw =
+          dto.price !== undefined
+            ? Number(dto.price)
+            : this.priceToNumber(existing.price);
+        const effectivePrice =
+          effectivePriceRaw != null && Number.isFinite(effectivePriceRaw)
+            ? effectivePriceRaw
+            : null;
+        if (
+          effectivePrice !== null &&
+          effectivePrice > 0 &&
+          !existing.stripePriceId
+        ) {
+          try {
+            const product = await this.stripeService.createProduct({
+              name: (dto.title ?? existing.title).slice(0, 255),
+            });
+            const unitAmountCents = Math.round(effectivePrice * 100);
+            const currency =
+              this.configService.get<string>("STRIPE_DEFAULT_CURRENCY") ??
+              "eur";
+            const price = await this.stripeService.createPrice({
+              productId: product.id,
+              unitAmountCents,
+              currency,
+            });
+            updateData.stripeProductId = product.id;
+            updateData.stripePriceId = price.id;
+            this.logger.log(
+              `Stripe Product+Price created for course ${id}: product=${product.id}, price=${price.id}`
+            );
+          } catch (stripeErr) {
+            const msg =
+              stripeErr instanceof Error
+                ? stripeErr.message
+                : String(stripeErr);
+            this.logger.error(
+              `Stripe Product/Price creation failed for course ${id}: ${msg}`,
+              stripeErr instanceof Error ? stripeErr.stack : undefined
+            );
+            throw new BadRequestException(
+              `Не вдалося створити ціну в Stripe: ${msg}. Перевірте логи.`
+            );
+          }
+        } else if (effectivePrice === null || effectivePrice <= 0) {
+          this.logger.log(
+            `Course ${id} published without price (free course), skipping Stripe Product/Price`
+          );
+        }
+      }
+
       const course = await this.prisma.course.update({
         where: { id },
-        data: {
-          ...(dto.title !== undefined && { title: dto.title }),
-          ...(dto.description !== undefined && {
-            description: dto.description,
-          }),
-          ...(dto.language !== undefined && { language: dto.language }),
-          ...(dto.is_published !== undefined && {
-            isPublished: dto.is_published,
-          }),
-          ...(dto.price !== undefined && { price: dto.price }),
-          ...(dto.tags !== undefined && { tags: dto.tags }),
-          ...(dto.level !== undefined && { level: dto.level }),
-          ...(dto.duration_hours !== undefined && {
-            durationHours: dto.duration_hours,
-          }),
-        },
+        data: updateData as Parameters<
+          typeof this.prisma.course.update
+        >[0]["data"],
       });
       return this.serializeCourse(course as Record<string, unknown>);
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
+      if (error instanceof BadRequestException) throw error;
+      this.logger.error(
+        `Course update failed for id ${id}: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw this.mapPrismaError(error);
     }
+  }
+
+  /** Конвертує Prisma Decimal price в number */
+  private priceToNumber(price: unknown): number | null {
+    if (price == null) return null;
+    if (typeof price === "number" && Number.isFinite(price)) return price;
+    if (typeof price === "object" && "toString" in price) {
+      const n = Number((price as { toString: () => string }).toString());
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
   }
 
   async delete(id: string) {
