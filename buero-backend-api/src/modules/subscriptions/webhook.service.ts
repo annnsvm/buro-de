@@ -1,47 +1,24 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Injectable, Logger } from "@nestjs/common";
 import Stripe from "stripe";
 import { SubscriptionStatus } from "src/generated/prisma/enums";
 import { UserCourseAccessType } from "src/generated/prisma/enums";
 import { PrismaService } from "src/prisma/prisma.service";
+import { StripeService } from "../stripe/stripe.service";
 
 @Injectable()
 export class WebhookService {
-  private readonly stripe: Stripe;
   private readonly logger = new Logger(WebhookService.name);
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
-  ) {
-    const secret = this.configService.get<string>("STRIPE_SECRET_KEY");
-    const webhookSecret = this.configService.get<string>("STRIPE_WEBHOOK_SECRET");
-    if (!secret || !webhookSecret) {
-      throw new Error(
-        "STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are required for WebhookService",
-      );
-    }
-    this.stripe = new Stripe(secret);
-  }
+    private readonly stripeService: StripeService,
+  ) {}
 
   async handleStripeWebhook(
     rawBody: Buffer | string,
     signature: string,
   ): Promise<void> {
-    const secret = this.configService.get<string>("STRIPE_WEBHOOK_SECRET");
-    if (!secret) throw new BadRequestException("Webhook secret not configured");
-
-    let event: Stripe.Event;
-    try {
-      event = this.stripe.webhooks.constructEvent(
-        rawBody,
-        signature,
-        secret,
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Invalid signature";
-      throw new BadRequestException(message);
-    }
+    const event = this.stripeService.constructWebhookEvent(rawBody, signature);
 
     try {
       const existing = await this.prisma.stripeWebhookEvent.findUnique({
@@ -163,9 +140,9 @@ export class WebhookService {
       return;
     }
 
-    const stripeSubscription = await this.stripe.subscriptions.retrieve(
-      stripeSubscriptionId,
-    );
+    const stripeSubscription = await this.stripeService
+      .getClient()
+      .subscriptions.retrieve(stripeSubscriptionId);
     const stripeSub = stripeSubscription as unknown as {
       status: Stripe.Subscription.Status;
       current_period_start?: number;

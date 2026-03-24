@@ -33,7 +33,10 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { Role } from "src/generated/prisma/enums";
 import { CourseService } from "./course.service";
 import { CreateCourseDto } from "./dto/create-course.dto";
-import { ListCoursesQueryDto } from "./dto/list-courses-query.dto";
+import {
+  ListCoursesQueryDto,
+  PublicationStatus,
+} from "./dto/list-courses-query.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { MulterExceptionFilter } from "./filters/multer-exception.filter";
 import { courseCoverMulterOptions } from "./multer-course-cover.config";
@@ -67,7 +70,49 @@ export class CoursesController {
       "Масив опублікованих курсів (поля: price, tags, level, durationHours, image_url, videoLessonCount тощо)",
   })
   list(@Query() query: ListCoursesQueryDto) {
-    return this.courseService.findAll(query);
+    return this.courseService.findAll(query, {
+      publicationFilter: PublicationStatus.published,
+    });
+  }
+
+  @Get("manage")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth("access_token")
+  @ApiOperation({
+    summary: "Усі курси для управління (вчитель)",
+    description:
+      "Список усіх курсів (опублікованих і неопублікованих). Тільки для вчителів. Ті ж query-параметри, що й для каталогу: search, language, tags, level.",
+  })
+  @ApiQuery({
+    name: "search",
+    required: false,
+    description: "Пошук по назві або опису курсу",
+  })
+  @ApiQuery({ name: "language", required: false, enum: ["en", "de"] })
+  @ApiQuery({
+    name: "tags",
+    required: false,
+    description: "Фільтр за тегами (через кому)",
+  })
+  @ApiQuery({ name: "level", required: false, enum: ["A1", "A2", "B1", "B2"] })
+  @ApiQuery({
+    name: "publication_status",
+    required: false,
+    enum: PublicationStatus,
+    description:
+      "all — усі, published — тільки опубліковані, unpublished — тільки неопубліковані. За замовчуванням all.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Масив курсів з videoLessonCount",
+  })
+  @ApiResponse({ status: 401, description: "Не авторизовано" })
+  @ApiResponse({ status: 403, description: "Доступ тільки для вчителів" })
+  manage(@Query() query: ListCoursesQueryDto) {
+    const publicationFilter =
+      query.publication_status ?? PublicationStatus.all;
+    return this.courseService.findAll(query, { publicationFilter });
   }
 
   @Get("me")
@@ -261,22 +306,26 @@ export class CoursesController {
       example: {
         id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         title: "German A1 Basics",
-        image_url: "https://res.cloudinary.com/demo/image/upload/v1/courses/xxx.jpg",
+        image_url:
+          "https://res.cloudinary.com/demo/image/upload/v1/courses/xxx.jpg",
       },
     },
   })
-  @ApiResponse({ status: 400, description: "Файл відсутній, невалідний тип або > 5 MB" })
+  @ApiResponse({
+    status: 400,
+    description: "Файл відсутній, невалідний тип або > 5 MB",
+  })
   @ApiResponse({ status: 401, description: "Не авторизовано" })
   @ApiResponse({ status: 403, description: "Тільки для вчителів" })
   @ApiResponse({ status: 404, description: "Курс не знайдено" })
   @ApiResponse({ status: 500, description: "Помилка Cloudinary" })
   uploadCover(
     @Param("id") id: string,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile() file: Express.Multer.File | undefined
   ) {
     if (!file?.buffer?.length) {
       throw new BadRequestException(
-        "Потрібно передати файл у полі file (multipart/form-data)",
+        "Потрібно передати файл у полі file (multipart/form-data)"
       );
     }
     return this.courseService.uploadCover(id, file);

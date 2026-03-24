@@ -137,19 +137,21 @@ model TeacherProfile {
 // ─── Courses, Modules & Materials ────────────────────────────────────────────
 
 model Course {
-  id              String         @id @default(uuid())
-  teacherId       String?        @map("teacher_id")
-  title           String
-  description     String?
-  language        Language
-  isPublished     Boolean        @default(false) @map("is_published")
-  price           Decimal?       @db.Decimal(10, 2)
-  tags            String[]       @default([])
-  level           Level?
+  id               String         @id @default(uuid())
+  teacherId        String?        @map("teacher_id")
+  title            String
+  description      String?
+  language         Language
+  isPublished      Boolean        @default(false) @map("is_published")
+  price            Decimal?       @db.Decimal(10, 2)
+  tags             String[]       @default([])
+  level            Level?
   durationHours    Int?           @map("duration_hours")
   imageUrl         String?        @map("image_url")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  stripeProductId  String?        @map("stripe_product_id")
+  stripePriceId    String?        @map("stripe_price_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
   teacher            User?                @relation("CourseCreator", fields: [teacherId], references: [id], onDelete: SetNull)
   modules            CourseModule[]

@@ -2,28 +2,24 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import Stripe from "stripe";
 import { PrismaService } from "src/prisma/prisma.service";
+import { StripeService } from "../stripe/stripe.service";
 import { CreateCheckoutDto } from "./dto/create-checkout.dto";
 import type { CourseAccessResponseDto } from "./dto/course-access-response.dto";
 
 @Injectable()
 export class SubscriptionsService {
-  private readonly stripe: Stripe;
+  private readonly logger = new Logger(SubscriptionsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) {
-    const secret = this.configService.get<string>("STRIPE_SECRET_KEY");
-    if (!secret) {
-      throw new Error("STRIPE_SECRET_KEY is required for SubscriptionsService");
-    }
-    this.stripe = new Stripe(secret);
-  }
+    private readonly stripeService: StripeService,
+  ) {}
 
   async createCheckoutSession(
     userId: string,
@@ -37,22 +33,15 @@ export class SubscriptionsService {
 
     let customerId = user.stripeCustomerId;
     if (!customerId) {
-      try {
-        const customer = await this.stripe.customers.create({
-          email: user.email,
-          metadata: { user_id: userId },
-        });
-        customerId = customer.id;
-        await this.prisma.user.update({
-          where: { id: userId },
-          data: { stripeCustomerId: customerId },
-        });
-      } catch (err) {
-        if (err instanceof Stripe.errors.StripeError) {
-          throw new BadRequestException(err.message);
-        }
-        throw err;
-      }
+      const customer = await this.stripeService.createCustomer({
+        email: user.email,
+        metadata: { user_id: userId },
+      });
+      customerId = customer.id;
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { stripeCustomerId: customerId },
+      });
     }
 
     const course = await this.prisma.course.findUnique({
@@ -85,9 +74,14 @@ export class SubscriptionsService {
       }
     }
 
-    const priceId = this.configService.get<string>("STRIPE_PRICE_ID");
+    const priceId = course.stripePriceId;
     if (!priceId) {
-      throw new BadRequestException("STRIPE_PRICE_ID is not configured (one-time price for course purchase)");
+      this.logger.warn(
+        `Checkout failed: course ${dto.course_id} has no stripe_price_id`,
+      );
+      throw new BadRequestException(
+        "Курс не має налаштованої ціни. Спочатку опублікуйте курс з вказаною ціною.",
+      );
     }
 
     const baseUrl =
@@ -96,23 +90,27 @@ export class SubscriptionsService {
     const cancelUrl = dto.cancel_url ?? `${baseUrl}/purchase/cancel`;
 
     try {
-      const session = await this.stripe.checkout.sessions.create({
-        mode: "payment",
-        customer: customerId,
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: successUrl,
-        cancel_url: cancelUrl,
+      const session = await this.stripeService.createCheckoutSession({
+        customerId,
+        priceId,
+        successUrl,
+        cancelUrl,
         metadata: { course_id: dto.course_id, user_id: userId },
       });
 
       if (!session.url) {
+        this.logger.error(
+          `Stripe checkout returned session without URL for course ${dto.course_id}`,
+        );
         throw new BadRequestException("Stripe did not return a checkout URL");
       }
       return { url: session.url };
     } catch (err) {
-      if (err instanceof Stripe.errors.StripeError) {
-        throw new BadRequestException(err.message);
-      }
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Checkout failed for course ${dto.course_id}, user ${userId}: ${msg}`,
+        err instanceof Error ? err.stack : undefined,
+      );
       throw err;
     }
   }
@@ -154,19 +152,22 @@ export class SubscriptionsService {
       "http://localhost:5173";
 
     try {
-      const session = await this.stripe.billingPortal.sessions.create({
-        customer: user.stripeCustomerId,
-        return_url: returnUrl,
+      const session = await this.stripeService.createBillingPortalSession({
+        customerId: user.stripeCustomerId,
+        returnUrl,
       });
 
       if (!session.url) {
+        this.logger.error("Stripe portal returned session without URL");
         throw new BadRequestException("Stripe did not return a portal URL");
       }
       return { url: session.url };
     } catch (err) {
-      if (err instanceof Stripe.errors.StripeError) {
-        throw new BadRequestException(err.message);
-      }
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Portal session failed for user ${userId}: ${msg}`,
+        err instanceof Error ? err.stack : undefined,
+      );
       throw err;
     }
   }
