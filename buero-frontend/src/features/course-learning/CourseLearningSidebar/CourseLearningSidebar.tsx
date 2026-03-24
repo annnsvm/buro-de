@@ -65,7 +65,7 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
         className="hidden h-full min-h-0 w-[320px] shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:flex"
         aria-label="Course outline"
       >
-        <div className="shrink-0 px-6 py-4">
+        <div className="shrink-0 px-28 py-5">
           <Link to={ROUTES.HOME}>
             <Logo isLight={false} width={70} height={28} />
           </Link>
@@ -87,7 +87,7 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
           />
           <div className="absolute top-0 left-0 flex h-full max-h-[100vh] w-[320px] max-w-[85vw] flex-col bg-[var(--color-neutral-white)] shadow-2xl">
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-subtle)] p-4">
-              <Link to={ROUTES.HOME} className="px-6 py-2">
+              <Link to={ROUTES.HOME} className="px-4 py-8">
                 <Logo isLight={false} width={70} height={28} />
               </Link>
               <button

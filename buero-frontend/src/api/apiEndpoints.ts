@@ -43,6 +43,11 @@ export const API_ENDPOINTS = {
   payments: {
     myPayments: '/payments/me',
   },
+  quiz: {
+    startAttempt: '/quiz/attempts',
+    getAttempt: (attemptId: string) => `/quiz/attempts/${attemptId}`,
+    submit: (attemptId: string) => `/quiz/attempts/${attemptId}/submit`,
+  },
 } as const;
 
 export const PUBLIC_ENDPOINT_PREFIXE = [

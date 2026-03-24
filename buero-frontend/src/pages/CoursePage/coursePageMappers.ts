@@ -79,8 +79,8 @@ export const findNextVideoMaterialId = (
   return null;
 };
 
-/** Parsed quiz for the learning UI (matches editor payload in `courseMaterialApiPayload.helpers`). */
-export type ParsedQuizAnswer = { id: string; text: string; isCorrect: boolean };
+/** Parsed quiz for the learning UI (option ids + labels only; correctness is evaluated on the server). */
+export type ParsedQuizAnswer = { id: string; text: string };
 export type ParsedQuizQuestion = { id: string; question: string; answers: ParsedQuizAnswer[] };
 
 export const parseQuizMaterialContent = (material: ApiCourseMaterial): ParsedQuizQuestion[] => {
@@ -97,12 +97,6 @@ export const parseQuizMaterialContent = (material: ApiCourseMaterial): ParsedQui
         ? questionRaw.id
         : `q${qIndex + 1}`;
     const questionText = typeof questionRaw.text === 'string' ? questionRaw.text : '';
-    const correctRaw = questionRaw.correct;
-    const correctIds = Array.isArray(correctRaw)
-      ? correctRaw.map((v) => String(v))
-      : typeof correctRaw === 'string'
-        ? [correctRaw]
-        : [];
     const optionsRaw = Array.isArray(questionRaw.options)
       ? (questionRaw.options as Array<Record<string, unknown>>)
       : [];
@@ -115,7 +109,6 @@ export const parseQuizMaterialContent = (material: ApiCourseMaterial): ParsedQui
       return {
         id: optionId,
         text: optionText,
-        isCorrect: correctIds.includes(optionId),
       };
     });
     return { id: questionId, question: questionText, answers };
