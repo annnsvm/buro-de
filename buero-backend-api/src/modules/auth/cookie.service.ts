@@ -19,6 +19,10 @@ export class CookieService {
     return domain?.trim() || undefined;
   }
 
+  private getSameSite(): "none" | "lax" {
+    return this.getSecure() ? "none" : "lax";
+  }
+
   setAuthCookies(
     res: Response,
     accessToken: string,
@@ -26,11 +30,12 @@ export class CookieService {
   ): void {
     const secure = this.getSecure();
     const domain = this.getDomain();
+    const sameSite = this.getSameSite();
     const baseOptions = {
       path: COOKIE_PATH,
       httpOnly: true,
       secure,
-      sameSite: "lax" as const,
+      sameSite,
       ...(domain && { domain }),
     };
     res.cookie("access_token", accessToken, {
@@ -46,10 +51,11 @@ export class CookieService {
   clearAuthCookies(res: Response): void {
     const secure = this.getSecure();
     const domain = this.getDomain();
+    const sameSite = this.getSameSite();
     const clearOptions = {
       path: COOKIE_PATH,
       httpOnly: true,
-      sameSite: "lax" as const,
+      sameSite,
       secure,
       maxAge: 0,
       ...(domain && { domain }),
