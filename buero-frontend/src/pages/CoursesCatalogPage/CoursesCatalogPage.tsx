@@ -7,7 +7,7 @@ import {
   CoursesCatalogList,
 } from '@/features/courses-catalog';
 
-import { useAppDispatch } from '@/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import {
   selectCoursesCatalogItems,
   selectCoursesCatalogTotalCount,
@@ -15,6 +15,7 @@ import {
 } from '@/redux/slices/coursesCatalog/coursesCatalogSelectors';
 import { setFilters } from '@/redux/slices/coursesCatalog/coursesCatalogSlice';
 import { fetchCoursesCatalogThunk } from '@/redux/slices/coursesCatalog/coursesCatalogThunks';
+import { selectUserRole } from '@/redux/slices/user/userSelectors';
 
 const filterTabs = [
   { id: 'all', label: 'All Courses' },
@@ -26,111 +27,31 @@ const filterTabs = [
   { id: 'advanced', label: 'Advanced' },
 ];
 
-// const mockCourses = [
-//   {
-//     id: '1',
-//     title: 'German A1 – Foundations',
-//     category: 'Language',
-//     levelLabel: 'A1',
-//     badge: 'Free trial',
-//     imageUrl: '/images/courses/course-1.webp',
-//     description:
-//       'Start your German journey from zero. Build a solid base in pronunciation, grammar, and essential vocab.',
-//     price: '€69',
-//     lessonsCount: 32,
-//     durationHours: 24,
-//     tags: ['Beginner', 'Grammar', 'Vocabulary'],
-//     rating: 4.9,
-//   },
-//   {
-//     id: '2',
-//     title: 'German A2 – Foundations',
-//     category: 'Language',
-//     levelLabel: 'A1',
-//     badge: 'Free trial',
-//     imageUrl: '/images/courses/course-1.webp',
-//     description:
-//       'Start your German journey from zero. Build a solid base in pronunciation, grammar, and essential vocab.',
-//     price: '$55',
-//     lessonsCount: 12,
-//     durationHours: 6,
-//     tags: ['Grammar', 'Vocabulary'],
-//     rating: 4.8,
-//   },
-//   {
-//     id: '3',
-//     title: 'German B1 – Foundations',
-//     category: 'Language',
-//     levelLabel: 'A1',
-//     badge: 'Free trial',
-//     imageUrl: '/images/courses/course-1.webp',
-//     description:
-//       'Start your German journey from zero. Build a solid base in pronunciation, grammar, and essential vocab.',
-//     price: '$55',
-//     lessonsCount: 12,
-//     durationHours: 6,
-//     tags: ['Grammar', 'Vocabulary'],
-//     rating: 4.8,
-//   },
-//   {
-//     id: '4',
-//     title: 'German A1 – Foundations',
-//     category: 'Language',
-//     levelLabel: 'A1',
-//     badge: 'Free trial',
-//     imageUrl: '/images/courses/course-1.webp',
-//     description:
-//       'Start your German journey from zero. Build a solid base in pronunciation, grammar, and essential vocab.',
-//     price: '€69',
-//     lessonsCount: 32,
-//     durationHours: 24,
-//     tags: ['Beginner', 'Grammar', 'Vocabulary'],
-//     rating: 4.9,
-//   },
-//   {
-//     id: '5',
-//     title: 'German A1 – Foundations',
-//     category: 'Language',
-//     levelLabel: 'A1',
-//     badge: 'Free trial',
-//     imageUrl: '/images/courses/course-1.webp',
-//     description:
-//       'Start your German journey from zero. Build a solid base in pronunciation, grammar, and essential vocab.',
-//     price: '€69',
-//     lessonsCount: 32,
-//     durationHours: 24,
-//     tags: ['Beginner', 'Grammar', 'Vocabulary'],
-//     rating: 4.9,
-//   },
-// ];
-
-
 const CoursesCatalogPage: FC = () => {
   const dispatch = useAppDispatch();
-  
+
   const courses = useSelector(selectCoursesCatalogItems);
-  
+
   const filters = useSelector(selectCoursesCatalogFilters);
-  // console.log(filters)
+  const role = useAppSelector(selectUserRole);
   const filtersRef = useRef(filters);
-  
+
   const totalCount = useSelector(selectCoursesCatalogTotalCount);
 
-  
   const activeFilterId =
     filters.tags === 'language'
       ? 'language'
       : filters.tags === 'integration'
-      ? 'integration'
-      : filters.tags === 'sociocultural'
-      ? 'sociocultural'
-      : filters.tags === 'beginner'
-      ? 'beginner'
-      : filters.tags === 'middle'
-      ? 'middle'
-      : filters.tags === 'advanced'
-      ? 'advanced'
-      : 'all';
+        ? 'integration'
+        : filters.tags === 'sociocultural'
+          ? 'sociocultural'
+          : filters.tags === 'beginner'
+            ? 'beginner'
+            : filters.tags === 'middle'
+              ? 'middle'
+              : filters.tags === 'advanced'
+                ? 'advanced'
+                : 'all';
 
   useEffect(() => {
     dispatch(fetchCoursesCatalogThunk());
@@ -154,21 +75,22 @@ const CoursesCatalogPage: FC = () => {
     }
   };
 
-  const handleSearchChange = useCallback((search: string) => {
-    dispatch(
-      setFilters({
-        ...filtersRef.current,
-        search: search.trim() || undefined,
-      })
-    );
-  }, [dispatch]);
-
+  const handleSearchChange = useCallback(
+    (search: string) => {
+      dispatch(
+        setFilters({
+          ...filtersRef.current,
+          search: search.trim() || undefined,
+        }),
+      );
+    },
+    [dispatch],
+  );
 
   return (
     <div aria-label="Courses-Catalog Page">
       <CoursesCatalogHero
         onSearchChange={handleSearchChange}
-        // initialSearch={filters.title ?? filters.description ?? ''}
         initialSearch={filters.search ?? ''}
       />
       <CoursesCatalogFilters
@@ -177,21 +99,16 @@ const CoursesCatalogPage: FC = () => {
         onFilterChange={handleFilterChange}
         totalCount={totalCount}
       />
-      
-      {courses.length > 0 ? (
+
+      {courses.length > 0 || role === 'teacher' ? (
         <CoursesCatalogList courses={courses} />
-      ) : (
-        <div className="flex justify-center items-center py-20 text-lg text-[var(--color-text-primary)]">
-          No courses found. Try adjusting your filters.
+      )  : (
+        <div className="flex items-center justify-center py-20 text-lg text-[var(--color-text-primary)]">
+          <p>No courses found. Try adjusting your filters.</p>
         </div>
       )}
-    </div> 
+    </div>
   );
 };
 
-
-
-
-
 export default CoursesCatalogPage;
-
