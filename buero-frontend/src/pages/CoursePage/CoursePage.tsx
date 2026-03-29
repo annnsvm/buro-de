@@ -31,7 +31,9 @@ const CoursePage: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [quizModalOpen, setQuizModalOpen] = useState(false);
-  const [quizPlaceholderResult, setQuizPlaceholderResult] = useState<QuizResultSummary | null>(null);
+  const [quizPlaceholderResult, setQuizPlaceholderResult] = useState<QuizResultSummary | null>(
+    null,
+  );
   const [completedMaterialIds, setCompletedMaterialIds] = useState<Set<string>>(() => new Set());
   const [videoCompletionSaving, setVideoCompletionSaving] = useState(false);
   const [videoCompletionError, setVideoCompletionError] = useState<string | null>(null);
@@ -52,7 +54,9 @@ const CoursePage: React.FC = () => {
       setLoadStatus('loading');
       setLoadError(null);
       try {
-        const { data } = await apiInstance.get<ApiCourseWithTree>(API_ENDPOINTS.courses.byId(courseId));
+        const { data } = await apiInstance.get<ApiCourseWithTree>(
+          API_ENDPOINTS.courses.byId(courseId),
+        );
         if (cancelled) return;
         setCourse(data);
         const flat = flattenMaterialsInOrder(data);
@@ -60,15 +64,16 @@ const CoursePage: React.FC = () => {
         const firstMat = flat[0]?.material;
         setQuizPlaceholderResult(null);
         setSelectedMaterialId(firstId);
-        setQuizModalOpen(
-          Boolean(firstMat && String(firstMat.type).toLowerCase() === 'quiz'),
-        );
+        setQuizModalOpen(Boolean(firstMat && String(firstMat.type).toLowerCase() === 'quiz'));
         setLoadStatus('idle');
       } catch (err: unknown) {
         if (cancelled) return;
         const message =
           err && typeof err === 'object' && 'response' in err
-            ? String((err as { response?: { data?: { message?: unknown } } }).response?.data?.message ?? '')
+            ? String(
+                (err as { response?: { data?: { message?: unknown } } }).response?.data?.message ??
+                  '',
+              )
             : err instanceof Error
               ? err.message
               : 'Failed to load course';
@@ -163,8 +168,8 @@ const CoursePage: React.FC = () => {
     currentUser?.role === 'student' &&
     Boolean(
       selectedMaterialId &&
-        selectedMaterial &&
-        String(selectedMaterial.type).toLowerCase() === 'video',
+      selectedMaterial &&
+      String(selectedMaterial.type).toLowerCase() === 'video',
     );
 
   const videoFallbackSeconds = useMemo(() => {
@@ -173,12 +178,7 @@ const CoursePage: React.FC = () => {
   }, [selectedMaterial]);
 
   const handleMarkVideoComplete = useCallback(async () => {
-    if (
-      !courseId ||
-      !selectedMaterialId ||
-      !selectedModuleId ||
-      currentUser?.role !== 'student'
-    ) {
+    if (!courseId || !selectedMaterialId || !selectedModuleId || currentUser?.role !== 'student') {
       return;
     }
     setVideoCompletionError(null);
@@ -213,8 +213,14 @@ const CoursePage: React.FC = () => {
     setSelectedMaterialId(nextVideoMaterialId);
   }, [nextVideoMaterialId, flatMaterials]);
 
+  const isFirstScrollRef = useRef(true);
   useEffect(() => {
-    mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    if (isFirstScrollRef.current) {
+      mainScrollRef.current?.scrollTo({ top: 0 });
+      isFirstScrollRef.current = false;
+    } else {
+      mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, [selectedMaterialId]);
 
   useEffect(() => {
@@ -255,9 +261,9 @@ const CoursePage: React.FC = () => {
       />
 
       <div ref={mainScrollRef} className="min-w-0 flex-1 overflow-y-auto">
-        <div className="fixed top-0 z-10 flex gap-4 w-full justify-center border-b border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-lighter)] px-4 py-6 lg:justify-start lg:px-10">
+        <div className="sticky top-0 z-10 flex justify-center gap-4 border-b border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-lighter)] px-4 py-4 lg:justify-start lg:px-10">
           <button
-           type="button"
+            type="button"
             className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
           >
             Vocabulary
@@ -299,7 +305,7 @@ const CoursePage: React.FC = () => {
             />
           ) : null}
           {flatMaterials.length > 0 && isQuizSelected ? (
-            <div className="flex h-[100vh] flex-col items-center justify-center gap-4 px-6 text-center">
+            <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-12 text-center">
               <p className="max-w-md text-lg font-medium text-[var(--color-text-primary)]">
                 {selectedMaterial?.title ?? 'Quiz'}
               </p>
@@ -309,12 +315,15 @@ const CoursePage: React.FC = () => {
                   role="status"
                   aria-live="polite"
                 >
-                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">Your last result</p>
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--color-primary)]">
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    Your last result
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-[var(--color-primary)] tabular-nums">
                     {quizPlaceholderResult.percent}%
                   </p>
                   <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                    {quizPlaceholderResult.correct} of {quizPlaceholderResult.total} questions correct
+                    {quizPlaceholderResult.correct} of {quizPlaceholderResult.total} questions
+                    correct
                   </p>
                 </div>
               ) : (
