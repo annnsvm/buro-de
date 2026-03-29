@@ -2,10 +2,16 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { CourseCardProps } from '@/types/features/courses-catalog/CourseCard.types';
 import { fetchCoursesCatalogThunk } from './coursesCatalogThunks';
 
+export type PublicationFilter = 'all' | 'published' | 'unpublished';
+
 export type CoursesCatalogFilters = {
   search?: string;
   tags?: string;
   language?: string;
+  /** Лише для GET /courses/manage (вчитель). */
+  publicationStatus?: PublicationFilter;
+  /** Використовується на сторінці «Моє навчання» (локальний фільтр). */
+  category?: string;
 };
 
 export type CoursesCatalogState = {

@@ -1,17 +1,28 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { useAppDispatch } from '@/redux/hooks';
 import { BaseDialog, useModal } from '@/components/modal';
 import Icon from '@/components/ui/Icon';
+import { Button } from '@/components/ui';
 import CheckoutButton from '@/features/subscriptions/components/CheckoutButton';
+import { apiInstance } from '@/api/apiInstance';
+import { API_ENDPOINTS } from '@/api/apiEndpoints';
+import { subscriptionApi } from '@/api/subscriptionApi';
+import { getCoursePath } from '@/helpers/routes';
 import type { CourseInfoData } from '@/types/components/modal/UIModalType.types';
+import { selectIsAuthenticated } from '@/redux/slices/auth';
 import CourseStructure from './CourseStructure';
 import { courseStructureKeyFromModules } from './courseStructure.helpers';
-import { fetchCourseByIdThunk } from '@/redux/slices/coursesCatalog/courseDetailsThunks'; 
-import { clearCourseDetails } from '@/redux/slices/coursesCatalog/courseDetailsSlice'; 
-import { 
-  selectCourseDetailsData, 
-  selectCourseDetailsStatus 
+import { userHasAccessToCourse } from './courseAccessModal.helpers';
+import { fetchCourseByIdThunk } from '@/redux/slices/coursesCatalog/courseDetailsThunks';
+import { clearCourseDetails } from '@/redux/slices/coursesCatalog/courseDetailsSlice';
+import {
+  selectCourseDetailsData,
+  selectCourseDetailsStatus,
 } from '@/redux/slices/coursesCatalog/courseDetailsSelectors';
+import { fetchCoursesCatalogThunk } from '@/redux/slices/coursesCatalog/coursesCatalogThunks';
+import { selectUserRole } from '@/redux/slices/user/userSelectors';
 
 
 
@@ -29,25 +40,95 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
   course,
 }) => {
   const { pushUiModal } = useModal();
-  
-  
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const dispatch = useAppDispatch();
 
   const fullCourseData = useSelector(selectCourseDetailsData);
   const status = useSelector(selectCourseDetailsStatus);
   const isLoading = status === 'loading';
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const role = useSelector(selectUserRole);
+
+  const [accessResolved, setAccessResolved] = useState(false);
+  const [hasCourseAccess, setHasCourseAccess] = useState(false);
+  const [localPublished, setLocalPublished] = useState<boolean | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const isTeacher = role === 'teacher';
+  const isStudent = role === 'student';
+  const publishedEffective =
+    localPublished ?? (typeof course.isPublished === 'boolean' ? course.isPublished : false);
 
   useEffect(() => {
     if (isOpen && courseId) {
-      
       dispatch(fetchCourseByIdThunk(courseId));
     } else if (!isOpen) {
-      
       dispatch(clearCourseDetails());
     }
   }, [isOpen, courseId, dispatch]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setAccessResolved(false);
+      setHasCourseAccess(false);
+      setLocalPublished(null);
+    } else {
+      setLocalPublished(null);
+    }
+  }, [isOpen, courseId]);
+
+  useEffect(() => {
+    if (!isOpen || !courseId) return;
+
+    if (!isAuthenticated || !isStudent) {
+      setAccessResolved(true);
+      setHasCourseAccess(false);
+      return;
+    }
+
+    let cancelled = false;
+    setAccessResolved(false);
+
+    void (async () => {
+      try {
+        const list = await subscriptionApi.getMyAccess();
+        if (cancelled) return;
+        setHasCourseAccess(userHasAccessToCourse(Array.isArray(list) ? list : [], courseId));
+      } catch {
+        if (!cancelled) setHasCourseAccess(false);
+      } finally {
+        if (!cancelled) setAccessResolved(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, courseId, isAuthenticated, isStudent]);
+
   const handleClose = () => handleOpenChange(false);
+
+  const handleContinueLearning = () => {
+    handleClose();
+    navigate(getCoursePath(courseId));
+  };
+
+  const handleTogglePublication = useCallback(async () => {
+    if (!courseId || isPublishing) return;
+    const next = !publishedEffective;
+    setIsPublishing(true);
+    try {
+      await apiInstance.patch(API_ENDPOINTS.courses.update(courseId), {
+        is_published: next,
+      });
+      setLocalPublished(next);
+      dispatch(fetchCoursesCatalogThunk());
+      dispatch(fetchCourseByIdThunk(courseId));
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [courseId, dispatch, isPublishing, publishedEffective]);
 
   const handleContactSupport = () => {
     pushUiModal({
@@ -56,10 +137,6 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
       subject: 'Question about course',
     });
   };
-
-  
-  
-
 
   const safeCategory = course.category || 'Language';
  
@@ -82,12 +159,11 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
   }).format(cleanPrice);
 
   const hasAnyMaterials = fullCourseData?.modules?.some(
-    (mod) => mod.materials && mod.materials.length > 0
+    (mod) => mod.materials && mod.materials.length > 0,
   );
-  
-  const rawModules = hasAnyMaterials 
-    ? fullCourseData.modules 
-    : [];
+
+  const rawModules =
+    hasAnyMaterials && fullCourseData?.modules ? fullCourseData.modules : [];
 
     const contentClassName = 'fixed top-1/2 left-1/2 z-[1001] w-[calc(100%-2rem)] max-w-[640px] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[var(--color-surface-overlay)] overflow-hidden flex flex-col focus:outline-none [&>button]:top-7 [&>button]:right-7 [&>button]:h-8 [&>button]:w-8 [&>button]:text-[var(--color-neutral-white)] [&>button]:transition-colors [&>button:hover]:text-[var(--color-primary)]';
   return (
@@ -114,7 +190,7 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
           </div>
 
           <div className="absolute bottom-7 left-8.5 sm:bottom-8.5 sm:left-10.5 flex flex-wrap gap-2 sm:gap-4">
-            {course.tags.map((tag: string) => (
+            {(course.tags ?? []).map((tag: string) => (
               <span
                 key={tag}
                 className="rounded-full text-xs border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] px-2.5 py-1 font-semibold text-[var(--color-text-primary)] sm:text-base"
@@ -188,23 +264,55 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
               Contact Support
             </button>
           </div>
-          <div className="flex shrink-0 mt-6 flex-row items-center justify-between py-4">
+          <div className="flex shrink-0 mt-6 flex-row flex-wrap items-center justify-between gap-3 py-4">
             <span className="text-[24spx] mr-1 sm:mr-0 sm:text-[32px] font-semibold text-[var(--color-primary)] leading-[1.3] tracking-[-0.01em]">
               {totalPrice}
             </span>
-            <div className="flex gap-2 sm:gap-4">
-              <button
+            {isTeacher ? (
+              <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
+                <Button
+                  type="button"
+                  variant="outlineDark"
+                  className="rounded-full px-3 py-1 sm:px-6 sm:py-2.5 text-xs sm:text-lg font-medium"
+                  disabled={isPublishing}
+                  onClick={handleTogglePublication}
+                  aria-label={publishedEffective ? 'Unpublish course' : 'Publish course'}
+                >
+                  {isPublishing
+                    ? 'Saving…'
+                    : publishedEffective
+                      ? 'Unpublish'
+                      : 'Publish'}
+                </Button>
+              </div>
+            ) : isStudent && isAuthenticated && !accessResolved ? (
+              <p className="text-sm text-[var(--color-text-secondary)]" aria-live="polite">
+                Checking access…
+              </p>
+            ) : isStudent && isAuthenticated && hasCourseAccess ? (
+              <Button
                 type="button"
-                onClick={handleClose}
-                className="rounded-full border border-[var(--opacity-neutral-darkest-15)] px-3 py-1 sm:px-6 sm:py-2.5 text-xs sm:text-lg font-medium text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-neutral-darkest)]"
+                variant="solid"
+                className="rounded-full border-0 px-3 py-1 sm:px-6 sm:py-2.5 text-xs sm:text-lg font-medium text-[var(--color-text-on-accent)]"
+                onClick={handleContinueLearning}
               >
-                Try for free
-              </button>
-              <CheckoutButton
-                courseId={courseId}
-                className="rounded-full bg-[var(--color-primary)] px-3 py-1 sm:px-6 sm:py-2.5 text-xs sm:text-lg font-medium text-[var(--color-text-on-accent)] hover:bg-[var(--color-primary-hover)]"
-              />
-            </div>
+                Continue Learning
+              </Button>
+            ) : (
+              <div className="flex gap-2 sm:gap-4">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="rounded-full border border-[var(--opacity-neutral-darkest-15)] px-3 py-1 sm:px-6 sm:py-2.5 text-xs sm:text-lg font-medium text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-neutral-darkest)]"
+                >
+                  Try for free
+                </button>
+                <CheckoutButton
+                  courseId={courseId}
+                  className="rounded-full bg-[var(--color-primary)] px-3 py-1 sm:px-6 sm:py-2.5 text-xs sm:text-lg font-medium text-[var(--color-text-on-accent)] hover:bg-[var(--color-primary-hover)]"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

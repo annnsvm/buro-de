@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import {
   CoursesCatalogHero,
@@ -17,7 +17,7 @@ import { setFilters } from '@/redux/slices/coursesCatalog/coursesCatalogSlice';
 import { fetchCoursesCatalogThunk } from '@/redux/slices/coursesCatalog/coursesCatalogThunks';
 import { selectUserRole } from '@/redux/slices/user/userSelectors';
 
-const filterTabs = [
+const baseFilterTabs = [
   { id: 'all', label: 'All Courses' },
   { id: 'language', label: 'Language' },
   { id: 'integration', label: 'Integration' },
@@ -25,7 +25,12 @@ const filterTabs = [
   { id: 'beginner', label: 'Beginner' },
   { id: 'middle', label: 'Middle' },
   { id: 'advanced', label: 'Advanced' },
-];
+] as const;
+
+const teacherExtraTabs = [
+  { id: 'published', label: 'Published' },
+  { id: 'unpublished', label: 'Unpublished' },
+] as const;
 
 const CoursesCatalogPage: FC = () => {
   const dispatch = useAppDispatch();
@@ -38,40 +43,123 @@ const CoursesCatalogPage: FC = () => {
 
   const totalCount = useSelector(selectCoursesCatalogTotalCount);
 
-  const activeFilterId =
-    filters.tags === 'language'
-      ? 'language'
-      : filters.tags === 'integration'
-        ? 'integration'
-        : filters.tags === 'sociocultural'
-          ? 'sociocultural'
-          : filters.tags === 'beginner'
-            ? 'beginner'
-            : filters.tags === 'middle'
-              ? 'middle'
-              : filters.tags === 'advanced'
-                ? 'advanced'
-                : 'all';
+  const filterTabs = useMemo(() => {
+    if (role === 'teacher') {
+      return [...baseFilterTabs, ...teacherExtraTabs];
+    }
+    return [...baseFilterTabs];
+  }, [role]);
+
+  const activeFilterId = (() => {
+    if (role === 'teacher') {
+      if (filters.publicationStatus === 'published') return 'published';
+      if (filters.publicationStatus === 'unpublished') return 'unpublished';
+    }
+    if (filters.tags === 'language') return 'language';
+    if (filters.tags === 'integration') return 'integration';
+    if (filters.tags === 'sociocultural') return 'sociocultural';
+    if (filters.tags === 'beginner') return 'beginner';
+    if (filters.tags === 'middle') return 'middle';
+    if (filters.tags === 'advanced') return 'advanced';
+    return 'all';
+  })();
 
   useEffect(() => {
     dispatch(fetchCoursesCatalogThunk());
   }, [dispatch, filters, role]);
 
   const handleFilterChange = (id: string) => {
+    if (role === 'teacher') {
+      if (id === 'published') {
+        dispatch(
+          setFilters({
+            ...filters,
+            publicationStatus: 'published',
+            tags: undefined,
+          }),
+        );
+        return;
+      }
+      if (id === 'unpublished') {
+        dispatch(
+          setFilters({
+            ...filters,
+            publicationStatus: 'unpublished',
+            tags: undefined,
+          }),
+        );
+        return;
+      }
+    }
+
     if (id === 'all') {
-      dispatch(setFilters({ ...filters, tags: undefined }));
-    } else if (id === 'language') {
-      dispatch(setFilters({ ...filters, tags: 'language' }));
-    } else if (id === 'integration') {
-      dispatch(setFilters({ ...filters, tags: 'integration' }));
-    } else if (id === 'sociocultural') {
-      dispatch(setFilters({ ...filters, tags: 'sociocultural' }));
-    } else if (id === 'beginner') {
-      dispatch(setFilters({ ...filters, tags: 'beginner' }));
-    } else if (id === 'middle') {
-      dispatch(setFilters({ ...filters, tags: 'middle' }));
-    } else if (id === 'advanced') {
-      dispatch(setFilters({ ...filters, tags: 'advanced' }));
+      dispatch(
+        setFilters({
+          ...filters,
+          tags: undefined,
+          publicationStatus: undefined,
+        }),
+      );
+      return;
+    }
+    if (id === 'language') {
+      dispatch(
+        setFilters({
+          ...filters,
+          tags: 'language',
+          publicationStatus: undefined,
+        }),
+      );
+      return;
+    }
+    if (id === 'integration') {
+      dispatch(
+        setFilters({
+          ...filters,
+          tags: 'integration',
+          publicationStatus: undefined,
+        }),
+      );
+      return;
+    }
+    if (id === 'sociocultural') {
+      dispatch(
+        setFilters({
+          ...filters,
+          tags: 'sociocultural',
+          publicationStatus: undefined,
+        }),
+      );
+      return;
+    }
+    if (id === 'beginner') {
+      dispatch(
+        setFilters({
+          ...filters,
+          tags: 'beginner',
+          publicationStatus: undefined,
+        }),
+      );
+      return;
+    }
+    if (id === 'middle') {
+      dispatch(
+        setFilters({
+          ...filters,
+          tags: 'middle',
+          publicationStatus: undefined,
+        }),
+      );
+      return;
+    }
+    if (id === 'advanced') {
+      dispatch(
+        setFilters({
+          ...filters,
+          tags: 'advanced',
+          publicationStatus: undefined,
+        }),
+      );
     }
   };
 
@@ -86,6 +174,10 @@ const CoursesCatalogPage: FC = () => {
     },
     [dispatch],
   );
+
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
 
   return (
     <div aria-label="Courses-Catalog Page">
@@ -102,7 +194,7 @@ const CoursesCatalogPage: FC = () => {
 
       {courses.length > 0 || role === 'teacher' ? (
         <CoursesCatalogList courses={courses} />
-      )  : (
+      ) : (
         <div className="flex items-center justify-center py-20 text-lg text-[var(--color-text-primary)]">
           <p>No courses found. Try adjusting your filters.</p>
         </div>
