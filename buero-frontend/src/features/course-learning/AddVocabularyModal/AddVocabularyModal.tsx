@@ -3,7 +3,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { BaseDialog } from '@/components/modal';
-import { FormField, Input } from '@/components/ui';
+import { FormField, Input, Icon } from '@/components/ui';
+import { ICON_NAMES } from '@/helpers/iconNames';
 import { useAppDispatch } from '@/redux/hooks';
 import { addWord } from '@/redux/slices/vocabulary/vocabularySlice';
 import type { VocabularyCategory } from '@/types/features/vocabulary/Vocabulary.types';
@@ -198,18 +199,14 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
         </div>
       ) : (
         <div className="flex flex-col items-center py-6 text-center">
-          <svg
-            className="h-16 w-16 text-green-500"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
+          <div className="relative h-[80px] w-[80px] rounded-full bg-[var(--color-primary)]">
+            <Icon
+              name={ICON_NAMES.CHECK}
+              size={80}
+              color="var(--color-white)"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+            />
+          </div>
 
           <p className="mt-4 text-xl font-semibold text-[var(--color-neutral-darkest)]">
             Added &ldquo;{addedWord}&rdquo; to vocabulary!
