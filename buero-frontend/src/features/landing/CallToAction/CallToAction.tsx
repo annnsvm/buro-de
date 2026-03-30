@@ -17,7 +17,7 @@ const CallToAction: React.FC<CallToActionProps> = ({
   primaryButtonText = DEFAULT_PRIMARY_BUTTON,
   secondaryButtonText = DEFAULT_SECONDARY_BUTTON,
   primaryButtonTo = ROUTES.HOME,
-  secondaryButtonTo = '/pricing',
+  secondaryButtonTo = ROUTES.COURSES,
 }) => (
   <Section className="pb-0">
     <CallToActionBanner>
