@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { useNavigate, useParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { BaseDialog } from '@/components/modal';
-import { FormField, Input } from '@/components/ui';
+import { FormField, Input, Icon } from '@/components/ui';
+import { ICON_NAMES } from '@/helpers/iconNames';
+import { ROUTES } from '@/helpers/routes';
 import { useAppDispatch } from '@/redux/hooks';
 import { addWord } from '@/redux/slices/vocabulary/vocabularySlice';
 import type { VocabularyCategory } from '@/types/features/vocabulary/Vocabulary.types';
@@ -20,7 +23,7 @@ const addVocabularySchema = z.object({
     .min(1, { message: 'Translation is required' })
     .max(200, { message: 'Translation is too long' }),
   category: z.enum(['Vocabulary', 'Idiom', 'Phrase', 'Grammar', 'Other']),
-  notes: z.string().max(1000, { message: 'Notes are too long' }).optional(),
+  notes: z.string().max(80, { message: 'Notes must be 80 characters or fewer' }).optional(),
 });
 
 type AddVocabularyFormValues = z.infer<typeof addVocabularySchema>;
@@ -35,6 +38,8 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
   handleOpenChange,
 }) => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { courseId } = useParams<{ courseId: string }>();
   const [view, setView] = useState<'form' | 'success'>('form');
   const [addedWord, setAddedWord] = useState('');
 
@@ -42,6 +47,7 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors, isValid },
     reset,
   } = useForm<AddVocabularyFormValues>({
@@ -116,7 +122,7 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
                 id="vocab-word"
                 type="text"
                 placeholder="e.g., Wanderlust"
-                className="w-full rounded-lg border border-[var(--opacity-neutral-darkest-15)] bg-[var(--opacity-neutral-darkest-5)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--opacity-neutral-darkest-60)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface-card)] focus:outline-none transition-colors"
+                className="w-full rounded-lg border border-[var(--opacity-neutral-darkest-15)] bg-[var(--opacity-neutral-darkest-5)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--opacity-neutral-darkest-60)] focus:border-[var(--color-neutral-darkest)]/40 focus:bg-[var(--color-surface-card)] focus:outline-none transition-colors"
                 {...register('word')}
               />
             </FormField>
@@ -132,7 +138,7 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
                 id="vocab-translation"
                 type="text"
                 placeholder="Translation"
-                className="w-full rounded-lg border border-[var(--opacity-neutral-darkest-15)] bg-[var(--opacity-neutral-darkest-5)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--opacity-neutral-darkest-60)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface-card)] focus:outline-none transition-colors"
+                className="w-full rounded-lg border border-[var(--opacity-neutral-darkest-15)] bg-[var(--opacity-neutral-darkest-5)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--opacity-neutral-darkest-60)] focus:border-[var(--color-neutral-darkest)]/40 focus:bg-[var(--color-surface-card)] focus:outline-none transition-colors"
                 {...register('translation')}
               />
             </FormField>
@@ -153,7 +159,7 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
                     value={field.value}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
-                    className="w-full rounded-lg border border-[var(--opacity-neutral-darkest-15)] bg-[var(--opacity-neutral-darkest-5)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface-card)] focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-[var(--opacity-neutral-darkest-15)] bg-[var(--opacity-neutral-darkest-5)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-neutral-darkest)]/40 focus:bg-[var(--color-surface-card)] focus:outline-none transition-colors"
                   >
                     {CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
@@ -175,11 +181,15 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
               </label>
               <textarea
                 id="vocab-notes"
-                rows={3}
+                rows={2}
+                maxLength={80}
                 placeholder="Add example sentences, context, or pronunciation tips"
-                className="w-full resize-none rounded-lg border border-[var(--opacity-neutral-darkest-15)] bg-[var(--opacity-neutral-darkest-5)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--opacity-neutral-darkest-60)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface-card)] focus:outline-none transition-colors"
+                className="w-full resize-none rounded-lg border border-[var(--opacity-neutral-darkest-15)] bg-[var(--opacity-neutral-darkest-5)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--opacity-neutral-darkest-60)] focus:border-[var(--color-neutral-darkest)]/40 focus:bg-[var(--color-surface-card)] focus:outline-none transition-colors"
                 {...register('notes')}
               />
+              <p className="mt-1 text-right text-xs text-[var(--color-text-secondary)]">
+                {watch('notes')?.length ?? 0}/80
+              </p>
             </div>
 
             <button
@@ -193,18 +203,14 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
         </div>
       ) : (
         <div className="flex flex-col items-center py-6 text-center">
-          <svg
-            className="h-16 w-16 text-green-500"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
+          <div className="relative h-[80px] w-[80px] rounded-full bg-[var(--color-primary)]">
+            <Icon
+              name={ICON_NAMES.CHECK}
+              size={80}
+              color="var(--color-white)"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+            />
+          </div>
 
           <p className="mt-4 text-xl font-semibold text-[var(--color-neutral-darkest)]">
             Added &ldquo;{addedWord}&rdquo; to vocabulary!
@@ -220,10 +226,13 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={handleClose}
-              className="rounded-full bg-[var(--color-cod-gray-base)] px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+              onClick={() => {
+                handleClose();
+                if (courseId) navigate(ROUTES.VOCABULARY.replace(':courseId', courseId));
+              }}
+              className="rounded-full border border-[var(--opacity-neutral-darkest-15)] px-6 py-2.5 text-sm font-medium text-[var(--color-text-primary)] transition hover:bg-[var(--color-surface-section)]"
             >
-              Close
+              Go to Vocabulary
             </button>
           </div>
         </div>

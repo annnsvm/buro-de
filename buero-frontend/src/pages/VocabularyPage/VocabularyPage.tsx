@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Search } from 'lucide-react';
 import { Container } from '@/components/layout';
+import { Icon } from '@/components/ui';
+import { ICON_NAMES } from '@/helpers/iconNames';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { deleteWord } from '@/redux/slices/vocabulary/vocabularySlice';
 import VocabularyCard from '@/features/vocabulary/VocabularyCard/VocabularyCard';
@@ -63,17 +65,14 @@ const VocabularyPage: React.FC = () => {
 
         {words.length === 0 ? (
           <div className="mt-16 flex flex-col items-center text-center">
-            {/* German flag SVG */}
-            <svg
-              className="h-24 w-32"
-              viewBox="0 0 120 80"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect width="120" height="26.67" rx="4" fill="#000" />
-              <rect y="26.67" width="120" height="26.67" fill="#DD0000" />
-              <rect y="53.33" width="120" height="26.67" rx="4" fill="#FFCC00" />
-            </svg>
+            <div className="relative h-[100px] w-[100px] rounded-full bg-[var(--color-primary)]">
+              <Icon
+                name={ICON_NAMES.BOOK_A}
+                size={60}
+                color="var(--color-white)"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+              />
+            </div>
 
             <h2 className="mt-6 text-xl font-semibold text-[var(--color-neutral-darkest)]">
               No Words Yet
@@ -93,7 +92,7 @@ const VocabularyPage: React.FC = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search words..."
-                className="w-full rounded-xl border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] py-3 pl-12 pr-4 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--opacity-neutral-darkest-60)] focus:border-[var(--color-primary)] focus:outline-none transition-colors"
+                className="w-full rounded-xl border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] py-3 pl-12 pr-4 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--opacity-neutral-darkest-60)] focus:border-[var(--color-neutral-darkest)]/40 focus:outline-none transition-colors"
               />
             </div>
 
@@ -121,7 +120,7 @@ const VocabularyPage: React.FC = () => {
             </div>
 
             {/* Cards grid */}
-            <div className="mt-8 grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
               {filtered.map((w) => (
                 <VocabularyCard key={w.id} entry={w} onDelete={handleDelete} />
               ))}
