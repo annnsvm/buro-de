@@ -10,27 +10,16 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '@/helpers/routes';
 
 
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 const displayLabelFromUser = (email: string, displayName?: string) => {
-  if (displayName?.trim()) return displayName.trim();
+  if (displayName?.trim()) return capitalize(displayName.trim());
   const local = email.split('@')[0];
-  return local ? local.replace(/[._-]/g, ' ') : 'Account';
+  return local ? capitalize(local.replace(/[._-]/g, ' ')) : 'Account';
 };
 
 const firstLetterFromLabel = (label: string) => {
   return label.trim().charAt(0).toUpperCase() || '?';
-};
-
-const stringToColor = (string: string) => {
-  let hash = 0;
-  for (let i = 0; i < string.length; i += 1) {
-    hash = string.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  let color = '#';
-  for (let i = 0; i < 3; i += 1) {
-    const value = (hash >> (i * 8)) & 0xff;
-    color += `00${value.toString(16)}`.slice(-2);
-  }
-  return color;
 };
 
 
@@ -56,7 +45,6 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
   // const label = user ? displayLabelFromUser(user.email, user.displayName) : 'Account';
   const label = user ? displayLabelFromUser(user.email, user.name) : 'Account';
   const avatarLetter = firstLetterFromLabel(label);
-  const avatarBgColor = stringToColor(label); 
 
   const closeMenu = useCallback(() => setOpen(false), []);
 
@@ -105,11 +93,10 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
         onClick={() => setOpen((v) => !v)}
       >
         <span 
-          className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full flex items-center justify-center shadow-sm"
-          style={!user?.avatarUrl ? { backgroundColor: avatarBgColor } : {}}
+          className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary)]"
         >
           {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+            <img src={user.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
           ) : (
             <span className="text-[15px] font-bold text-white">
               {avatarLetter}
@@ -145,11 +132,10 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
 
           <div className="flex items-center gap-3 px-6 py-3">
             <span
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm"
-              style={!user?.avatarUrl ? { backgroundColor: avatarBgColor } : {}}
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary)]"
             >
               {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+                <img src={user.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
               ) : (
                 <span className="text-[15px] font-bold text-white">{avatarLetter}</span>
               )}
