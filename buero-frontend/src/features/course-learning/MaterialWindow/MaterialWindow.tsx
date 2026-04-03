@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 
 import { BookOpen, CircleHelp, FileText, Flame, Play, SkipForward, Trophy } from 'lucide-react';
 
 import { Container, Text, Title } from '@/components/layout';
+import useModal from '@/components/modal/context/useModal';
 import { loadYoutubeIframeApi } from '@/helpers/youtubeIframeApi';
 import { lessonContent } from './MaterialWindow.data';
 import type { LearningPageProps } from '@/types/features/learning/LearningPage.types';
@@ -202,6 +203,7 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
   fallbackMarkReadyAfterSeconds = null,
   onAddWord,
 }) => {
+  const { pushUiModal } = useModal();
   const [videoEnded, setVideoEnded] = useState(false);
 
   const isVideoLesson = String(lesson.type).toLowerCase() === 'video';
@@ -364,6 +366,7 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
 
           <button
             type="button"
+            onClick={() => pushUiModal({ type: 'contactSupport', subject: 'Book 1-on-1 Session' })}
             className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#e87753] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 sm:mt-6 sm:w-auto"
           >
             <CircleHelp className="h-4 w-4" />

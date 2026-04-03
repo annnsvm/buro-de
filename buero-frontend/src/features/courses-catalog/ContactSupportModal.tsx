@@ -70,7 +70,9 @@ const ContactSupportModal: React.FC<ContactSupportModalProps> = ({
           Contact us
         </h2>
         <p id="contact-dialog-description" className="mt-2 text-sm text-[var(--color-text-secondary)]">
-          How can we help you today? Please fill out the form below.
+          {subject === 'Book 1-on-1 Session'
+            ? 'Want to book 1-on-1 session with our teacher? Please fill out the form below and we will contact you shortly.'
+            : 'How can we help you today? Please fill out the form below.'}
         </p>
 
         <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
