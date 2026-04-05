@@ -27,6 +27,7 @@ describe("CourseService", () => {
     courseMaterial: { groupBy: jest.Mock };
     userCourseAccess: { findUnique: jest.Mock };
   };
+
   let stripeService: { createProduct: jest.Mock; createPrice: jest.Mock };
 
   const courseRow = (over: Record<string, unknown> = {}) => ({
