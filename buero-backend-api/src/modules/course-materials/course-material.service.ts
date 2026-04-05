@@ -97,7 +97,7 @@ export class CourseMaterialService {
   async findAllByModuleId(courseId: string, moduleId: string) {
     try {
       await this.ensureModuleBelongsToCourse(moduleId, courseId);
-      return this.prisma.courseMaterial.findMany({
+      return await this.prisma.courseMaterial.findMany({
         where: { moduleId },
         orderBy: { orderIndex: 'asc' },
       });
