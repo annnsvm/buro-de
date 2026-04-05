@@ -1,4 +1,11 @@
-import { BadRequestException, Controller, Post, Req } from "@nestjs/common";
+import {
+  BadRequestException,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+} from "@nestjs/common";
 import { SkipThrottle } from "@nestjs/throttler";
 import { Request } from "express";
 import { WebhookService } from "./webhook.service";
@@ -9,6 +16,7 @@ export class WebhookController {
   constructor(private readonly webhookService: WebhookService) {}
 
   @Post("stripe")
+  @HttpCode(HttpStatus.OK)
   async handleStripe(@Req() req: Request): Promise<{ received: boolean }> {
     const rawBody = (req as any).rawBody as Buffer | undefined;
     const signature = req.headers["stripe-signature"] as string | undefined;

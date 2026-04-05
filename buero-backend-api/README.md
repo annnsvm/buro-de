@@ -122,7 +122,7 @@ curl http://localhost:3000/api/health/db
 | `npm run test`     | Unit-тести (Jest), наприклад `UserService` (auth: register, tokens). |
 | `npm run test:watch` | Unit у watch-режимі.                                             |
 | `npm run test:cov` | Unit з покриттям (`coverage/`).                                      |
-| `npm run test:e2e` | E2E по HTTP (Supertest): auth, **users**, **courses**, **course materials** (`/api/courses/:courseId/modules/:moduleId/materials`). Потрібні **PostgreSQL**, `.env` з `DATABASE_URL`, схема БД узгоджена з Prisma (`npx prisma migrate deploy`), JWT, Stripe (як для `start:dev`). У `test/setup-e2e-env.ts` вмикається `E2E_TEST=true` — Throttler не обмежує запити під час e2e. |
+| `npm run test:e2e` | E2E по HTTP (Supertest): auth, **users**, **courses**, **course materials**, **subscriptions/billing** (checkout, `GET /subscriptions/me`, portal, `GET /payments/me`, Stripe webhook + ідемпотентність). Потрібні **PostgreSQL**, `.env` з `DATABASE_URL`, схема БД узгоджена з Prisma (`npx prisma migrate deploy`), JWT, для повного сценарію — **Stripe** (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`). У `test/setup-e2e-env.ts` вмикається `E2E_TEST=true` — Throttler не обмежує запити під час e2e. |
 
 ---
 

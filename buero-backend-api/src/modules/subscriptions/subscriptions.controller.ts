@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiBody,
@@ -20,6 +28,7 @@ export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
   @Post("checkout")
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Створити Checkout Session (купівля курсу)",
     description:
@@ -61,6 +70,7 @@ export class SubscriptionsController {
   }
 
   @Post("portal")
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Stripe Customer Portal",
     description:
