@@ -18,6 +18,9 @@ export type CourseStructureAsideProps = {
   /** Показувати «Unpublish course», якщо курс уже в каталозі */
   showUnpublishCourseButton?: boolean;
   onRequestUnpublishCourse?: () => void;
+  courseStructureMobileOpen?: boolean;
+  onCourseStructureMobileChange?: (open: boolean) => void;
+  hideMobileFloatingStructureButton?: boolean;
 };
 
 export type CourseAsideActionButtonProps = {

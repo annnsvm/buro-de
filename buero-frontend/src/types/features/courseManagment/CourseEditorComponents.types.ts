@@ -42,6 +42,7 @@ export type CourseEditorModalsProps = {
 export type CourseEditorShellProps = {
   aside: ReactNode;
   children: ReactNode;
+  onRequestOpenCourseStructureMobile: () => void;
 };
 
 export type CourseEditorHeaderProps = {

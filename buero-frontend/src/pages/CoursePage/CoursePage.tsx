@@ -11,8 +11,9 @@ import type { QuizResultSummary } from '@/features/course-learning/QuizLessonMod
 
 import type { LearningLesson } from '@/types/features/learning/LearningPage.types';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
+import CourseWorkspaceHeader from '@/components/layout/Header/CourseWorkspaceHeader';
 import { ROUTES } from '@/helpers/routes';
-import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
+import { selectCurrentUser, selectUserRole } from '@/redux/slices/user/userSelectors';
 import useModal from '@/components/modal/context/useModal';
 import {
   type ApiCourseWithTree,
@@ -43,8 +44,10 @@ const CoursePage: React.FC = () => {
   const [videoCompletionError, setVideoCompletionError] = useState<string | null>(null);
   const [courseOutline, setCourseOutline] = useState<CourseModule[]>([]);
   const [lockedModuleIds, setLockedModuleIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [courseStructureMobileOpen, setCourseStructureMobileOpen] = useState(false);
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const currentUser = useSelector(selectCurrentUser);
+  const userRole = useSelector(selectUserRole);
 
   const greetingName = useMemo(() => {
     if (!currentUser?.email) return 'Student';
@@ -315,23 +318,65 @@ const CoursePage: React.FC = () => {
         completedMaterialIds={completedMaterialIds}
         lockedModuleIds={lockedModuleIds}
         checkoutCourseId={lockedModuleIds.size > 0 ? courseId : undefined}
+        courseStructureMobileOpen={courseStructureMobileOpen}
+        onCourseStructureMobileChange={setCourseStructureMobileOpen}
+        hideMobileFloatingStructureButton
       />
 
       <div ref={mainScrollRef} className="min-w-0 flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-10 flex gap-4 w-full justify-center border-b border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-lighter)] px-4 py-4 lg:justify-start lg:px-10">
-          <NavLink
-            to={ROUTES.VOCABULARY.replace(':courseId', courseId)}
-            className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
-          >
-            Vocabulary
-          </NavLink>
-          <NavLink
-            to={ROUTES.COURSES}
-            className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
-          >
-            All courses
-          </NavLink>
-        </div>
+        <CourseWorkspaceHeader
+          desktopStart={
+            <>
+              {userRole === 'student' ? (
+                <NavLink
+                  to={ROUTES.VOCABULARY.replace(':courseId', courseId)}
+                  className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
+                >
+                  Vocabulary
+                </NavLink>
+              ) : null}
+              <NavLink
+                to={ROUTES.COURSES}
+                className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
+              >
+                All courses
+              </NavLink>
+            </>
+          }
+          renderMobileNav={({ className: navClass }) => (
+            <nav className={navClass} aria-label="Course quick links">
+              {userRole === 'student' ? (
+                <NavLink
+                  to={ROUTES.VOCABULARY.replace(':courseId', courseId)}
+                  className={({ isActive }) =>
+                    [
+                      'text-lg font-medium transition-colors',
+                      isActive
+                        ? 'text-[var(--color-primary)]'
+                        : 'text-white/95 hover:text-[var(--color-primary)]',
+                    ].join(' ')
+                  }
+                >
+                  Vocabulary
+                </NavLink>
+              ) : null}
+              <NavLink
+                to={ROUTES.COURSES}
+                className={({ isActive }) =>
+                  [
+                    'text-lg font-medium transition-colors',
+                    isActive
+                      ? 'text-[var(--color-primary)]'
+                      : 'text-white/95 hover:text-[var(--color-primary)]',
+                  ].join(' ')
+                }
+              >
+                All courses
+              </NavLink>
+            </nav>
+          )}
+          onOpenCourseStructure={() => setCourseStructureMobileOpen(true)}
+        />
 
         <section
           className="min-w-0 flex-1 bg-[var(--color-soapstone-base)]"

@@ -1,12 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useSlideInSheet } from '@/hooks/useSlideInSheet';
 import { courseStructureKeyFromModules } from '@/features/courses-catalog/courseStructure.helpers';
 import CourseStructure from '@/features/courses-catalog/CourseStructure';
 import type { CourseModule } from '@/features/courses-catalog/CourseStructure';
-import Icon from '@/components/ui/Icon';
 import { Logo } from '@/components/ui';
-import { ICON_NAMES } from '@/helpers/iconNames';
 import { ROUTES } from '@/helpers/routes';
 import TrialSidebarBlurTail from './TrialSidebarBlurTail';
 
@@ -16,8 +15,10 @@ export type CourseLearningSidebarProps = {
   selectedMaterialId: string | null;
   completedMaterialIds?: ReadonlySet<string>;
   lockedModuleIds?: ReadonlySet<string>;
-  /** Якщо є заблоковані модулі (trial), показуємо CTA на повний курс. */
   checkoutCourseId?: string;
+  courseStructureMobileOpen?: boolean;
+  onCourseStructureMobileChange?: (open: boolean) => void;
+  hideMobileFloatingStructureButton?: boolean;
 };
 
 const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
@@ -27,8 +28,17 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
   completedMaterialIds,
   lockedModuleIds,
   checkoutCourseId,
+  courseStructureMobileOpen,
+  onCourseStructureMobileChange,
+  hideMobileFloatingStructureButton = false,
 }) => {
-  const [isOpenMobile, setIsOpenMobile] = useState(false);
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+  const isControlled =
+    courseStructureMobileOpen !== undefined && onCourseStructureMobileChange !== undefined;
+  const isOpenMobile = isControlled ? courseStructureMobileOpen! : internalMobileOpen;
+  const setIsOpenMobile = isControlled ? onCourseStructureMobileChange! : setInternalMobileOpen;
+
+  const { mounted: sheetMounted, entered: sheetEntered } = useSlideInSheet(isOpenMobile);
 
   const handleOpen = () => setIsOpenMobile(true);
   const handleClose = () => setIsOpenMobile(false);
@@ -82,23 +92,24 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
 
   return (
     <>
-      <div className="lg:hidden">
-        <button
-          type="button"
-          onClick={handleOpen}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') handleOpen();
-          }}
-          aria-label="Open course structure"
-          aria-expanded={isOpenMobile}
-          className="fixed top-[4rem] left-4 z-40 rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-overlay)] px-3 py-2 shadow-sm"
-        >
-          <span className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
-            <Icon name={ICON_NAMES.BOOK} size={18} ariaHidden />
-            Course Structure
-          </span>
-        </button>
-      </div>
+      {!hideMobileFloatingStructureButton ? (
+        <div className="lg:hidden">
+          <button
+            type="button"
+            onClick={handleOpen}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') handleOpen();
+            }}
+            aria-label="Open course structure"
+            aria-expanded={isOpenMobile}
+            className="fixed top-[4rem] left-4 z-40 px-3 py-2"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+              Course Structure
+            </span>
+          </button>
+        </div>
+      ) : null}
 
       <aside
         className="hidden h-full min-h-0 w-[320px] shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:flex"
@@ -116,27 +127,32 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
         </div>
       </aside>
 
-      {isOpenMobile ? (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Course structure">
+      {sheetMounted ? (
+        <div
+          className="pointer-events-none fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Course structure"
+        >
           <button
             type="button"
             aria-label="Close course structure"
             onClick={handleClose}
-            className="absolute inset-0 bg-black/40"
+            className={[
+              'pointer-events-auto absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out',
+              sheetEntered ? 'opacity-100' : 'opacity-0',
+            ].join(' ')}
           />
-          <div className="absolute top-0 left-0 flex h-full max-h-[100vh] w-[320px] max-w-[85vw] flex-col bg-[var(--color-neutral-white)] shadow-2xl">
+          <div
+            className={[
+              'pointer-events-auto absolute top-0 left-0 z-10 flex h-full max-h-[100vh] w-[320px] max-w-[85vw] flex-col bg-[var(--color-neutral-white)] shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform',
+              sheetEntered ? 'translate-x-0' : '-translate-x-full',
+            ].join(' ')}
+          >
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-subtle)] p-4">
               <Link to={ROUTES.HOME} className="px-4 py-8">
                 <Logo isLight={false} width={70} height={28} />
               </Link>
-              <button
-                type="button"
-                onClick={handleClose}
-                aria-label="Close"
-                className="w-8 shrink-0 rounded-full p-2 hover:bg-[var(--color-surface-section)]"
-              >
-                <Icon name={ICON_NAMES.X} size={30} ariaHidden />
-              </button>
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-4">
               {renderStructure(true)}

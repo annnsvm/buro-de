@@ -12,6 +12,8 @@ const HeaderMobileMenu: React.FC<HeaderMobileMenuProps> = ({
   isLight,
   pathname,
   className,
+  renderNav,
+  courseWorkspaceOverlay = false,
 }) => {
   const [isAnimated, setIsAnimated] = useState(false);
   const hambuergerLine = `w-full h-0.5 transition-all duration-300 ease-in-out ${isLight ? 'bg-[var(--color-surface-card)]' : 'bg-[var(--color-text-primary)]'}`;
@@ -86,17 +88,31 @@ const HeaderMobileMenu: React.FC<HeaderMobileMenuProps> = ({
     };
   }, [isOpen, closeMenu]);
 
+  const overlayTone = !isLight
+    ? 'bg-black/80 backdrop-blur-md'
+    : 'bg-[var(--opacity-neutral-darkest-60)] backdrop-blur-sm';
+
   const overlayClasses = [
-    'fixed inset-0 z-50 bg-[var(--opacity-neutral-darkest-60)] backdrop-blur-sm',
-    'transition-opacity duration-300',
+    'fixed inset-0 z-50 transition-opacity duration-300',
+    overlayTone,
     isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
   ].join(' ');
 
   const panelClasses = [
     'mx-auto flex h-full w-full max-w-[480px] flex-col px-6 py-8 text-lg',
+    isLight ? 'text-white' : '',
     'transition-transform duration-300',
     isOpen ? 'translate-y-0' : 'translate-y-4',
-  ].join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const navShellClassName = !isLight
+    ? 'fs-18 flex flex-col items-center gap-6 text-center text-white lg:hidden'
+    : 'fs-18 flex flex-col items-center gap-6 lg:hidden';
+
+  const authBarLight = courseWorkspaceOverlay ? true : isLight;
+  const renderNavLight = courseWorkspaceOverlay ? true : isLight;
 
   return (
     <>
@@ -112,38 +128,38 @@ const HeaderMobileMenu: React.FC<HeaderMobileMenuProps> = ({
             className={`relative flex h-4 w-5 flex-col justify-between ${isAnimated ? 'open' : ''}`}
           >
             <span
-              className={`${hambuergerLine} ${isOpen ? 'translate-x-[6px] translate-y-[7px] rotate-45' : ''}`}
+              className={`${hambuergerLine} ${isOpen ? 'translate-x-[6px] translate-y-[7px] rotate-45' : ''} ${!isLight && isOpen && 'bg-white'}`}
             ></span>
             <span className={`${hambuergerLine} ${isOpen ? 'scale-x-0 opacity-0' : ''}`}></span>
             <span
-              className={`${hambuergerLine} ${isOpen ? 'translate-x-[7px] -translate-y-[6px] -rotate-45' : ''}`}
+              className={`${hambuergerLine} ${isOpen ? 'translate-x-[7px] -translate-y-[6px] -rotate-45' : ''} ${!isLight && isOpen && 'bg-white'}`}
             ></span>
           </span>
         </Button>
       </div>
       <div className={overlayClasses} onClick={closeMenu}>
         <div className={panelClasses} onClick={(event) => event.stopPropagation()}>
-        {user && (
-            <div className="flex w-full justify-start mt-4 lg:hidden">
-              <HeaderAuthBar
-                isLight={isLight}
-                from="mobile"
-                className="mr-auto"
-              />
+          {user && (
+            <div className="mt-4 flex w-full justify-start lg:hidden">
+              <HeaderAuthBar isLight={true} from="mobile" className="mr-auto" />
             </div>
           )}
           <div className="flex flex-1 items-center justify-center">
-            <HeaderNavBar
-              pathname={pathname}
-              isLight={isLight}
-              className="fs-18 flex flex-col items-center gap-6 lg:hidden"
-            />
+            {renderNav ? (
+              renderNav({
+                pathname,
+                isLight: renderNavLight,
+                className: navShellClassName,
+              })
+            ) : (
+              <HeaderNavBar pathname={pathname} isLight={true} className={navShellClassName} />
+            )}
           </div>
 
           {!user && (
             <div className="mt-6 flex flex-col gap-4 lg:hidden">
               <HeaderAuthBar
-                isLight={isLight}
+                isLight={authBarLight}
                 className="mx-auto flex w-full max-w-[280px] flex-col gap-4"
                 from="mobile"
               />
