@@ -5,9 +5,9 @@ import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
 import { openGlobalModal } from '@/redux/slices/ui/uiSlice';
 import { Icon, Logo } from '@/components/ui';
 import { ICON_NAMES } from '@/helpers/iconNames';
-import type { UserAccountMenuProps } from '@/types/features/profile/UserAccountMenu.types';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '@/helpers/routes';
+import type { UserAccountMenuProps } from '@/types/features/userProfile/UserAccountMenu.types';
 
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -42,8 +42,7 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // const label = user ? displayLabelFromUser(user.email, user.displayName) : 'Account';
-  const label = user ? displayLabelFromUser(user.email, user.name) : 'Account';
+  const label = user ? displayLabelFromUser(user.email, user.displayName ?? user.name) : 'Account';
   const avatarLetter = firstLetterFromLabel(label);
 
   const closeMenu = useCallback(() => setOpen(false), []);
@@ -161,7 +160,7 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
               }
             >
               <Icon
-                name="icon-chevrons-double"
+                name="icon-chevron-down"
                 size={20}
                 className={accentPanelChrome ? 'text-white' : 'text-[var(--color-neutral-darkest)]'}
               />

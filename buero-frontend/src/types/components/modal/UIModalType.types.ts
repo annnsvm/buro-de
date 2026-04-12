@@ -25,7 +25,7 @@ type UiModalPayload =
   | {
       type: 'courseInfo';
       courseId: string;
-      course?: CourseInfoData;
+      course: CourseInfoData;
     }
   | {
       type: 'contactSupport';

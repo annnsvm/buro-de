@@ -13,54 +13,58 @@ const ModalRoot: React.FC<ModalRootProps> = ({ globalModal, uiModalStack }) => {
   const { popUiModal } = useModal();
    
   const renderGlobalModal = () => {
-    if (globalModal.type === null) return null;
-    if (globalModal.type === 'login') {
-      return (
-        <LoginModal
-          isOpen
-          handleOpenChange={(isOpen) => {
-            if (!isOpen) {
-              dispatch(closeGlobalModal());
-            }
-          }}
-          redirectTo={globalModal.redirectTo}
-        />
-      );
+    const m = globalModal;
+    switch (m.type) {
+      case null:
+        return null;
+      case 'login':
+        return (
+          <LoginModal
+            isOpen
+            handleOpenChange={(isOpen) => {
+              if (!isOpen) {
+                dispatch(closeGlobalModal());
+              }
+            }}
+            redirectTo={m.redirectTo}
+          />
+        );
+      case 'signup':
+        return (
+          <SignUpModal
+            isOpen
+            handleOpenChange={(open) => {
+              if (!open) dispatch(closeGlobalModal());
+            }}
+            redirectTo={m.redirectTo}
+          />
+        );
+      case 'profile':
+        return (
+          <ProfileModal
+            isOpen
+            handleOpenChange={(open) => {
+              if (!open) dispatch(closeGlobalModal());
+            }}
+          />
+        );
+      case 'logoutConfirm':
+        return (
+          <LogoutConfirmModal
+            isOpen
+            handleOpenChange={(open: unknown) => {
+              if (!open) dispatch(closeGlobalModal());
+            }}
+          />
+        );
+      case 'resetPassword':
+      case 'paymentCard':
+        return null;
+      default: {
+        const _exhaustive: never = m;
+        return _exhaustive;
+      }
     }
-
-    if (globalModal.type === 'signup') {
-      return (
-        <SignUpModal
-          isOpen
-          handleOpenChange={(open) => {
-            if (!open) dispatch(closeGlobalModal());
-          }}
-          redirectTo={globalModal.redirectTo}
-        />
-      );
-    }
-    if (globalModal.type === 'profile') {
-      return (
-        <ProfileModal
-          isOpen
-          handleOpenChange={(open) => {
-            if (!open) dispatch(closeGlobalModal());
-          }}
-        />
-      );
-    }
-
-    if (globalModal.type === 'logoutConfirm') {
-      return (
-        <LogoutConfirmModal
-          isOpen
-          handleOpenChange={(open) => {
-            if (!open) dispatch(closeGlobalModal());
-          }}
-        />
-      );
-    }
-    return null;
   };
 
   const renderUiModalByType = (item: UiModalPayload, index: number) => {
@@ -131,5 +135,4 @@ const ModalRoot: React.FC<ModalRootProps> = ({ globalModal, uiModalStack }) => {
   );
 };
 
-// 
 export default ModalRoot;
