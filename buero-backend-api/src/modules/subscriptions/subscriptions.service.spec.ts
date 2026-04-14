@@ -160,7 +160,7 @@ describe("SubscriptionsService", () => {
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it("throws ConflictException when active trial exists", async () => {
+    it("allows checkout when user has active trial (upgrade to purchase)", async () => {
       prisma.user.findUnique.mockResolvedValue({
         id: userId,
         email: "u@test.com",
@@ -174,10 +174,20 @@ describe("SubscriptionsService", () => {
         accessType: "trial",
         trialEndsAt: new Date(Date.now() + 86400000),
       });
+      stripeService.createCheckoutSession.mockResolvedValue({
+        url: "https://checkout.test/upgrade",
+      });
 
-      await expect(
-        service.createCheckoutSession(userId, dto),
-      ).rejects.toBeInstanceOf(ConflictException);
+      const result = await service.createCheckoutSession(userId, dto);
+
+      expect(result).toEqual({ url: "https://checkout.test/upgrade" });
+      expect(stripeService.createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customerId: "cus_x",
+          priceId: "price_1",
+          metadata: { course_id: courseId, user_id: userId },
+        }),
+      );
     });
 
     it("throws BadRequestException when course has no stripePriceId", async () => {

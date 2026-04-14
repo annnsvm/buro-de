@@ -230,6 +230,7 @@ export class WebhookService {
         update: {
           accessType: UserCourseAccessType.purchase,
           paymentId: payment.id,
+          trialEndsAt: null,
         },
       });
     } catch (e: any) {

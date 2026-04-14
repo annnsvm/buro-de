@@ -63,15 +63,7 @@ export class SubscriptionsService {
           "You already have access to this course via subscription",
         );
       }
-      if (
-        existingAccess.accessType === "trial" &&
-        existingAccess.trialEndsAt &&
-        existingAccess.trialEndsAt > new Date()
-      ) {
-        throw new ConflictException(
-          "You already have trial access to this course",
-        );
-      }
+      // trial (активний або минулий): дозволяємо checkout — після оплати webhook оновить до purchase
     }
 
     const priceId = course.stripePriceId;

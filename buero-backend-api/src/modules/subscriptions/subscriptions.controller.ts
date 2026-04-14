@@ -33,7 +33,7 @@ export class SubscriptionsController {
   @ApiResponse({
     status: 409,
     description:
-      "Вже є доступ до курсу (купівля, підписка або активний trial)",
+      "Вже є повний доступ до курсу (купівля або підписка). Trial не блокує покупку",
   })
   async createCheckoutSession(
     @CurrentUser("id") userId: string,
