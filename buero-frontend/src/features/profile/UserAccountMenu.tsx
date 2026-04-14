@@ -5,9 +5,9 @@ import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
 import { openGlobalModal } from '@/redux/slices/ui/uiSlice';
 import { Icon, Logo } from '@/components/ui';
 import { ICON_NAMES } from '@/helpers/iconNames';
-import type { UserAccountMenuProps } from '@/types/features/profile/UserAccountMenu.types';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '@/helpers/routes';
+import type { UserAccountMenuProps } from '@/types/features/userProfile/UserAccountMenu.types';
 
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -42,8 +42,7 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // const label = user ? displayLabelFromUser(user.email, user.displayName) : 'Account';
-  const label = user ? displayLabelFromUser(user.email, user.name) : 'Account';
+  const label = user ? displayLabelFromUser(user.email, user.displayName ?? user.name) : 'Account';
   const avatarLetter = firstLetterFromLabel(label);
 
   const closeMenu = useCallback(() => setOpen(false), []);
@@ -67,7 +66,19 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
     return () => document.removeEventListener('keydown', onKey);
   }, [open, closeMenu]);
 
-  
+  useEffect(() => {
+    if (!open) return;
+    const { documentElement: html, body } = document;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+    };
+  }, [open]);
+
   const buttonClasses = [
     'inline-flex items-center gap-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] hover:opacity-80',
     isLight ? 'text-[var(--color-white)]' : 'text-[var(--color-text-primary)]',
@@ -81,6 +92,8 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
 
   const itemClasses =
     'flex w-full items-center gap-4 px-6 py-2.5 text-left text-[0.95rem] text-[var(--color-text-primary)] transition-colors hover:bg-[var(--opacity-neutral-darkest-5)]';
+
+  const accentPanelChrome = from === 'mobile' || from === 'courseWorkspace';
 
   return (
     <div ref={rootRef} className={['relative', className].filter(Boolean).join(' ')}>
@@ -103,7 +116,14 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
             </span>
           )}
         </span>
-        <span className="max-w-[140px] text-[var(--color-neutral-lighter)] truncate text-lg sm:max-w-[200px]">{label}</span>
+        <span
+          className={[
+            'max-w-[140px] truncate text-lg sm:max-w-[200px]',
+            isLight ? 'text-[var(--color-white)]' : 'text-[var(--color-neutral-darkest)]',
+          ].join(' ')}
+        >
+          {label}
+        </span>
         <Icon
           name="icon-chevron-down"
           size={24}
@@ -116,7 +136,11 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
       {open ? (
         <>
         <div
-          className="fixed inset-0 z-[119] bg-black/40 backdrop-blur-[2px]"
+          className={
+            from === 'mobile'
+              ? 'fixed inset-0 z-[119] bg-transparent'
+              : 'fixed inset-0 z-[119] bg-black/30 backdrop-blur-[2px]'
+          }
           aria-hidden="true"
           onClick={closeMenu}
         />
@@ -125,8 +149,21 @@ const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
             <Link to={ROUTES.HOME} onClick={closeMenu} className="hover:opacity-80 transition-opacity">
               <Logo width={60} height={24} isLight={false} />
             </Link>
-            <button onClick={closeMenu} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
-              <Icon name="icon-chevrons-double" size={20} className="text-[var(--color-neutral-darkest)]"/>
+            <button
+              type="button"
+              onClick={closeMenu}
+              aria-label="Close menu"
+              className={
+                accentPanelChrome
+                  ? 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-md ring-1 ring-black/10 transition hover:bg-[var(--color-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]'
+                  : 'rounded-full p-1 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--opacity-neutral-darkest-5)] hover:text-[var(--color-text-primary)]'
+              }
+            >
+              <Icon
+                name="icon-chevron-down"
+                size={20}
+                className={accentPanelChrome ? 'text-white' : 'text-[var(--color-neutral-darkest)]'}
+              />
             </button>
           </div>
 

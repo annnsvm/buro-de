@@ -4,25 +4,6 @@ import { fetchCurrentUserThunk, patchUserProfileThunk } from './userThunks';
 
 export type { CurrentUser };
 
-
-export type UserState = {
-  currentUser: {
-    id: string;
-    email: string;
-    role: 'student' | 'teacher';
-    language: string;
-    avatarUrl?: string;
-  } | null;
-  status: 'idle' | 'loading' | 'error';
-  error: string | null;
-};
-
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { CurrentUser } from '@/types/redux/currentUser.types';
-import { fetchCurrentUserThunk, patchUserProfileThunk } from './userThunks';
-
-export type { CurrentUser };
-
 export type UserState = {
   currentUser: CurrentUser | null;
   status: 'idle' | 'loading' | 'error';

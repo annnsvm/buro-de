@@ -5,16 +5,19 @@ import { NavLink, useParams } from 'react-router-dom';
 import { apiInstance } from '@/api/apiInstance';
 import { API_ENDPOINTS } from '@/api/apiEndpoints';
 import { completeCourseMaterial, fetchCourseProgress } from '@/api/progressApi';
+import type { CourseModule } from '@/features/courses-catalog/CourseStructure';
 import { CourseLearningSidebar, MaterialWindow, QuizLessonModal } from '@/features/course-learning';
 import type { QuizResultSummary } from '@/features/course-learning/QuizLessonModal';
 
 import type { LearningLesson } from '@/types/features/learning/LearningPage.types';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
+import CourseWorkspaceHeader from '@/components/layout/Header/CourseWorkspaceHeader';
 import { ROUTES } from '@/helpers/routes';
-import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
+import { selectCurrentUser, selectUserRole } from '@/redux/slices/user/userSelectors';
 import useModal from '@/components/modal/context/useModal';
 import {
   type ApiCourseWithTree,
+  applyTrialModuleScope,
   buildLearningLessonFromMaterial,
   findNextVideoMaterialId,
   flattenMaterialsInOrder,
@@ -39,8 +42,12 @@ const CoursePage: React.FC = () => {
   const [completedMaterialIds, setCompletedMaterialIds] = useState<Set<string>>(() => new Set());
   const [videoCompletionSaving, setVideoCompletionSaving] = useState(false);
   const [videoCompletionError, setVideoCompletionError] = useState<string | null>(null);
+  const [courseOutline, setCourseOutline] = useState<CourseModule[]>([]);
+  const [lockedModuleIds, setLockedModuleIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [courseStructureMobileOpen, setCourseStructureMobileOpen] = useState(false);
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const currentUser = useSelector(selectCurrentUser);
+  const userRole = useSelector(selectUserRole);
 
   const greetingName = useMemo(() => {
     if (!currentUser?.email) return 'Student';
@@ -55,13 +62,31 @@ const CoursePage: React.FC = () => {
     const load = async () => {
       setLoadStatus('loading');
       setLoadError(null);
+      setCourseOutline([]);
+      setLockedModuleIds(new Set());
       try {
         const { data } = await apiInstance.get<ApiCourseWithTree>(
           API_ENDPOINTS.courses.byId(courseId),
         );
         if (cancelled) return;
-        setCourse(data);
-        const flat = flattenMaterialsInOrder(data);
+        const courseForUi = applyTrialModuleScope(data);
+        setCourse(courseForUi);
+
+        const raw = data as ApiCourseWithTree;
+        const trialMulti =
+          raw.my_access?.access_type === 'trial' && (raw.modules?.length ?? 0) > 1;
+        if (trialMulti) {
+          setCourseOutline(mapApiModulesToCourseStructure(raw.modules ?? []));
+          const sorted = [...(raw.modules ?? [])].sort(
+            (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
+          );
+          setLockedModuleIds(new Set(sorted.slice(1).map((m) => m.id)));
+        } else {
+          setCourseOutline(mapApiModulesToCourseStructure(courseForUi.modules ?? []));
+          setLockedModuleIds(new Set());
+        }
+
+        const flat = flattenMaterialsInOrder(courseForUi);
         const firstId = flat[0]?.material.id ?? null;
         const firstMat = flat[0]?.material;
         setQuizPlaceholderResult(null);
@@ -70,6 +95,18 @@ const CoursePage: React.FC = () => {
         setLoadStatus('idle');
       } catch (err: unknown) {
         if (cancelled) return;
+        const status =
+          err && typeof err === 'object' && 'response' in err
+            ? (err as { response?: { status?: number } }).response?.status
+            : undefined;
+        if (status === 403) {
+          setLoadError(
+            'You do not have access to this course. Purchase the course or start a trial from the catalog, then open it from My learning.',
+          );
+          setLoadStatus('error');
+          setCourse(null);
+          return;
+        }
         const message =
           err && typeof err === 'object' && 'response' in err
             ? String(
@@ -112,10 +149,10 @@ const CoursePage: React.FC = () => {
     };
   }, [courseId, course, currentUser?.role]);
 
-  const structureModules = useMemo(
-    () => mapApiModulesToCourseStructure(course?.modules),
-    [course?.modules],
-  );
+  const structureModules = useMemo(() => {
+    if (courseOutline.length > 0) return courseOutline;
+    return mapApiModulesToCourseStructure(course?.modules);
+  }, [courseOutline, course?.modules]);
 
   const flatMaterials = useMemo(() => (course ? flattenMaterialsInOrder(course) : []), [course]);
 
@@ -197,13 +234,14 @@ const CoursePage: React.FC = () => {
 
   const handleSelectLesson = useCallback(
     (payload: { moduleId: string; materialId: string }) => {
+      if (lockedModuleIds.has(payload.moduleId)) return;
       setQuizPlaceholderResult(null);
       setSelectedMaterialId(payload.materialId);
       const mat = flatMaterials.find((r) => r.material.id === payload.materialId)?.material;
       const isQuiz = Boolean(mat && String(mat.type).toLowerCase() === 'quiz');
       setQuizModalOpen(isQuiz);
     },
-    [flatMaterials],
+    [flatMaterials, lockedModuleIds],
   );
 
   const handleNextVideoLesson = useCallback(() => {
@@ -251,8 +289,22 @@ const CoursePage: React.FC = () => {
 
   if (loadStatus === 'error' || !course) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-[var(--color-neutral-white)] px-4">
-        <p className="text-center text-[var(--color-error)]">{loadError ?? 'Course not found.'}</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--color-neutral-white)] px-4">
+        <p className="max-w-md text-center text-[var(--color-error)]">{loadError ?? 'Course not found.'}</p>
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <NavLink
+            to={ROUTES.COURSES}
+            className="rounded-full border border-[var(--opacity-neutral-darkest-15)] px-4 py-2 text-[1.125rem] text-[var(--color-text-primary)] hover:border-[var(--color-primary)]"
+          >
+            All courses
+          </NavLink>
+          <NavLink
+            to={ROUTES.MY_LEARNING}
+            className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-[1.125rem] text-[var(--color-text-on-accent)] hover:bg-[var(--color-primary-hover)]"
+          >
+            My learning
+          </NavLink>
+        </div>
       </div>
     );
   }
@@ -264,23 +316,67 @@ const CoursePage: React.FC = () => {
         onSelectLesson={handleSelectLesson}
         selectedMaterialId={selectedMaterialId}
         completedMaterialIds={completedMaterialIds}
+        lockedModuleIds={lockedModuleIds}
+        checkoutCourseId={lockedModuleIds.size > 0 ? courseId : undefined}
+        courseStructureMobileOpen={courseStructureMobileOpen}
+        onCourseStructureMobileChange={setCourseStructureMobileOpen}
+        hideMobileFloatingStructureButton
       />
 
       <div ref={mainScrollRef} className="min-w-0 flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-10 flex gap-4 w-full justify-center border-b border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-lighter)] px-4 py-4 lg:justify-start lg:px-10">
-          <NavLink
-            to={ROUTES.VOCABULARY.replace(':courseId', courseId)}
-            className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
-          >
-            Vocabulary
-          </NavLink>
-          <NavLink
-            to={ROUTES.COURSES}
-            className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
-          >
-            All courses
-          </NavLink>
-        </div>
+        <CourseWorkspaceHeader
+          desktopStart={
+            <>
+              {userRole === 'student' ? (
+                <NavLink
+                  to={ROUTES.VOCABULARY.replace(':courseId', courseId)}
+                  className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
+                >
+                  Vocabulary
+                </NavLink>
+              ) : null}
+              <NavLink
+                to={ROUTES.COURSES}
+                className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
+              >
+                All courses
+              </NavLink>
+            </>
+          }
+          renderMobileNav={({ className: navClass }) => (
+            <nav className={navClass} aria-label="Course quick links">
+              {userRole === 'student' ? (
+                <NavLink
+                  to={ROUTES.VOCABULARY.replace(':courseId', courseId)}
+                  className={({ isActive }) =>
+                    [
+                      'text-lg font-medium transition-colors',
+                      isActive
+                        ? 'text-[var(--color-primary)]'
+                        : 'text-white/95 hover:text-[var(--color-primary)]',
+                    ].join(' ')
+                  }
+                >
+                  Vocabulary
+                </NavLink>
+              ) : null}
+              <NavLink
+                to={ROUTES.COURSES}
+                className={({ isActive }) =>
+                  [
+                    'text-lg font-medium transition-colors',
+                    isActive
+                      ? 'text-[var(--color-primary)]'
+                      : 'text-white/95 hover:text-[var(--color-primary)]',
+                  ].join(' ')
+                }
+              >
+                All courses
+              </NavLink>
+            </nav>
+          )}
+          onOpenCourseStructure={() => setCourseStructureMobileOpen(true)}
+        />
 
         <section
           className="min-w-0 flex-1 bg-[var(--color-soapstone-base)]"

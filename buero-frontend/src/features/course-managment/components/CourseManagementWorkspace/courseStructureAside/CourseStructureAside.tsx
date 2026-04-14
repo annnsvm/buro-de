@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+
+import { useSlideInSheet } from '@/hooks/useSlideInSheet';
 import Icon from '@/components/ui/Icon';
 import { ICON_NAMES } from '@/helpers/iconNames';
 import CourseModule from '@/components/ui/CourseStructure/CourseModule/CourseModule';
@@ -26,8 +28,16 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
   onRequestPublishCourse,
   showUnpublishCourseButton,
   onRequestUnpublishCourse,
+  courseStructureMobileOpen,
+  onCourseStructureMobileChange,
+  hideMobileFloatingStructureButton = false,
 }) => {
-  const [isOpenMobile, setIsOpenMobile] = useState(false);
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+  const isControlled =
+    courseStructureMobileOpen !== undefined && onCourseStructureMobileChange !== undefined;
+  const isOpenMobile = isControlled ? courseStructureMobileOpen! : internalMobileOpen;
+  const setIsOpenMobile = isControlled ? onCourseStructureMobileChange! : setInternalMobileOpen;
+  const { mounted: sheetMounted, entered: sheetEntered } = useSlideInSheet(isOpenMobile);
   const hasStructure = modules.length > 0;
   const hasCourse = courseId != null;
 
@@ -127,20 +137,22 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
 
   return (
     <>
-      <div className="lg:hidden">
-        <button
-          type="button"
-          onClick={handleOpen}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleOpen()}
-          aria-label="Open course structure"
-          className="fixed top-[4rem] left-4 z-40 rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-overlay)] px-3 py-2 shadow-sm"
-        >
-          <span className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
-            <Icon name={ICON_NAMES.BOOK} size={18} ariaHidden />
-            Course Structure
-          </span>
-        </button>
-      </div>
+      {!hideMobileFloatingStructureButton ? (
+        <div className="lg:hidden">
+          <button
+            type="button"
+            onClick={handleOpen}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleOpen()}
+            aria-label="Open course structure"
+            className="fixed top-[4rem] left-4 z-40 rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-overlay)] px-3 py-2 shadow-sm"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+              <Icon name={ICON_NAMES.BOOK} size={18} ariaHidden />
+              Course Structure
+            </span>
+          </button>
+        </div>
+      ) : null}
 
       <aside className="hidden h-full min-h-0 w-[320px] shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:flex">
         <div className="shrink-0 px-26 py-8">
@@ -159,15 +171,23 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
         </div>
       </aside>
 
-      {isOpenMobile ? (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+      {sheetMounted ? (
+        <div className="pointer-events-none fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
           <button
             type="button"
             aria-label="Close course structure"
             onClick={handleClose}
-            className="absolute inset-0 bg-black/40"
+            className={[
+              'pointer-events-auto absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out',
+              sheetEntered ? 'opacity-100' : 'opacity-0',
+            ].join(' ')}
           />
-          <div className="absolute top-0 left-0 flex h-full max-h-[100vh] w-[320px] max-w-[85vw] flex-col bg-[var(--color-neutral-white)] shadow-2xl">
+          <div
+            className={[
+              'pointer-events-auto absolute top-0 left-0 z-10 flex h-full max-h-[100vh] w-[320px] max-w-[85vw] flex-col bg-[var(--color-neutral-white)] shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform',
+              sheetEntered ? 'translate-x-0' : '-translate-x-full',
+            ].join(' ')}
+          >
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-subtle)] p-4">
               <Link to={ROUTES.HOME} className="px-10 py-4">
                 <Logo isLight={false} width={70} height={28} />
@@ -176,9 +196,9 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
                 type="button"
                 onClick={handleClose}
                 aria-label="Close"
-                className="w-8 shrink-0 rounded-full p-2 hover:bg-[var(--color-surface-section)]"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-md ring-1 ring-black/10 transition hover:bg-[var(--color-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
               >
-                <Icon name={ICON_NAMES.X} size={30} ariaHidden />
+                <Icon name={ICON_NAMES.X} size={22} className="text-white" ariaHidden />
               </button>
             </div>
             <h2 className="shrink-0 px-4 pt-2 text-base font-bold text-[var(--color-text-primary)]">

@@ -4,7 +4,6 @@ import { HeaderNavAuthTrialProps } from '@/types/components/layout/Header.types'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { openGlobalModal } from '@/redux/slices/ui/uiSlice';
 import { selectIsAuthenticated } from '@/redux/slices/auth';
-import { Logout } from '@/features/auth';
 import { UserAccountMenu } from '@/features/profile';
 
 const HeaderAuthBar: React.FC<HeaderNavAuthTrialProps> = ({
@@ -34,9 +33,9 @@ const HeaderAuthBar: React.FC<HeaderNavAuthTrialProps> = ({
 
   return (
     <div className={['flex gap-2', className].join(' ')}>
-    {isAuthenticate ? (
-      <UserAccountMenu isLight={isLight} from={from} className={from ? 'w-full' : ''} />
-    ) : (
+      {isAuthenticate ? (
+        <UserAccountMenu isLight={isLight} from={from} className={from ? 'w-full' : ''} />
+      ) : (
         <>
           <Button
             variant={isLight ? 'primary' : 'outlineDark'}
@@ -47,7 +46,7 @@ const HeaderAuthBar: React.FC<HeaderNavAuthTrialProps> = ({
             Sign in
           </Button>
           <Button
-            variant={isLight ? 'primary' : 'outlineDark'}
+            variant="solid"
             aria-label="Sign up"
             className={from ? 'w-full' : ''}
             onClick={handleOpenSignUp}
@@ -55,10 +54,7 @@ const HeaderAuthBar: React.FC<HeaderNavAuthTrialProps> = ({
             Sign up
           </Button>
         </>
-      )
-    
-    }
-      
+      )}
     </div>
   );
 };

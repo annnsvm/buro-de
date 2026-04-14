@@ -1,13 +1,6 @@
 import React from 'react';
 import { Container, Text, Title } from '@/components/layout';
-import type { CourseManagementRightTab } from '@/types/features/courseManagment/CourseManagementPage.types';
-
-export type CourseEditorHeaderProps = {
-  watchedTitle: string;
-  watchedDescription: string;
-  activeRightTab: CourseManagementRightTab;
-  activeModuleTitle: string;
-};
+import type { CourseEditorHeaderProps } from '@/types/features/courseManagment/CourseEditorComponents.types';
 
 const CourseEditorHeader: React.FC<CourseEditorHeaderProps> = ({
   watchedTitle,
@@ -15,7 +8,7 @@ const CourseEditorHeader: React.FC<CourseEditorHeaderProps> = ({
   activeRightTab,
   activeModuleTitle,
 }) => (
-  <header className="shrink-0 pt-40">
+  <header className="shrink-0 pt-8">
     <Container className="px-4 sm:px-6">
       <div className="flex w-full flex-col items-center gap-2 text-[var(--color-neutral-darkest)]">
         <Title className="text-center text-[2rem] sm:text-[3rem] lg:text-[3.75rem]">

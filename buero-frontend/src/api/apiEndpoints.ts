@@ -15,8 +15,10 @@ export const API_ENDPOINTS = {
     my: '/courses/me',
     byId: (id: string) => `/courses/${id}`,
     create: '/courses',
-    update: (id: string) => `/courses/${id}`, 
-    delete: (id: string) => `/courses/${id}`, 
+    update: (id: string) => `/courses/${id}`,
+    delete: (id: string) => `/courses/${id}`,
+    cover: (id: string) => `/courses/${id}/cover`,
+    startTrial: (id: string) => `/courses/${id}/start-trial`,
   },
   courseMaterials: {
     list: (courseId: string, moduleId: string) => `/courses/${courseId}/modules/${moduleId}/materials`,

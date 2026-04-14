@@ -1,7 +1,7 @@
 type CurrentUser = {
     id: string;
-    name:string;
     email: string;
+    name?: string;
     role: 'student' | 'teacher';
     language: string;
     avatarUrl?: string;

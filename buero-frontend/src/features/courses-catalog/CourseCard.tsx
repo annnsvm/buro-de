@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState, type FC, type MouseEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import Icon from '@/components/ui/Icon';
 import { useModal } from '@/components/modal';
 import { ROUTES, getTeacherCourseEditPath } from '@/helpers/routes';
@@ -7,7 +9,10 @@ import { Button } from '@/components/ui';
 import { apiInstance } from '@/api/apiInstance';
 import { API_ENDPOINTS } from '@/api/apiEndpoints';
 import ConfirmDeleteEntityModal from '@/features/course-managment/components/CourseManagementWorkspace/ConfirmDeleteEntityModal';
-import { buildDeleteCourseDescription } from '@/features/course-managment/helpers/courseEntityDeleteCopy.helpers';
+import { deleteCourseCopy } from '@/features/course-managment/domain/deleteCourseCopy';
+import { requestCourseTrial } from '@/features/courses-catalog/courseTrialFlow';
+import { useAppDispatch } from '@/redux/hooks';
+import { selectIsAuthenticated } from '@/redux/slices/auth';
 import type { CourseCardProps } from '@/types/features/courses-catalog/CourseCard.types';
 export type { CourseCardProps } from '@/types/features/courses-catalog/CourseCard.types';
 
@@ -27,6 +32,7 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
     rating,
     isAdded,
     hasTrial = true,
+    activeTrialCourseId = null,
     isPublished,
     variant = '',
     modulesCount: modulesCountProp,
@@ -51,6 +57,9 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
 
   
   const { pushUiModal } = useModal();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [resolvedModuleCount, setResolvedModuleCount] = useState<number | null>(null);
@@ -77,6 +86,7 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
         rating,
         isAdded,
         hasTrial,
+        activeTrialCourseId,
         isPublished,
       },
     });
@@ -94,6 +104,21 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
   const handleBuyClick = (e: MouseEvent) => {
     e.stopPropagation();
     openCourseInfo();
+  };
+
+  const trialButtonClassName =
+    'flex max-w-[140px] items-center justify-center rounded-full border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm transition-all hover:border-[var(--color-border-strong)] hover:bg-[var(--opacity-neutral-darkest-5)] active:scale-95 sm:px-5 sm:py-2 sm:text-lg';
+
+  const canShowTrialButton =
+    hasTrial &&
+    (activeTrialCourseId == null ||
+      activeTrialCourseId === '' ||
+      activeTrialCourseId === id);
+
+  const handleTrialClick = async (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!canShowTrialButton) return;
+    await requestCourseTrial(id, isAuthenticated, dispatch, navigate);
   };
 
   const showPublicationBadge =
@@ -199,19 +224,70 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
       );
       break;
     }
+
+    case 'catalog': {
+      if (isAdded) {
+        buttonsComponent = (
+          <LinkBtn to={`${ROUTES.COURSES}/${id}`} variant="dark">
+            Continue Learning
+          </LinkBtn>
+        );
+      } else {
+        buttonsComponent = (
+          <>
+            <span className="text-xl font-semibold text-[var(--color-neutral-darkest)] sm:text-2xl">
+              {displayPrice}
+            </span>
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              {canShowTrialButton ? (
+                <button
+                  type="button"
+                  onClick={handleTrialClick}
+                  className={trialButtonClassName}
+                  aria-label={`Start trial for ${title}`}
+                >
+                  Trial
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleBuyClick}
+                className="flex max-w-[140px] items-center justify-center rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-on-accent)] shadow-md transition-all hover:bg-[var(--color-primary-hover)] active:scale-95 sm:px-5 sm:py-2 sm:text-lg"
+              >
+                Buy Course
+              </button>
+            </div>
+          </>
+        );
+      }
+      break;
+    }
+
     default:
       buttonsComponent = (
         <>
           <span className="text-xl font-semibold text-[var(--color-neutral-darkest)] sm:text-2xl">
             {displayPrice}
           </span>
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+            {canShowTrialButton ? (
+              <button
+                type="button"
+                onClick={handleTrialClick}
+                className={trialButtonClassName}
+                aria-label={`Start trial for ${title}`}
+              >
+                Trial
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={handleBuyClick}
-              className="flex max-w-[140px] items-center justify-center  rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-on-accent)] shadow-md transition-all hover:bg-[var(--color-primary-hover)] active:scale-95 sm:px-5 sm:py-2 sm:text-lg"
+              className="flex max-w-[140px] items-center justify-center rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-on-accent)] shadow-md transition-all hover:bg-[var(--color-primary-hover)] active:scale-95 sm:px-5 sm:py-2 sm:text-lg"
             >
               Buy Course
             </button>
+          </div>
         </>
       );
   }
@@ -222,7 +298,7 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
   const deleteDescription =
     moduleCountForModal === null && isLoadingDeleteInfo
       ? 'Loading course details…'
-      : buildDeleteCourseDescription(moduleCountForModal ?? 0);
+      : deleteCourseCopy(moduleCountForModal ?? 0);
 
   const isDeleteSubmitBlocked =
     isDeletingCourse || (moduleCountForModal === null && isLoadingDeleteInfo);

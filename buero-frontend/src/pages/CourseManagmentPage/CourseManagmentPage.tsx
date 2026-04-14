@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import CourseStructureAside from '@/features/course-managment/components/CourseManagementWorkspace/courseStructureAside';
 import { useCourseEditor } from '@/features/course-managment/course-editor/hooks/useCourseEditor';
@@ -9,8 +9,12 @@ import CourseEditorCourseFormTab from '@/features/course-managment/course-editor
 import CourseEditorMaterialPanel from '@/features/course-managment/course-editor/components/CourseEditorMaterialPanel';
 import CourseEditorModals from '@/features/course-managment/course-editor/components/CourseEditorModals';
 
+/**
+ * Сторінка керування курсом для вчителя.
+ */
 const CourseManagmentPage: React.FC = () => {
   const editor = useCourseEditor();
+  const [courseStructureMobileOpen, setCourseStructureMobileOpen] = useState(false);
 
   if (editor.showBootstrapLoading) {
     return <CourseEditorLoadingScreen />;
@@ -18,7 +22,17 @@ const CourseManagmentPage: React.FC = () => {
 
   return (
     <div>
-      <CourseEditorShell aside={<CourseStructureAside {...editor.asideProps} />}>
+      <CourseEditorShell
+        onRequestOpenCourseStructureMobile={() => setCourseStructureMobileOpen(true)}
+        aside={
+          <CourseStructureAside
+            {...editor.asideProps}
+            courseStructureMobileOpen={courseStructureMobileOpen}
+            onCourseStructureMobileChange={setCourseStructureMobileOpen}
+            hideMobileFloatingStructureButton
+          />
+        }
+      >
         <CourseEditorHeader {...editor.headerProps} />
         {editor.activeRightTab === 'course' ? (
           <CourseEditorCourseFormTab {...editor.courseFormProps} />
