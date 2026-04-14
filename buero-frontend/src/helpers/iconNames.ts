@@ -38,6 +38,7 @@ const ICON_NAMES = {
   EDIT: 'icon-edit',
   TRASH: 'icon-trash',
   ADD_PHOTO: 'icon-add-photo',
+  BURO_LOGO: 'icon-buro-logo',
 } as const;
 
 const SPRITE_URL = '/icons/sprite.svg';
