@@ -36,9 +36,9 @@ const SharedLayout = () => {
   const hideFooter = pathname.includes('/teacher/courses/');
 
   return (
-    <div>
+    <div className="flex min-h-screen flex-col">
       {!hideHeader && <Header />}
-      <main>
+      <main className="flex-1">
         <Outlet />
       </main>
       {!hideFooter && <Footer />}
