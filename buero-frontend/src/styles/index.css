@@ -387,19 +387,31 @@
   }
 }
 
-.simplebar-buero-modal .simplebar-scrollbar::before {
+.simplebar-buero-modal .simplebar-scrollbar::before,
+.simplebar-buero-panel .simplebar-scrollbar::before {
   background-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-neutral-white));
   border-radius: 9999px;
 }
 
-.simplebar-buero-modal .simplebar-scrollbar.simplebar-visible::before {
+.simplebar-buero-modal .simplebar-scrollbar.simplebar-visible::before,
+.simplebar-buero-panel .simplebar-scrollbar.simplebar-visible::before {
   opacity: 0.72;
 }
 
+/* Модалка: трек нижче зони кнопки закриття */
 .simplebar-buero-modal .simplebar-track.simplebar-vertical {
   top: 3.5rem;
   bottom: 0.625rem;
   right: 2px;
+  width: 6px;
+  margin-right: 0;
+}
+
+/* Панелі курсу / редактора: повна висота, трек уприть до правого краю колонки */
+.simplebar-buero-panel .simplebar-track.simplebar-vertical {
+  top: 0;
+  bottom: 0;
+  right: 0;
   width: 6px;
   margin-right: 0;
 }

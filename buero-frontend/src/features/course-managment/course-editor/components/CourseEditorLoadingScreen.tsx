@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { Container } from '@/components/layout';
+import { WorkspaceScrollArea } from '@/components/modal';
 
 const ModuleBlockSkeleton = () => (
   <div className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-background)] p-3">
@@ -44,20 +45,23 @@ const CourseEditorLoadingScreen: React.FC = () => (
       <div className="shrink-0 px-26 py-8">
         <div className="h-7 w-[4.5rem] rounded-md buero-skeleton-shimmer" />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col p-4">
+      <div className="flex min-h-0 flex-1 flex-col pl-4 pt-4 pb-4 pr-0">
         <div className="h-5 w-36 rounded-md buero-skeleton-shimmer" />
-        <div className="mt-2 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
-          <ModuleBlockSkeleton />
-          <ModuleBlockSkeleton />
-        </div>
-        <div className="mt-4 shrink-0 space-y-3">
+        <WorkspaceScrollArea className="mt-2 flex min-h-0 flex-1 flex-col">
+          <div className="space-y-3 pr-2">
+            <ModuleBlockSkeleton />
+            <ModuleBlockSkeleton />
+          </div>
+        </WorkspaceScrollArea>
+        <div className="mt-4 shrink-0 space-y-3 pr-4">
           <div className="h-11 w-full rounded-xl buero-skeleton-shimmer" />
           <div className="h-11 w-full rounded-xl buero-skeleton-shimmer" />
         </div>
       </div>
     </aside>
 
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-soapstone-base)]">
+    <WorkspaceScrollArea className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-soapstone-base)]">
+      <div className="flex min-w-0 flex-col bg-[var(--color-soapstone-base)]">
       <div className="sticky top-0 z-20 w-full shrink-0 border-b border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-lighter)]">
         <div className="flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
           <div className="h-4 w-28 rounded-md buero-skeleton-shimmer" />
@@ -102,7 +106,8 @@ const CourseEditorLoadingScreen: React.FC = () => (
           </div>
         </Container>
       </div>
-    </div>
+      </div>
+    </WorkspaceScrollArea>
   </div>
 );
 

@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { Container } from '@/components/layout';
+import { WorkspaceScrollArea } from '@/components/modal';
 
 const SidebarModuleSkeleton = () => (
   <div className="space-y-4 border-b border-[var(--color-border-subtle)] pb-4 last:border-b-0">
@@ -34,15 +35,18 @@ const CoursePageSkeleton: React.FC = () => {
         <div className="shrink-0 px-6 py-6">
           <div className="h-7 w-[4.5rem] rounded-md buero-skeleton-shimmer" />
         </div>
-        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pt-2">
-            <SidebarModuleSkeleton />
-            <SidebarModuleSkeleton />
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col pl-4 pb-4 pr-0">
+          <WorkspaceScrollArea className="flex min-h-0 flex-1 flex-col">
+            <div className="space-y-6 pt-2 pr-2">
+              <SidebarModuleSkeleton />
+              <SidebarModuleSkeleton />
+            </div>
+          </WorkspaceScrollArea>
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1 overflow-y-auto">
+      <WorkspaceScrollArea className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="min-w-0 flex-col">
         <div className="sticky top-0 z-20 w-full border-b border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-lighter)]">
           <div className="flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
             <div className="h-4 w-28 rounded-md buero-skeleton-shimmer" />
@@ -110,7 +114,8 @@ const CoursePageSkeleton: React.FC = () => {
             </Container>
           </div>
         </section>
-      </div>
+        </div>
+      </WorkspaceScrollArea>
     </div>
   );
 };

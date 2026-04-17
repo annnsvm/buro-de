@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type SimpleBarCore from 'simplebar-core';
 import { useSelector } from 'react-redux';
 import { NavLink, useParams } from 'react-router-dom';
 
@@ -17,6 +18,7 @@ import type { QuizResultSummary } from '@/features/course-learning/QuizLessonMod
 import type { LearningLesson } from '@/types/features/learning/LearningPage.types';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
 import CourseWorkspaceHeader from '@/components/layout/Header/CourseWorkspaceHeader';
+import { WorkspaceScrollArea } from '@/components/modal';
 import { ROUTES } from '@/helpers/routes';
 import { selectCurrentUser, selectUserRole } from '@/redux/slices/user/userSelectors';
 import useModal from '@/components/modal/context/useModal';
@@ -50,7 +52,7 @@ const CoursePage: React.FC = () => {
   const [courseOutline, setCourseOutline] = useState<CourseModule[]>([]);
   const [lockedModuleIds, setLockedModuleIds] = useState<ReadonlySet<string>>(() => new Set());
   const [courseStructureMobileOpen, setCourseStructureMobileOpen] = useState(false);
-  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<SimpleBarCore | null>(null);
   const currentUser = useSelector(selectCurrentUser);
   const userRole = useSelector(selectUserRole);
 
@@ -260,11 +262,13 @@ const CoursePage: React.FC = () => {
 
   const isFirstScrollRef = useRef(true);
   useEffect(() => {
+    const el = mainScrollRef.current?.getScrollElement();
+    if (!el) return;
     if (isFirstScrollRef.current) {
-      mainScrollRef.current?.scrollTo({ top: 0 });
+      el.scrollTo({ top: 0 });
       isFirstScrollRef.current = false;
     } else {
-      mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      el.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [selectedMaterialId]);
 
@@ -324,10 +328,11 @@ const CoursePage: React.FC = () => {
         hideMobileFloatingStructureButton
       />
 
-      <div
+      <WorkspaceScrollArea
         ref={mainScrollRef}
-        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-soapstone-base)]"
+        className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-soapstone-base)]"
       >
+        <div className="flex min-h-full min-w-0 flex-col bg-[var(--color-soapstone-base)]">
         <CourseWorkspaceHeader
           desktopStart={
             <>
@@ -448,7 +453,8 @@ const CoursePage: React.FC = () => {
             </div>
           ) : null}
         </section>
-      </div>
+        </div>
+      </WorkspaceScrollArea>
 
       {selectedMaterial && isQuizSelected ? (
         <QuizLessonModal

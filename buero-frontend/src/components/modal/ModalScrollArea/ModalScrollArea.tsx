@@ -5,10 +5,6 @@ import SimpleBar from 'simplebar-react';
 export type ModalScrollAreaProps = {
   children: React.ReactNode;
   className?: string;
-  /**
-   * Горизонтальний відступ у .simplebar-content (як у модалки профілю),
-   * щоб текст не заходив під трек.
-   */
   contentGutter?: boolean;
 };
 

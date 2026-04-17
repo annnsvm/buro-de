@@ -2,7 +2,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BaseDialog, ModalScrollArea } from '@/components/modal';
-import { FormField, Input, Button, Spinner } from '@/components/ui';
+import { FormField, Input, Spinner } from '@/components/ui';
 
 import contactSupportSchema, { type ContactSupportFormValues } from './validation/contactSupportSchema';
 
