@@ -73,29 +73,29 @@ const BaseDialog: React.FC<BaseDialogProps> = ({
     [openCloseAnimation, onExitAnimationComplete, isOpen, notifyExitComplete],
   );
   const defaultContentClass =
-    'fixed top-1/2 left-1/2 z-[1001] w-full max-w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 focus:outline-none lg:p-12';
-  /* Анімація на Content: у Radix data-state лише тут; Presence чекає animationend саме на цьому вузлі. */
+    'fixed top-1/2 left-1/2 z-[10101] w-full max-w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 focus:outline-none lg:p-12';
   const animatedShellClass = [
     'buero-dialog-content-animate',
-    'fixed inset-0 z-[1001] flex origin-center items-center justify-center p-6 focus:outline-none lg:p-12 pointer-events-none',
+    'fixed inset-0 z-[10101] flex origin-center items-center justify-center p-6 focus:outline-none lg:p-12',
   ].join(' ');
   const defaultAnimatedPanelClass =
     'relative w-full max-w-[480px] pointer-events-auto rounded-2xl bg-white p-6 lg:p-12';
   const overlayClass = [
-    'fixed inset-0 z-[1000] bg-black/40',
+    'fixed inset-0 z-[10100] bg-black/40',
     openCloseAnimation ? 'buero-dialog-overlay-animate' : '',
   ]
     .filter(Boolean)
     .join(' ');
   const mergedContentClass = [contentClassName ?? defaultContentClass].filter(Boolean).join(' ');
-  const mergedAnimatedPanelClass = [contentClassName ?? defaultAnimatedPanelClass]
+  const mergedAnimatedPanelClass = [contentClassName ?? defaultAnimatedPanelClass, 'pointer-events-auto']
     .filter(Boolean)
     .join(' ');
   const closeClasses = [
-    'absolute right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-200 sm:right-6 sm:top-6 md:right-8 md:top-8',
+    'absolute right-4 top-4 z-40 flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-200 sm:right-6 sm:top-6 md:right-8 md:top-8',
     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]',
     closeButtonClassName ?? 'text-[var(--color-neutral-darkest)] hover:text-[var(--color-primary)]',
   ].join(' ');
+  const contentPointerEventsStyle = { pointerEvents: 'auto' as const };
   if (openCloseAnimation) {
     return (
       <Root open={isOpen} onOpenChange={handleOpenChange}>
@@ -104,12 +104,13 @@ const BaseDialog: React.FC<BaseDialogProps> = ({
           <Content
             aria-describedby={undefined}
             className={animatedShellClass}
+            style={contentPointerEventsStyle}
             onAnimationEnd={onExitAnimationComplete ? handleContentAnimationEnd : undefined}
           >
             <Title asChild>
               <span className="sr-only">Modal</span>
             </Title>
-            <div className={mergedAnimatedPanelClass}>
+            <div className={mergedAnimatedPanelClass} style={{ pointerEvents: 'auto' }}>
               {children}
               <Close type="button" className={closeClasses} aria-label="Close dialog">
                 <Icon
@@ -129,7 +130,11 @@ const BaseDialog: React.FC<BaseDialogProps> = ({
     <Root open={isOpen} onOpenChange={handleOpenChange}>
       <Portal>
         <Overlay className={overlayClass} />
-        <Content aria-describedby={undefined} className={mergedContentClass}>
+        <Content
+          aria-describedby={undefined}
+          className={mergedContentClass}
+          style={contentPointerEventsStyle}
+        >
           <Title asChild>
             <span className="sr-only">Modal</span>
           </Title>

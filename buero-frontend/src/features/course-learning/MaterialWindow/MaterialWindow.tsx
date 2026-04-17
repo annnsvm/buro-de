@@ -73,7 +73,7 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
       try {
         playerRef.current?.destroy();
       } catch {
-        /* noop */
+        void 0;
       }
       playerRef.current = undefined;
       wrapper.innerHTML = '';
@@ -115,7 +115,7 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
             try {
               player.destroy();
             } catch {
-              /* noop */
+              void 0;
             }
             wrapper.innerHTML = '';
             return;

@@ -163,12 +163,6 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
   };
 
   const safeCategory = course.category || 'Language';
- 
-  // const safeImageUrl = course.imageUrl || '/images/courses/course-1.webp';
-  
-  // const safeLessonsCount = course.lessonsCount || 12;
-  // const safeDurationHours = course.durationHours || 10;
-  
 
   const cleanPrice =
     parseFloat(
@@ -224,7 +218,8 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
       closeButtonClassName="text-white hover:text-[var(--color-primary)]"
     >
       <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-        <ModalScrollArea ref={scrollAreaRef} className="rounded-t-xl sm:rounded-t-2xl">
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ModalScrollArea ref={scrollAreaRef} className="h-full rounded-t-xl sm:rounded-t-2xl">
           <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-xl sm:rounded-t-2xl">
             <img src={course.imageUrl} alt={course.title} className="h-full w-full object-cover" />
             <div className="absolute left-4 top-4 flex items-center gap-2 sm:left-6 sm:top-6 md:left-8 md:top-7 lg:left-10 lg:top-8">
@@ -322,9 +317,10 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
             </div>
           </div>
         </ModalScrollArea>
+        </div>
 
         <div
-          className="shrink-0 border-t border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-surface-overlay)] px-5 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] sm:px-7 sm:py-5 md:px-10 lg:px-12 xl:px-14"
+          className="relative z-30 shrink-0 border-t border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-surface-overlay)] px-5 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] sm:px-7 sm:py-5 md:px-10 lg:px-12 xl:px-14 pointer-events-auto"
           role="region"
           aria-label="Course price and actions"
         >

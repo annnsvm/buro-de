@@ -15,7 +15,6 @@ export type QuizResultSummary = {
 export type QuizLessonModalProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  /** UUID матеріалу квізу — для POST /quiz/attempts */
   courseMaterialId: string;
   greetingName: string;
   quizMaterialTitle: string;
@@ -146,7 +145,7 @@ const QuizLessonModalBody: React.FC<QuizLessonModalBodyProps> = ({
 
   return (
     <>
-      <div className="pr-8 text-center">
+      <div className="text-center">
         <h2 className="text-2xl font-bold text-[var(--color-text-primary)] md:text-3xl">
           Hi, {greetingName}!
         </h2>
@@ -189,7 +188,7 @@ const QuizLessonModalBody: React.FC<QuizLessonModalBodyProps> = ({
                     aria-label="Previous question"
                     disabled={safeIndex <= 0}
                     onClick={() => setQuestionIndex((i) => Math.max(0, i - 1))}
-                    className="absolute top-1/2 left-0 z-10 -translate-x-1 -translate-y-1/2 rounded-full p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-neutral-white)] disabled:cursor-not-allowed disabled:opacity-30 sm:-translate-x-2"
+                    className="absolute top-1/2 left-2 z-10 -translate-y-1/2 rounded-full p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-neutral-white)] disabled:cursor-not-allowed disabled:opacity-30 sm:left-3"
                   >
                     <ChevronLeft className="h-8 w-8" strokeWidth={1.5} />
                   </button>
@@ -198,7 +197,7 @@ const QuizLessonModalBody: React.FC<QuizLessonModalBodyProps> = ({
                     aria-label="Next question"
                     disabled={safeIndex >= total - 1}
                     onClick={() => setQuestionIndex((i) => Math.min(total - 1, i + 1))}
-                    className="absolute top-1/2 right-0 z-10 -translate-y-1/2 translate-x-1 rounded-full p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-neutral-white)] disabled:cursor-not-allowed disabled:opacity-30 sm:translate-x-2"
+                    className="absolute top-1/2 right-2 z-10 -translate-y-1/2 rounded-full p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-neutral-white)] disabled:cursor-not-allowed disabled:opacity-30 sm:right-3"
                   >
                     <ChevronRight className="h-8 w-8" strokeWidth={1.5} />
                   </button>
@@ -328,9 +327,9 @@ const QuizLessonModal: React.FC<QuizLessonModalProps> = ({
       isOpen={isOpen}
       handleOpenChange={onOpenChange}
       openCloseAnimation
-      contentClassName="relative z-[1] flex max-h-[calc(100vh-48px-24px)] w-full max-w-[min(96vw,720px)] flex-col overflow-hidden rounded-[12px] bg-[var(--color-neutral-white)] pt-6 pr-0 pb-6 pl-6 shadow-xl focus:outline-none sm:pl-8 md:pb-10 md:pl-10 lg:pr-0"
+      contentClassName="relative z-[1] flex max-h-[calc(100vh-48px-24px)] w-full max-w-[min(96vw,720px)] flex-col overflow-hidden rounded-[12px] bg-[var(--color-neutral-white)] px-6 pt-6 pb-6 shadow-xl focus:outline-none sm:px-8 md:px-10 md:pb-10"
     >
-      <ModalScrollArea contentGutter>
+      <ModalScrollArea>
         <div className="flex flex-col">
           <QuizLessonModalBody
             key={bodyKey}

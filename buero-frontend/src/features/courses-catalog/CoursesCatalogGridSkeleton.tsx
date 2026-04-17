@@ -4,11 +4,8 @@ import { CreateCourseCard } from '@/features/course-managment';
 const PLACEHOLDER_KEYS = ['s0', 's1', 's2', 's3', 's4', 's5'] as const;
 
 export type CoursesCatalogGridSkeletonProps = {
-  /** Показувати слот створення курсу (як у `CoursesCatalogList` для вчителя). */
   withTeacherCreateSlot?: boolean;
-  /** Додаткові класи для `<section>` (наприклад `bg-white` для My Learning). */
   sectionClassName?: string;
-  /** Текст для screen readers. */
   loadingLabel?: string;
 };
 

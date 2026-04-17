@@ -330,9 +330,9 @@ const CoursePage: React.FC = () => {
 
       <WorkspaceScrollArea
         ref={mainScrollRef}
-        className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-soapstone-base)]"
+        className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-soapstone-base)]"
       >
-        <div className="flex min-h-full min-w-0 flex-col bg-[var(--color-soapstone-base)]">
+        <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col bg-[var(--color-soapstone-base)]">
         <CourseWorkspaceHeader
           desktopStart={
             <>

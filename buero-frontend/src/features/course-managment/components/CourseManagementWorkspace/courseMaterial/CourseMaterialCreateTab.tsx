@@ -48,7 +48,6 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
     initialState.createdMaterialId,
   );
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(initialState.savedSnapshot);
-  /** Остання успішна операція з бекендом уцій вкладці (для підпису кнопки після save). */
   const [lastCommitKind, setLastCommitKind] = useState<'create' | 'update' | null>(null);
   const [isMutating, setIsMutating] = useState(false);
 

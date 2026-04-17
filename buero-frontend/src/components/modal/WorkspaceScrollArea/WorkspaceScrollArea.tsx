@@ -7,10 +7,6 @@ export type WorkspaceScrollAreaProps = {
   className?: string;
 };
 
-/**
- * SimpleBar для робочих панелей (курс, редактор): той самий стиль «пальця», що й у модалках,
- * трек на всю висоту без відступу під кнопку закриття.
- */
 const WorkspaceScrollArea = forwardRef<SimpleBarCore | null, WorkspaceScrollAreaProps>(
   ({ children, className = '' }, ref) => {
     const rootClass = ['simplebar-buero-panel', 'min-h-0 min-w-0', className].filter(Boolean).join(' ');

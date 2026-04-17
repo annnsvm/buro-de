@@ -98,7 +98,7 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
             }
           }
         } catch {
-          // ignore malformed session payload, fallback to regular redirect
+          void 0;
         }
       }
 

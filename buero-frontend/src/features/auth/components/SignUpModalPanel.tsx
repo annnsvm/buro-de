@@ -87,7 +87,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({ redirectTo, onDismi
             }
           }
         } catch {
-          // ignore malformed session payload, fallback to regular redirect
+          void 0;
         }
       }
 

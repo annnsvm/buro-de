@@ -61,7 +61,6 @@ export const useCourseEditorState = () => {
   const [isCreatingCourse, setIsCreatingCourse] = useState(false);
   const [isUpdatingCourse, setIsUpdatingCourse] = useState(false);
   const [createCourseError, setCreateCourseError] = useState<string | null>(null);
-  /** Останній успішний save курсу в редакторі (підпис кнопки, коли форма чиста). */
   const [lastCourseCommitKind, setLastCourseCommitKind] = useState<'create' | 'update' | null>(
     null,
   );

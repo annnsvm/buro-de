@@ -287,15 +287,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           </FormField>
 
           {user.role === 'teacher' ? (
-            // <>
-              <FormField name="profile-bio" label="Bio" error={errors.bio?.message}>
-                <textarea
-                  id="profile-bio"
-                  rows={3}
-                  className={`${inputSurfaceClass} min-h-[88px] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--opacity-neutral-darkest-15)] transition-shadow`}
-                  {...register('bio')}
-                />
-              </FormField>
+            <FormField name="profile-bio" label="Bio" error={errors.bio?.message}>
+              <textarea
+                id="profile-bio"
+                rows={3}
+                className={`${inputSurfaceClass} min-h-[88px] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--opacity-neutral-darkest-15)] transition-shadow`}
+                {...register('bio')}
+              />
+            </FormField>
           ) : null}
 
           {(formError || userError) ? (
