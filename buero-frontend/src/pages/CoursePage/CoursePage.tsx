@@ -12,6 +12,7 @@ import type { QuizResultSummary } from '@/features/course-learning/QuizLessonMod
 import type { LearningLesson } from '@/types/features/learning/LearningPage.types';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
 import CourseWorkspaceHeader from '@/components/layout/Header/CourseWorkspaceHeader';
+import { PageContentLoader } from '@/components/ui';
 import { ROUTES } from '@/helpers/routes';
 import { selectCurrentUser, selectUserRole } from '@/redux/slices/user/userSelectors';
 import useModal from '@/components/modal/context/useModal';
@@ -281,9 +282,10 @@ const CoursePage: React.FC = () => {
 
   if (loadStatus === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--color-neutral-white)]">
-        <p className="text-[var(--color-text-secondary)]">Loading course…</p>
-      </div>
+      <PageContentLoader
+        title="Loading course"
+        message="Please wait while we prepare your lessons."
+      />
     );
   }
 

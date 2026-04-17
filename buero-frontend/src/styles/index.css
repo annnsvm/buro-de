@@ -339,4 +339,32 @@
     grid-auto-rows: min-content;
   }
 
+  /** Shimmer для skeleton-карток каталогу (градієнт «пробігає» по площині). */
+  .buero-skeleton-shimmer {
+    background-image: linear-gradient(
+      100deg,
+      var(--color-neutral-lighter) 0%,
+      var(--color-neutral-lightest) 42%,
+      var(--color-neutral-lighter) 78%
+    );
+    background-size: 220% 100%;
+    background-position: 100% 0;
+    animation: buero-skeleton-shimmer-move 1.35s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .buero-skeleton-shimmer {
+      animation: none;
+      background-position: 0 0;
+    }
+  }
+}
+
+@keyframes buero-skeleton-shimmer-move {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
