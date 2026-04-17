@@ -38,7 +38,7 @@ const SharedLayout = () => {
   return (
     <div className="flex min-h-screen flex-col">
       {!hideHeader && <Header />}
-      <main className="flex-1">
+      <main className="flex min-h-0 flex-1 flex-col">
         <Outlet />
       </main>
       {!hideFooter && <Footer />}
