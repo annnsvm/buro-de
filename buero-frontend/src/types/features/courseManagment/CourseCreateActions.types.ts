@@ -6,6 +6,8 @@ export type CourseCreateActionsProps = {
   isCreating: boolean;
   canUpdate: boolean;
   isUpdating: boolean;
+  /** Після успішного збереження в режимі edit (форма чиста). */
+  lastCommitKind: 'create' | 'update' | null;
   error: string | null;
   onCreateCourse: () => void;
   onUpdateCourse: () => void;
