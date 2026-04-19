@@ -214,6 +214,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             <Input
               id="profile-name"
               placeholder="Current Name"
+              autoComplete="name"
               className={inputSurfaceClass}
               {...register('name')}
             />
@@ -223,6 +224,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             <Input
               id="profile-email"
               value={user.email}
+              autoComplete="email"
               readOnly
               aria-readonly="true"
               className={`${inputSurfaceClass} cursor-not-allowed opacity-80`}
@@ -235,6 +237,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 id="profile-current-password"
                 type={showCurrentPwd ? "text" : "password"}
                 placeholder="**********"
+                autoComplete="current-password"
                 className={`${inputSurfaceClass} w-full pr-12`}
                 {...register('currentPassword')}
               />
@@ -254,6 +257,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 id="profile-new-password"
                 type={showNewPwd ? "text" : "password"}
                 placeholder="**********"
+                autoComplete="new-password"
                 className={`${inputSurfaceClass} w-full pr-12`}
                 {...register('newPassword')}
               />
@@ -273,6 +277,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 id="profile-retype-password"
                 type={showRetypePwd ? "text" : "password"}
                 placeholder="**********"
+                autoComplete="new-password"
                 className={`${inputSurfaceClass} w-full pr-12`}
                 {...register('retypePassword')}
               />
