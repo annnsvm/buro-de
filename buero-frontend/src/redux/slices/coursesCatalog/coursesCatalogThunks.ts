@@ -5,59 +5,12 @@ import { mapApiCourseToCourseCard } from '@/api/myLearningCourses';
 import type { CatalogCourse } from '@/types/api/myLearningCourses.types';
 import type { CourseCardProps } from '@/types/features/courses-catalog/CourseCard.types';
 import { getActiveTrialCourseIdFromMyCourses } from '@/features/courses-catalog/activeTrialFromMyCourses';
-import type { CoursesCatalogFilters } from './coursesCatalogSlice';
+import { buildCoursesCatalogQueryString } from './coursesCatalogQueryString';
 
 type FetchCoursesResponse = {
   items: CourseCardProps[];
   totalCount: number;
   activeTrialCourseId: string | null;
-};
-
-const catalogFilterTabToApiQuery = (
-  tabId: string,
-): { tags?: string; level?: string } => {
-  switch (tabId) {
-    case 'language':
-      return { tags: 'Language' };
-    case 'integration':
-      return { tags: 'Integration' };
-    case 'sociocultural':
-      return { tags: 'Culture & Life' };
-    case 'beginner':
-      return { tags: 'Beginner' };
-    case 'middle':
-    case "B1":
-      return { level: 'B1' };
-    case 'advanced':
-    case "B2":
-      return { level: 'B2' };
-    default:
-      return { tags: tabId };
-  }
-};
-
-const buildQueryString = (
-  filters: CoursesCatalogFilters,
-  isTeacherManage: boolean,
-) => {
-  const params = new URLSearchParams();
-
-  if (filters.search?.trim()) params.set('search', filters.search.trim());
-  const tab = filters.tags?.trim();
-  if (tab) {
-    const { tags, level } = catalogFilterTabToApiQuery(tab);
-    if (tags) params.set('tags', tags);
-    if (level) params.set('level', level);
-  }
-  if (
-    isTeacherManage &&
-    filters.publicationStatus &&
-    filters.publicationStatus !== 'all'
-  ) {
-    params.set('publication_status', filters.publicationStatus);
-  }
-
-  return params.toString();
 };
 
 export const fetchCoursesCatalogThunk = createAsyncThunk<
@@ -71,7 +24,7 @@ export const fetchCoursesCatalogThunk = createAsyncThunk<
   const isTeacherManage = currentUserRole === 'teacher';
   const endpoint = isTeacherManage ? API_ENDPOINTS.courses.manage : API_ENDPOINTS.courses.list;
 
-  const query = buildQueryString(filters, isTeacherManage);
+  const query = buildCoursesCatalogQueryString(filters, isTeacherManage);
 
   try {
     const res = await apiInstance.get<unknown[]>(
