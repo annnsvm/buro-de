@@ -26,7 +26,7 @@ const CoursesCatalogList = ({ courses }: CoursesGridProps) => {
   return (
     <Section className="pb-28">
       <Container className="md:px-20">
-        <ul className="flex flex-wrap justify-start gap-x-4 gap-y-8 sm:gap-x-8 sm:gap-y-16">
+        <ul className="flex flex-wrap justify-center gap-x-4 gap-y-8 sm:gap-x-8 sm:gap-y-16">
           {role === 'teacher' && <CreateCourseCard />}
           {courses?.length > 0 && courses.map((course) => (
             <li key={course.id} className="w-[min(100%,405px)] shrink-0">
