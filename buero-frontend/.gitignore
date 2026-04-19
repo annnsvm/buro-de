@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Tests
+coverage
+playwright-report
+test-results
