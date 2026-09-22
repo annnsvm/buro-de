@@ -11,10 +11,9 @@ import {
   CourseLearningSidebar,
   CoursePageSkeleton,
   MaterialWindow,
-  QuizLessonModal,
 } from '@/features/course-learning';
 import LessonAttachments from '@/features/course-learning/MaterialWindow/LessonAttachments';
-import type { QuizResultSummary } from '@/features/course-learning/QuizLessonModal';
+import QuizPanel, { type QuizResultSummary } from '@/features/course-learning/QuizPanel/QuizPanel';
 
 import type { LearningLesson } from '@/types/features/learning/LearningPage.types';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
@@ -34,7 +33,6 @@ import {
   mapApiModulesToCourseStructure,
   scopeToUnlockedModules,
   parseDurationLabelToSeconds,
-  parseQuizMaterialContent,
   mapApiAttachments,
 } from './coursePageMappers';
 
@@ -47,8 +45,7 @@ const CoursePage: React.FC = () => {
   const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'error'>('loading');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
-  const [quizModalOpen, setQuizModalOpen] = useState(false);
-  const [quizPlaceholderResult, setQuizPlaceholderResult] = useState<QuizResultSummary | null>(
+  const [quizResult, setQuizResult] = useState<QuizResultSummary | null>(
     null,
   );
   const [completedMaterialIds, setCompletedMaterialIds] = useState<Set<string>>(() => new Set());
@@ -61,11 +58,6 @@ const CoursePage: React.FC = () => {
   const currentUser = useSelector(selectCurrentUser);
   const userRole = useSelector(selectUserRole);
 
-  const greetingName = useMemo(() => {
-    if (!currentUser?.email) return t('coursePage.student');
-    const local = currentUser.email.split('@')[0];
-    return local.charAt(0).toUpperCase() + local.slice(1);
-  }, [currentUser, t]);
 
   useEffect(() => {
     if (!courseId) return;
@@ -106,9 +98,8 @@ const CoursePage: React.FC = () => {
         const flat = flattenMaterialsInOrder(courseForUi);
         const firstId = flat[0]?.material.id ?? null;
         const firstMat = flat[0]?.material;
-        setQuizPlaceholderResult(null);
+        setQuizResult(null);
         setSelectedMaterialId(firstId);
-        setQuizModalOpen(Boolean(firstMat && String(firstMat.type).toLowerCase() === 'quiz'));
         setCompletedMaterialIds(
           new Set(progress?.completed_materials.map((row) => row.course_material_id) ?? []),
         );
@@ -167,10 +158,6 @@ const CoursePage: React.FC = () => {
     selectedMaterial && String(selectedMaterial.type).toLowerCase() === 'quiz',
   );
 
-  const parsedQuizQuestions = useMemo(
-    () => (selectedMaterial ? parseQuizMaterialContent(selectedMaterial) : []),
-    [selectedMaterial],
-  );
 
   const nextVideoMaterialId = useMemo(
     () => findNextVideoMaterialId(flatMaterials, selectedMaterialId),
@@ -234,21 +221,19 @@ const CoursePage: React.FC = () => {
   const handleSelectLesson = useCallback(
     (payload: { moduleId: string; materialId: string }) => {
       if (lockedModuleIds.has(payload.moduleId)) return;
-      setQuizPlaceholderResult(null);
+      setQuizResult(null);
       setSelectedMaterialId(payload.materialId);
       const mat = flatMaterials.find((r) => r.material.id === payload.materialId)?.material;
       const isQuiz = Boolean(mat && String(mat.type).toLowerCase() === 'quiz');
-      setQuizModalOpen(isQuiz);
     },
     [flatMaterials, lockedModuleIds],
   );
 
   const handleNextVideoLesson = useCallback(() => {
     if (!nextVideoMaterialId) return;
-    setQuizPlaceholderResult(null);
+    setQuizResult(null);
     const mat = flatMaterials.find((r) => r.material.id === nextVideoMaterialId)?.material;
     const isQuiz = Boolean(mat && String(mat.type).toLowerCase() === 'quiz');
-    setQuizModalOpen(isQuiz);
     setSelectedMaterialId(nextVideoMaterialId);
   }, [nextVideoMaterialId, flatMaterials]);
 
@@ -434,70 +419,21 @@ const CoursePage: React.FC = () => {
               onAddWord={handleAddWord}
             />
           ) : null}
-          {flatMaterials.length > 0 && isQuizSelected ? (
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-6 py-12 text-center">
-              <p className="max-w-md text-lg font-medium text-[var(--color-text-primary)]">
-                {selectedMaterial?.title ?? t('coursePage.quiz')}
-              </p>
-              {quizPlaceholderResult ? (
-                <div
-                  className="max-w-md rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-6 py-5 text-center"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                    {t('coursePage.quizLastResult')}
-                  </p>
-                  <p className="mt-2 text-2xl font-bold text-[var(--color-primary)] tabular-nums">
-                    {quizPlaceholderResult.percent}%
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                    {t('coursePage.quizScoreSummary', {
-                      correct: quizPlaceholderResult.correct,
-                      total: quizPlaceholderResult.total,
-                    })}
-                  </p>
-                </div>
-              ) : (
-                <p className="max-w-md text-sm text-[var(--color-text-secondary)]">
-                  {t('coursePage.openQuizHint')}
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={() => setQuizModalOpen(true)}
-                className="rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
-              >
-                {t('coursePage.openQuiz')}
-              </button>
-              <div className="w-full max-w-md">
-                <LessonAttachments
-                  attachments={mapApiAttachments(selectedMaterial?.attachments)}
-                  courseId={courseId}
-                  moduleId={selectedModuleId ?? undefined}
-                  materialId={selectedMaterial?.id}
-                />
-              </div>
-            </div>
+          {flatMaterials.length > 0 && isQuizSelected && selectedMaterial ? (
+            <QuizPanel
+              key={selectedMaterial.id}
+              courseMaterialId={selectedMaterial.id}
+              courseId={courseId}
+              moduleId={selectedModuleId ?? undefined}
+              quizMaterialTitle={selectedMaterial.title || t('coursePage.quiz')}
+              attachments={mapApiAttachments(selectedMaterial.attachments)}
+              onQuizResult={setQuizResult}
+            />
           ) : null}
         </section>
         </div>
       </WorkspaceScrollArea>
 
-      {selectedMaterial && isQuizSelected ? (
-        <QuizLessonModal
-          isOpen={quizModalOpen}
-          onOpenChange={setQuizModalOpen}
-          courseMaterialId={selectedMaterial.id}
-          greetingName={greetingName}
-          quizMaterialTitle={selectedMaterial.title || t('coursePage.quiz')}
-          questions={parsedQuizQuestions}
-          attachments={mapApiAttachments(selectedMaterial.attachments)}
-          courseId={courseId}
-          moduleId={selectedModuleId ?? undefined}
-          onQuizResult={setQuizPlaceholderResult}
-        />
-      ) : null}
     </div>
   );
 };

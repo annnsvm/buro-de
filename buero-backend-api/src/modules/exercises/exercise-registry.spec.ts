@@ -1,5 +1,6 @@
 import { QuestionType } from "src/generated/prisma/enums";
 import {
+  describeAcceptedAnswers,
   gradeAnswer,
   getExerciseDefinition,
   supportedQuestionTypes,
@@ -50,6 +51,19 @@ describe("single choice", () => {
     expect(gradeAnswer(q, "").correct).toBe(false);
   });
 
+  /** The stored key is an option id; a student must be shown the option's words. */
+  it("describes the answer key as the option text", () => {
+    expect(describeAcceptedAnswers(q)).toEqual(["Ich"]);
+  });
+
+  it("falls back to the id when an option was removed", () => {
+    expect(
+      describeAcceptedAnswers(
+        question({ payload: { options }, acceptedAnswers: ["gone"] }),
+      ),
+    ).toEqual(["gone"]);
+  });
+
   it("complains when the answer key points at a missing option", () => {
     expect(
       validateQuestion(question({ payload: { options }, acceptedAnswers: ["zz"] })),
@@ -73,6 +87,10 @@ describe("multi choice", () => {
   it("accepts the whole set regardless of the order it arrives in", () => {
     expect(gradeAnswer(q, ["c", "a"]).correct).toBe(true);
     expect(gradeAnswer(q, ["a", "c"]).correct).toBe(true);
+  });
+
+  it("describes a multi answer as the option texts, not a joined id list", () => {
+    expect(describeAcceptedAnswers(q)).toEqual(["Du, Er"]);
   });
 
   it("rejects a partial answer", () => {
@@ -117,6 +135,10 @@ describe("written answers", () => {
     expect(
       gradeAnswer(text, "Ich mache eine Pause weil ich müde bin."),
     ).toEqual({ correct: true, quality: "typo" });
+  });
+
+  it("describes written answers as they were authored", () => {
+    expect(describeAcceptedAnswers(gap)).toEqual(["bin"]);
   });
 
   it("complains when no answer was authored", () => {

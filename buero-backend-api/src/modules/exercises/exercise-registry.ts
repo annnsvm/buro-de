@@ -53,6 +53,14 @@ export const gradeAnswer = (
   return definition.grade(question, answer);
 };
 
+/** The answer key in readable form, safe to show once a question has been answered. */
+export const describeAcceptedAnswers = (
+  question: GradableQuestion,
+): string[] => {
+  const definition = REGISTRY.get(question.type);
+  return definition ? definition.describeAcceptedAnswers(question) : [];
+};
+
 /** Problems that make a question unanswerable, empty when the content is usable. */
 export const validateQuestion = (question: GradableQuestion): string[] => {
   const definition = REGISTRY.get(question.type);

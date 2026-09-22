@@ -28,6 +28,7 @@ export const fillBlankDefinition: ExerciseDefinition = {
   type: QuestionType.fill_blank,
   validatePayload: validateWritten,
   grade: gradeWritten,
+  describeAcceptedAnswers: (question) => question.acceptedAnswers,
 };
 
 /** A whole sentence — the TEXT exercises. */
@@ -35,4 +36,5 @@ export const textInputDefinition: ExerciseDefinition = {
   type: QuestionType.text_input,
   validatePayload: validateWritten,
   grade: gradeWritten,
+  describeAcceptedAnswers: (question) => question.acceptedAnswers,
 };

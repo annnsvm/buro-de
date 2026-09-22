@@ -24,6 +24,7 @@ import { Role } from "src/generated/prisma/enums";
 import type { UserWithoutPassword } from "../user/types/user-response.type";
 import { QuizService } from "./quiz.service";
 import { CreateAttemptDto } from "./dto/create-attempt.dto";
+import { AnswerQuestionDto } from "./dto/answer-question.dto";
 import { SubmitQuizDto } from "./dto/submit-quiz.dto";
 import { AttemptResponseDto } from "./dto/attempt-response.dto";
 import { SubmitQuizResponseDto } from "./dto/submit-quiz-response.dto";
@@ -35,6 +36,43 @@ import { SubmitQuizResponseDto } from "./dto/submit-quiz-response.dto";
 @ApiBearerAuth("access_token")
 export class QuizController {
   constructor(private readonly quizService: QuizService) {}
+
+  @Get("materials/:materialId/questions")
+  @ApiOperation({
+    summary: "Питання квізу",
+    description:
+      "Питання матеріалу в тому вигляді, в якому їх бачить студент: id, тип, текст, варіанти або слова для впорядкування. " +
+      "Правильні відповіді та пояснення не повертаються — пояснення приходить у відповіді на submit, після того як студент відповів.",
+  })
+  @ApiParam({ name: "materialId", description: "UUID матеріалу типу quiz" })
+  @ApiResponse({ status: 200, description: "Масив питань" })
+  @ApiResponse({ status: 400, description: "Матеріал не є квізом" })
+  @ApiResponse({ status: 403, description: "Немає доступу до модуля" })
+  @ApiResponse({ status: 404, description: "Матеріал не знайдено" })
+  getQuestions(
+    @CurrentUser() user: UserWithoutPassword,
+    @Param("materialId") materialId: string,
+  ) {
+    return this.quizService.getQuestions(materialId, user.id, user.role);
+  }
+
+  @Get("materials/:materialId/last-attempt")
+  @ApiOperation({
+    summary: "Остання завершена спроба",
+    description:
+      "Результат останньої завершеної спроби цього квізу разом із відповідями студента, поясненнями та правильними відповідями. " +
+      "null, якщо студент ще не проходив квіз. Дозволяє повернутись до квізу і побачити свій результат, а не порожню форму.",
+  })
+  @ApiParam({ name: "materialId", description: "UUID матеріалу типу quiz" })
+  @ApiResponse({ status: 200, description: "Остання спроба або null" })
+  @ApiResponse({ status: 403, description: "Немає доступу до модуля" })
+  @ApiResponse({ status: 404, description: "Матеріал не знайдено" })
+  getLastAttempt(
+    @CurrentUser() user: UserWithoutPassword,
+    @Param("materialId") materialId: string,
+  ) {
+    return this.quizService.getLastAttempt(materialId, user.id, user.role);
+  }
 
   @Post("attempts")
   @HttpCode(HttpStatus.CREATED)
@@ -81,6 +119,27 @@ export class QuizController {
     @Param("attemptId") attemptId: string
   ) {
     return this.quizService.getAttempt(attemptId, userId);
+  }
+
+  @Post("attempts/:attemptId/answers")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Відповісти на одне питання",
+    description:
+      "Перевіряє одну відповідь одразу після того, як студент її дав, і повертає результат разом із поясненням та правильною відповіддю саме на це питання. " +
+      "На кожне питання можна відповісти лише раз за спробу. Коли відповіді дано на всі питання, спроба завершується сама і у відповіді приходить summary.",
+  })
+  @ApiParam({ name: "attemptId", description: "UUID спроби" })
+  @ApiBody({ type: AnswerQuestionDto })
+  @ApiResponse({ status: 200, description: "Відповідь перевірено" })
+  @ApiResponse({ status: 400, description: "Спробу завершено або на питання вже відповіли" })
+  @ApiResponse({ status: 404, description: "Спробу або питання не знайдено" })
+  answerQuestion(
+    @CurrentUser("id") userId: string,
+    @Param("attemptId") attemptId: string,
+    @Body() body: AnswerQuestionDto,
+  ) {
+    return this.quizService.answerQuestion(attemptId, userId, body);
   }
 
   @Post("attempts/:attemptId/submit")
