@@ -45,6 +45,45 @@ DATABASE_URL_TEST="postgresql://buero:buero@localhost:5433/buero_test?schema=pub
 E2E-тести відмовляться запускатися, якщо `DATABASE_URL_TEST` не задано або дорівнює
 `DATABASE_URL` — перевірка у `test/setup-e2e-env.ts`.
 
+## Версія PostgreSQL
+
+Локальний контейнер і CI використовують **ту саму мажорну версію, що й Render** —
+зараз 18. Це не косметика: `pg_dump` відмовляється читати сервер новішої версії, ніж
+він сам, а поведінка бази між мажорними версіями відрізняється.
+
+Перевірити версію на Render:
+
+```bash
+docker exec -i buero-postgres psql "<URL Render без ?schema=public>" -tAc "SHOW server_version;"
+```
+
+Якщо Render оновить PostgreSQL — змініть тег образу в `docker-compose.yml` і
+`.github/workflows/ci.yml`, потім `npm run db:reset`.
+
+## Копіювання даних з Render у локальну базу
+
+Читає з Render, пише лише локально.
+
+```bash
+# 1. URL для libpq: прибрати ?schema=public (це параметр Prisma, psql його не розуміє)
+PG_URL=$(grep '^# RENDER_DATABASE_URL' buero-backend-api/.env \
+  | sed 's/^# RENDER_DATABASE_URL=//; s/"//g' \
+  | python3 -c "import sys;from urllib.parse import *;p=urlsplit(sys.stdin.read().strip());print(urlunsplit((p.scheme,p.netloc,p.path,urlencode([(k,v) for k,v in parse_qsl(p.query) if k!='schema']),p.fragment)))")
+
+# 2. Дамп
+docker exec -i buero-postgres pg_dump "$PG_URL" --no-owner --no-privileges > /tmp/buero-dump.sql
+
+# 3. Чиста база і відновлення
+npm run db:reset && sleep 10
+docker exec -i buero-postgres psql -U buero -d buero_dev -v ON_ERROR_STOP=1 < /tmp/buero-dump.sql
+
+# 4. Тестова база після reset порожня
+cd buero-backend-api && DATABASE_URL="postgresql://buero:buero@localhost:5433/buero_test?schema=public" npx prisma migrate deploy
+```
+
+Дамп містить таблицю `_prisma_migrations`, тому історія міграцій переноситься разом
+із даними і `prisma migrate deploy` після цього не має що застосовувати.
+
 ## Нова міграція
 
 ```bash
