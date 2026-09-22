@@ -166,6 +166,10 @@ export class CourseMaterialService {
           title: dto.title,
           content: dto.content as object,
           orderIndex: dto.order_index,
+          ...(dto.quiz_mode !== undefined && { quizMode: dto.quiz_mode }),
+          ...(dto.passing_score !== undefined && {
+            passingScore: dto.passing_score,
+          }),
         },
       });
       await this.syncQuestionsIfQuiz(created);
@@ -191,6 +195,10 @@ export class CourseMaterialService {
           ...(dto.title !== undefined && { title: dto.title }),
           ...(dto.content !== undefined && { content: dto.content as object }),
           ...(dto.order_index !== undefined && { orderIndex: dto.order_index }),
+          ...(dto.quiz_mode !== undefined && { quizMode: dto.quiz_mode }),
+          ...(dto.passing_score !== undefined && {
+            passingScore: dto.passing_score,
+          }),
         },
       });
       await this.syncQuestionsIfQuiz(updated);
