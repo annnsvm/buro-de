@@ -9,7 +9,9 @@
 #   docker compose down -v    stop it and erase the data
 services:
   postgres:
-    image: postgres:16-alpine
+    # Must match the major version Render runs, so that what works locally works
+    # deployed and pg_dump can read the deployed database.
+    image: postgres:18-alpine
     container_name: buero-postgres
     restart: unless-stopped
     environment:
@@ -20,7 +22,9 @@ services:
       # 5433 on the host, so an existing local Postgres on 5432 is left alone.
       - '5433:5432'
     volumes:
-      - buero-pgdata:/var/lib/postgresql/data
+      # PostgreSQL 18 images expect the mount one level up, at /var/lib/postgresql,
+      # and keep the data in a version-named subdirectory so that pg_upgrade works.
+      - buero-pgdata:/var/lib/postgresql
       # Runs once, the first time the volume is created.
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
