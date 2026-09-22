@@ -4,16 +4,24 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Role, UserCourseAccessType } from 'src/generated/prisma/enums';
+import {
+  CourseMaterialType,
+  Role,
+  UserCourseAccessType,
+} from 'src/generated/prisma/enums';
 import { getTrialModuleIds } from '../../common/access/trial-scope';
 import { stripQuizAnswers } from '../../common/content/strip-quiz-answers';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QuestionSyncService } from '../exercises/question-sync.service';
 import { CreateCourseMaterialDto } from './dto/create-course-material.dto';
 import { UpdateCourseMaterialDto } from './dto/update-course-material.dto';
 
 @Injectable()
 export class CourseMaterialService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly questionSync: QuestionSyncService,
+  ) {}
 
   async assertCanAccessCourse(
     userId: string,
@@ -55,6 +63,22 @@ export class CourseMaterialService {
         );
       }
     }
+  }
+
+  /**
+   * Grading reads the questions table, while the course editor still writes questions
+   * as JSON inside the material. Rebuilding the rows on every save keeps the two from
+   * drifting, which would otherwise mark students against questions they never saw.
+   * A material that stops being a quiz has its rows removed by the same call.
+   */
+  private async syncQuestionsIfQuiz(material: {
+    id: string;
+    type: CourseMaterialType;
+    content: unknown;
+  }): Promise<void> {
+    const content =
+      material.type === CourseMaterialType.quiz ? material.content : null;
+    await this.questionSync.syncMaterial(material.id, content);
   }
 
   private async ensureCourseExists(courseId: string): Promise<void> {
@@ -135,7 +159,7 @@ export class CourseMaterialService {
   ) {
     try {
       await this.ensureModuleBelongsToCourse(moduleId, courseId);
-      return this.prisma.courseMaterial.create({
+      const created = await this.prisma.courseMaterial.create({
         data: {
           moduleId,
           type: dto.type,
@@ -144,6 +168,8 @@ export class CourseMaterialService {
           orderIndex: dto.order_index,
         },
       });
+      await this.syncQuestionsIfQuiz(created);
+      return created;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw this.mapError(error);
@@ -158,7 +184,7 @@ export class CourseMaterialService {
   ) {
     try {
       await this.findOne(courseId, moduleId, id);
-      return this.prisma.courseMaterial.update({
+      const updated = await this.prisma.courseMaterial.update({
         where: { id },
         data: {
           ...(dto.type !== undefined && { type: dto.type }),
@@ -167,6 +193,8 @@ export class CourseMaterialService {
           ...(dto.order_index !== undefined && { orderIndex: dto.order_index }),
         },
       });
+      await this.syncQuestionsIfQuiz(updated);
+      return updated;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw this.mapError(error);
