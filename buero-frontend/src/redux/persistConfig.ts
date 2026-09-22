@@ -8,6 +8,11 @@ const storage = {
 export const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth', 'vocabulary'],
+  /**
+   * The vocabulary is deliberately absent: it used to be persisted here, which meant
+   * it survived logout and the next account signing in on the same browser inherited
+   * the previous student's words. It now lives on the server, scoped to the account.
+   */
+  whitelist: ['auth'],
   blacklist: ['courseDetails'],
 };

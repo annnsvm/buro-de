@@ -1,4 +1,4 @@
-import { combineReducers } from '@reduxjs/toolkit';
+import { combineReducers, type Action } from '@reduxjs/toolkit';
 import { uiReducer } from './slices/ui/uiSlice';
 import { authReducer } from './slices/auth/authSlice';
 import { userReducer } from './slices/user/userSlice';
@@ -11,7 +11,7 @@ import { lessonRequestsReducer } from './slices/lessonRequests/lessonRequestsSli
 import { courseDetailsReducer } from './slices/coursesCatalog/courseDetailsSlice';
 import { vocabularyReducer } from './slices/vocabulary/vocabularySlice';
 
-export const rootReducer = combineReducers({
+const appReducer = combineReducers({
   ui: uiReducer,
   auth: authReducer,
   user: userReducer,
@@ -25,4 +25,28 @@ export const rootReducer = combineReducers({
   vocabulary: vocabularyReducer,
 });
 
-export type RootState = ReturnType<typeof rootReducer>;
+export type RootState = ReturnType<typeof appReducer>;
+
+/**
+ * Both ways a session can end: the `logout` action the API layer dispatches when a
+ * token can no longer be refreshed, and `logOutThunk` behind the "sign out" button.
+ * Matched by type rather than by importing the creators, because authThunks already
+ * imports RootState from this file.
+ */
+const SESSION_END_ACTIONS = new Set(['auth/logout', 'auth/logout/fulfilled']);
+
+/**
+ * Ending a session drops every slice back to its initial state.
+ *
+ * Signing out used to leave the previous account's data in memory — most visibly the
+ * word list, which stayed on screen until the next student's own words arrived from
+ * the server. Resetting centrally means a new slice cannot forget to clean up after
+ * itself, which is how that bug happened in the first place.
+ */
+export const rootReducer = (
+  state: RootState | undefined,
+  action: Action,
+): RootState =>
+  SESSION_END_ACTIONS.has(action.type)
+    ? appReducer(undefined, action)
+    : appReducer(state, action);

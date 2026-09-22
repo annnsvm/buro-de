@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Search } from 'lucide-react';
@@ -6,18 +6,21 @@ import { Container } from '@/components/layout';
 import { Icon } from '@/components/ui';
 import { ICON_NAMES } from '@/helpers/iconNames';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { deleteWord } from '@/redux/slices/vocabulary/vocabularySlice';
+import {
+  deleteWordThunk,
+  fetchVocabularyThunk,
+} from '@/redux/slices/vocabulary/vocabularySlice';
 import VocabularyCard from '@/features/vocabulary/VocabularyCard/VocabularyCard';
 import { translateVocabularyCategory } from '@/features/vocabulary/translateVocabularyCategory';
 import type { VocabularyCategory } from '@/types/features/vocabulary/Vocabulary.types';
 
 const ALL_CATEGORIES: Array<VocabularyCategory | 'All'> = [
   'All',
-  'Vocabulary',
-  'Idiom',
-  'Phrase',
-  'Grammar',
-  'Other',
+  'vocabulary',
+  'idiom',
+  'phrase',
+  'grammar',
+  'other',
 ];
 
 const VocabularyPage: React.FC = () => {
@@ -25,6 +28,12 @@ const VocabularyPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const dispatch = useAppDispatch();
   const words = useAppSelector((s) => s.vocabulary.words);
+  const status = useAppSelector((s) => s.vocabulary.status);
+
+  /** The list lives on the server now, so it has to be loaded for this account. */
+  useEffect(() => {
+    void dispatch(fetchVocabularyThunk());
+  }, [dispatch]);
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<VocabularyCategory | 'All'>('All');
@@ -45,7 +54,7 @@ const VocabularyPage: React.FC = () => {
   }, [words, activeCategory, search]);
 
   const handleDelete = (id: string) => {
-    dispatch(deleteWord(id));
+    void dispatch(deleteWordThunk(id));
   };
 
   return (
@@ -66,7 +75,13 @@ const VocabularyPage: React.FC = () => {
           {t('vocabulary.description')}
         </p>
 
-        {words.length === 0 ? (
+        {status === 'loading' ? (
+          /* The list is emptied before each fetch, so without this the empty state
+             would flash on every load of the page. */
+          <p className="mt-16 text-center text-sm text-[var(--color-text-secondary)]">
+            {t('vocabulary.loading')}
+          </p>
+        ) : words.length === 0 ? (
           <div className="mt-16 flex flex-col items-center text-center">
             <div className="relative h-[100px] w-[100px] rounded-full bg-[var(--color-primary)]">
               <Icon

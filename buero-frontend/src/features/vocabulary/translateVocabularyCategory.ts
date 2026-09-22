@@ -2,11 +2,11 @@ import type { TFunction } from 'i18next';
 import type { VocabularyCategory } from '@/types/features/vocabulary/Vocabulary.types';
 
 const CATEGORY_KEY: Record<VocabularyCategory, string> = {
-  Vocabulary: 'vocabulary.categories.vocabulary',
-  Idiom: 'vocabulary.categories.idiom',
-  Phrase: 'vocabulary.categories.phrase',
-  Grammar: 'vocabulary.categories.grammar',
-  Other: 'vocabulary.categories.other',
+  vocabulary: 'vocabulary.categories.vocabulary',
+  idiom: 'vocabulary.categories.idiom',
+  phrase: 'vocabulary.categories.phrase',
+  grammar: 'vocabulary.categories.grammar',
+  other: 'vocabulary.categories.other',
 };
 
 export const translateVocabularyCategory = (

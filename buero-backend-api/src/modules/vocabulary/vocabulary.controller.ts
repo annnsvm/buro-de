@@ -20,108 +20,72 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from 'src/generated/prisma/enums';
-import { VocabularyService } from './vocabulary.service';
 import { CreateVocabularyDto } from './dto/create-vocabulary.dto';
 import { UpdateVocabularyDto } from './dto/update-vocabulary.dto';
+import { VocabularyService } from './vocabulary.service';
 
+/**
+ * Personal word list. Every route works on the caller's own words only; there is no
+ * endpoint that returns another account's vocabulary, and none that lists all of it.
+ */
 @ApiTags('vocabulary')
 @Controller('vocabulary')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('access_token')
 export class VocabularyController {
   constructor(private readonly vocabularyService: VocabularyService) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
   @ApiOperation({
-    summary: 'Список словника',
+    summary: 'Мій словник',
     description:
-      'Повертає всі записи глобального словника. Опційний query ?search= фільтрує за word або translation (case-insensitive).',
+      'Слова поточного користувача, найновіші першими. Опційний query search шукає по слову та перекладу.',
   })
-  @ApiQuery({
-    name: 'search',
-    required: false,
-    description: 'Пошук за word або translation',
-  })
-  @ApiResponse({ status: 200, description: 'Масив записів словника' })
+  @ApiQuery({ name: 'search', required: false, description: 'Пошук по слову або перекладу' })
+  @ApiResponse({ status: 200, description: 'Список слів користувача' })
   @ApiResponse({ status: 401, description: 'Не авторизовано' })
-  findAll(@Query('search') search?: string) {
-    return this.vocabularyService.findAll(search);
-  }
-
-  @Get(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({
-    summary: 'Один запис словника',
-    description: 'Повертає запис за id. 404 якщо не знайдено.',
-  })
-  @ApiParam({ name: 'id', description: 'UUID запису' })
-  @ApiResponse({ status: 200, description: 'Запис словника' })
-  @ApiResponse({ status: 404, description: 'Запис не знайдено' })
-  @ApiResponse({ status: 401, description: 'Не авторизовано' })
-  findById(@Param('id') id: string) {
-    return this.vocabularyService.findById(id);
+  findAll(@CurrentUser('id') userId: string, @Query('search') search?: string) {
+    return this.vocabularyService.findAllForUser(userId, search);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.teacher)
-  @ApiBearerAuth('access_token')
   @ApiOperation({
-    summary: 'Створити запис',
-    description:
-      'Тільки для вчителів. Створити новий запис у глобальному словнику. 409, якщо word вже існує.',
+    summary: 'Додати слово до свого словника',
+    description: 'Слово має бути унікальним у межах вашого словника.',
   })
   @ApiBody({ type: CreateVocabularyDto })
-  @ApiResponse({ status: 201, description: 'Запис створено' })
-  @ApiResponse({ status: 400, description: 'Помилка валідації' })
+  @ApiResponse({ status: 201, description: 'Слово додано' })
+  @ApiResponse({ status: 409, description: 'Таке слово вже є у вашому словнику' })
   @ApiResponse({ status: 401, description: 'Не авторизовано' })
-  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
-  @ApiResponse({ status: 409, description: 'Слово вже існує у словнику' })
-  create(@Body() dto: CreateVocabularyDto) {
-    return this.vocabularyService.create(dto);
+  create(@CurrentUser('id') userId: string, @Body() dto: CreateVocabularyDto) {
+    return this.vocabularyService.create(userId, dto);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.teacher)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({
-    summary: 'Оновити запис',
-    description:
-      'Тільки для вчителів. Оновити запис за id (часткове оновлення). 404 якщо не знайдено, 409 якщо word вже зайнятий.',
-  })
-  @ApiParam({ name: 'id', description: 'UUID запису' })
+  @ApiOperation({ summary: 'Оновити своє слово' })
+  @ApiParam({ name: 'id', description: 'UUID слова' })
   @ApiBody({ type: UpdateVocabularyDto })
-  @ApiResponse({ status: 200, description: 'Запис оновлено' })
-  @ApiResponse({ status: 400, description: 'Помилка валідації' })
+  @ApiResponse({ status: 200, description: 'Слово оновлено' })
+  @ApiResponse({ status: 404, description: 'Слово не знайдено у вашому словнику' })
   @ApiResponse({ status: 401, description: 'Не авторизовано' })
-  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
-  @ApiResponse({ status: 404, description: 'Запис не знайдено' })
-  @ApiResponse({ status: 409, description: 'Слово вже існує у словнику' })
-  update(@Param('id') id: string, @Body() dto: UpdateVocabularyDto) {
-    return this.vocabularyService.update(id, dto);
+  update(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateVocabularyDto,
+  ) {
+    return this.vocabularyService.update(userId, id, dto);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.teacher)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({
-    summary: 'Видалити запис',
-    description: 'Тільки для вчителів. Видалити запис за id. 404 якщо не знайдено.',
-  })
-  @ApiParam({ name: 'id', description: 'UUID запису' })
-  @ApiResponse({ status: 200, description: 'Запис видалено' })
+  @ApiOperation({ summary: 'Видалити своє слово' })
+  @ApiParam({ name: 'id', description: 'UUID слова' })
+  @ApiResponse({ status: 200, description: 'Слово видалено' })
+  @ApiResponse({ status: 404, description: 'Слово не знайдено у вашому словнику' })
   @ApiResponse({ status: 401, description: 'Не авторизовано' })
-  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
-  @ApiResponse({ status: 404, description: 'Запис не знайдено' })
-  delete(@Param('id') id: string) {
-    return this.vocabularyService.delete(id);
+  delete(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.vocabularyService.delete(userId, id);
   }
 }
