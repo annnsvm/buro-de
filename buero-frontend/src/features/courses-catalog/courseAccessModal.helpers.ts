@@ -1,10 +1,6 @@
-const isActiveTrialRow = (row: Record<string, unknown>): boolean => {
-  const accessType = String(row.accessType ?? row.access_type ?? '');
-  if (accessType !== 'trial') return false;
-  const trialEnd = row.trialEndsAt ?? row.trial_ends_at;
-  if (trialEnd == null || trialEnd === '') return true;
-  return new Date(String(trialEnd)).getTime() >= Date.now();
-};
+/** Trials do not expire, so a trial row is always an active one. */
+const isActiveTrialRow = (row: Record<string, unknown>): boolean =>
+  String(row.accessType ?? row.access_type ?? '') === 'trial';
 
 export const getActiveTrialCourseIdFromAccessList = (accessList: unknown[]): string | null => {
   for (const raw of accessList) {
@@ -23,7 +19,6 @@ export const getActiveTrialCourseIdFromAccessList = (accessList: unknown[]): str
 };
 
 export const userHasAccessToCourse = (accessList: unknown[], courseId: string): boolean => {
-  const now = Date.now();
   for (const raw of accessList) {
     if (!raw || typeof raw !== 'object') continue;
     const row = raw as Record<string, unknown>;
@@ -37,12 +32,11 @@ export const userHasAccessToCourse = (accessList: unknown[], courseId: string): 
 
     const accessType = String(row.accessType ?? row.access_type ?? '');
 
-    if (accessType === 'trial') {
-      const trialEnd = row.trialEndsAt ?? row.trial_ends_at;
-      if (trialEnd == null) return true;
-      return new Date(String(trialEnd)).getTime() >= now;
-    }
-    if (accessType === 'purchase' || accessType === 'subscription') {
+    if (
+      accessType === 'trial' ||
+      accessType === 'purchase' ||
+      accessType === 'subscription'
+    ) {
       return true;
     }
   }

@@ -25,12 +25,14 @@ import { selectCurrentUser, selectUserRole } from '@/redux/slices/user/userSelec
 import useModal from '@/components/modal/context/useModal';
 import {
   type ApiCourseWithTree,
-  applyTrialModuleScope,
   buildLearningLessonFromMaterial,
+  findLockedModuleIds,
   findNextVideoMaterialId,
   flattenMaterialsInOrder,
   formatMaterialDuration,
+  hasAnyUnlockedMaterial,
   mapApiModulesToCourseStructure,
+  scopeToUnlockedModules,
   parseDurationLabelToSeconds,
   parseQuizMaterialContent,
   mapApiAttachments,
@@ -81,22 +83,25 @@ const CoursePage: React.FC = () => {
           getCachedCourseProgress(courseId),
         ]);
         if (cancelled) return;
-        const courseForUi = applyTrialModuleScope(data);
+
+        /**
+         * The server now withholds content for modules the user has not paid for, so
+         * a course with nothing unlocked cannot be studied at all. Say so instead of
+         * rendering an empty player.
+         */
+        if ((data.modules?.length ?? 0) > 0 && !hasAnyUnlockedMaterial(data)) {
+          setLoadError(t('coursePage.noAccess'));
+          setLoadStatus('error');
+          setCourse(null);
+          return;
+        }
+
+        const courseForUi = scopeToUnlockedModules(data);
         setCourse(courseForUi);
 
-        const raw = data as ApiCourseWithTree;
-        const trialMulti =
-          raw.my_access?.access_type === 'trial' && (raw.modules?.length ?? 0) > 1;
-        if (trialMulti) {
-          setCourseOutline(mapApiModulesToCourseStructure(raw.modules ?? []));
-          const sorted = [...(raw.modules ?? [])].sort(
-            (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
-          );
-          setLockedModuleIds(new Set(sorted.slice(1).map((m) => m.id)));
-        } else {
-          setCourseOutline(mapApiModulesToCourseStructure(courseForUi.modules ?? []));
-          setLockedModuleIds(new Set());
-        }
+        // The full outline stays visible; locked modules are marked, not hidden.
+        setCourseOutline(mapApiModulesToCourseStructure(data.modules ?? []));
+        setLockedModuleIds(findLockedModuleIds(data));
 
         const flat = flattenMaterialsInOrder(courseForUi);
         const firstId = flat[0]?.material.id ?? null;

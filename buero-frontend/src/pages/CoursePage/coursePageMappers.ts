@@ -22,6 +22,10 @@ export type ApiCourseMaterial = {
   title: string;
   type: string;
   orderIndex?: number;
+  /** Always served, even for locked lessons, so the lesson list stays informative. */
+  duration?: string | null;
+  /** True when the server withheld `content` because the viewer has no access. */
+  locked?: boolean;
   content?: Record<string, unknown> | null;
   attachments?: ApiMaterialAttachment[];
 };
@@ -35,7 +39,9 @@ export type ApiCourseModule = {
 
 export type ApiCourseMyAccess = {
   access_type?: string;
+  /** Kept for older responses; trial_module_ids is the authoritative list. */
   first_module_id?: string;
+  trial_module_ids?: string[];
 };
 
 export type ApiCourseWithTree = {
@@ -46,20 +52,63 @@ export type ApiCourseWithTree = {
   my_access?: ApiCourseMyAccess;
 };
 
+/**
+ * Narrows a course preview to the modules a trial opens. The server sends the list,
+ * so the catalog shows exactly what the learner would get rather than guessing.
+ */
 export const applyTrialModuleScope = (course: ApiCourseWithTree): ApiCourseWithTree => {
   const access = course.my_access;
   if (!access || access.access_type !== 'trial') return course;
   const modules = course.modules ?? [];
-  const targetId = access.first_module_id ?? modules[0]?.id;
-  if (!targetId) return { ...course, modules: [] };
-  const only = modules.find((m) => m.id === targetId);
-  return { ...course, modules: only ? [only] : [] };
+  const fallbackId = access.first_module_id ?? modules[0]?.id;
+  const targetIds = access.trial_module_ids?.length
+    ? access.trial_module_ids
+    : fallbackId
+      ? [fallbackId]
+      : [];
+  if (!targetIds.length) return { ...course, modules: [] };
+  const allowed = new Set(targetIds);
+  return { ...course, modules: modules.filter((mod) => allowed.has(mod.id)) };
 };
+
+/**
+ * A material the server served content for. Absent `locked` means an older response
+ * shape, which is treated as open rather than silently hiding a lesson.
+ */
+const isUnlocked = (mat: ApiCourseMaterial): boolean => mat.locked !== true;
+
+/**
+ * Only the modules the viewer may actually study. The server decides this now;
+ * previously the trial limit was applied here on the client, which meant it could
+ * be skipped by turning JavaScript off.
+ */
+export const scopeToUnlockedModules = (course: ApiCourseWithTree): ApiCourseWithTree => ({
+  ...course,
+  modules: (course.modules ?? []).filter((mod) => {
+    const materials = mod.materials ?? [];
+    return materials.length === 0 || materials.some(isUnlocked);
+  }),
+});
+
+/** Modules shown in the outline but not openable, so the UI can mark them locked. */
+export const findLockedModuleIds = (course: ApiCourseWithTree): Set<string> => {
+  const locked = new Set<string>();
+  for (const mod of course.modules ?? []) {
+    const materials = mod.materials ?? [];
+    if (materials.length > 0 && !materials.some(isUnlocked)) locked.add(mod.id);
+  }
+  return locked;
+};
+
+export const hasAnyUnlockedMaterial = (course: ApiCourseWithTree): boolean =>
+  (course.modules ?? []).some((mod) => (mod.materials ?? []).some(isUnlocked));
 
 const sortByOrder = <T extends { orderIndex?: number }>(items: T[]): T[] =>
   [...items].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
 
 export const formatMaterialDuration = (mat: ApiCourseMaterial): string => {
+  /** Served alongside the lesson; present even when `content` is withheld. */
+  if (typeof mat.duration === 'string' && mat.duration.trim()) return mat.duration;
   if (mat.type === 'video' && mat.content && typeof mat.content === 'object') {
     const d = (mat.content as { duration?: string }).duration;
     if (typeof d === 'string' && d.trim()) return d;

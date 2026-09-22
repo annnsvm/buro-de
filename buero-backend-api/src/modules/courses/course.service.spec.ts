@@ -1,7 +1,7 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { Language, Level } from "src/generated/prisma/enums";
+import { Language, Level, Role } from "src/generated/prisma/enums";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CloudinaryService } from "src/cloudinary/cloudinary.service";
 import { PaymentFulfillmentService } from "../subscriptions/payment-fulfillment.service";
@@ -213,13 +213,204 @@ describe("CourseService", () => {
         trialEndsAt: new Date("2099-01-01"),
       });
 
-      const result = await service.findById("course-1", true, "user-1");
+      const result = await service.findById("course-1", true, {
+        id: "user-1",
+        role: Role.student,
+      });
       expect(result).toMatchObject({
         my_access: expect.objectContaining({
           access_type: "trial",
           first_module_id: modId,
         }),
       });
+    });
+  });
+
+  describe("findById content access", () => {
+    const FIRST = "mod-1";
+    const SECOND = "mod-2";
+
+    /** Two modules, one quiz material each, so locking can be observed per module. */
+    const arrangeTree = () => {
+      prisma.course.findUnique.mockResolvedValue(courseRow());
+      prisma.courseModule.findMany.mockResolvedValue([
+        { id: FIRST, orderIndex: 0 },
+        { id: SECOND, orderIndex: 1 },
+      ]);
+      prisma.courseMaterial.findMany.mockResolvedValue([
+        {
+          id: "mat-1",
+          moduleId: FIRST,
+          type: "quiz",
+          title: "Check 1",
+          orderIndex: 0,
+          content: {
+            duration: "05:00",
+            questions: [{ id: "q1", text: "Warum?", correct: "a" }],
+          },
+        },
+        {
+          id: "mat-2",
+          moduleId: SECOND,
+          type: "video",
+          title: "Lesson 2",
+          orderIndex: 0,
+          content: { youtube_video_id: "secret", duration: "07:30" },
+        },
+      ]);
+    };
+
+    type Material = {
+      id: string;
+      locked: boolean;
+      duration: string | null;
+      content: Record<string, unknown> | null;
+    };
+    const materialsOf = (result: unknown): Material[] =>
+      (result as { modules: Array<{ materials: Material[] }> }).modules.flatMap(
+        (mod) => mod.materials,
+      );
+
+    it("gives a guest the structure but no content at all", async () => {
+      arrangeTree();
+
+      const materials = materialsOf(await service.findById("course-1", true));
+
+      expect(materials).toHaveLength(2);
+      expect(materials.every((mat) => mat.content === null)).toBe(true);
+      expect(materials.every((mat) => mat.locked)).toBe(true);
+      // Duration is showcase data and survives the lock so the lesson list stays useful.
+      expect(materials.map((mat) => mat.duration)).toEqual(["05:00", "07:30"]);
+    });
+
+    it("hides the answer key from a student who owns the course", async () => {
+      arrangeTree();
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        accessType: "purchase",
+        trialEndsAt: null,
+      });
+
+      const materials = materialsOf(
+        await service.findById("course-1", true, {
+          id: "user-1",
+          role: Role.student,
+        }),
+      );
+      const questions = (
+        materials[0].content as { questions: Array<Record<string, unknown>> }
+      ).questions;
+
+      expect(materials[0].locked).toBe(false);
+      expect(questions[0]).toHaveProperty("text", "Warum?");
+      expect(questions[0]).not.toHaveProperty("correct");
+    });
+
+    it("keeps the answer key for a teacher so the editor can prefill it", async () => {
+      arrangeTree();
+
+      const materials = materialsOf(
+        await service.findById("course-1", true, {
+          id: "teacher-1",
+          role: Role.teacher,
+        }),
+      );
+      const questions = (
+        materials[0].content as { questions: Array<Record<string, unknown>> }
+      ).questions;
+
+      expect(prisma.userCourseAccess.findUnique).toHaveBeenCalled();
+      expect(questions[0]).toHaveProperty("correct", "a");
+    });
+
+    it("unlocks the two opening modules during a live trial", async () => {
+      arrangeTree();
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        accessType: "trial",
+        trialEndsAt: new Date("2099-01-01"),
+      });
+
+      const result = await service.findById("course-1", true, {
+        id: "user-1",
+        role: Role.student,
+      });
+
+      // Module 0 carries the course instructions, module 1 the first real lessons.
+      expect(materialsOf(result).every((mat) => mat.locked === false)).toBe(true);
+      expect(result).toMatchObject({
+        my_access: expect.objectContaining({
+          trial_module_ids: [FIRST, SECOND],
+          first_module_id: FIRST,
+        }),
+      });
+    });
+
+    it("locks the third module during a trial", async () => {
+      prisma.course.findUnique.mockResolvedValue(courseRow());
+      prisma.courseModule.findMany.mockResolvedValue([
+        { id: FIRST, orderIndex: 0 },
+        { id: SECOND, orderIndex: 1 },
+        { id: "mod-3", orderIndex: 2 },
+      ]);
+      prisma.courseMaterial.findMany.mockResolvedValue([
+        {
+          id: "mat-3",
+          moduleId: "mod-3",
+          type: "video",
+          title: "Lesson 3",
+          orderIndex: 0,
+          content: { youtube_video_id: "paid", duration: "09:00" },
+        },
+      ]);
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        accessType: "trial",
+        trialEndsAt: new Date("2099-01-01"),
+      });
+
+      const materials = materialsOf(
+        await service.findById("course-1", true, {
+          id: "user-1",
+          role: Role.student,
+        }),
+      );
+
+      expect(materials).toHaveLength(1);
+      expect(materials[0].locked).toBe(true);
+      expect(materials[0].content).toBeNull();
+    });
+
+    it("keeps a trial open even when an old end date is still stored", async () => {
+      arrangeTree();
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        accessType: "trial",
+        trialEndsAt: new Date("2000-01-01"),
+      });
+
+      const materials = materialsOf(
+        await service.findById("course-1", true, {
+          id: "user-1",
+          role: Role.student,
+        }),
+      );
+
+      // Trials are a standing free tier; rows written before that decision must not lock out.
+      expect(materials.every((mat) => mat.locked === false)).toBe(true);
+    });
+
+    it("hides an unpublished course from everyone but a teacher", async () => {
+      prisma.course.findUnique.mockResolvedValue(
+        courseRow({ isPublished: false }),
+      );
+      prisma.courseModule.findMany.mockResolvedValue([]);
+
+      await expect(service.findById("course-1", true)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(
+        service.findById("course-1", true, {
+          id: "teacher-1",
+          role: Role.teacher,
+        }),
+      ).resolves.toMatchObject({ id: "course-1" });
     });
   });
 

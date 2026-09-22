@@ -339,12 +339,14 @@ describe("SubscriptionsService", () => {
 
       const list = await service.getMyCourseAccess(userId);
 
+      // No trial_ends_at: trials do not expire, so no end date is reported.
       expect(list).toEqual([
         {
           id: "acc-1",
           course_id: courseId,
           access_type: "trial",
-          trial_ends_at: new Date("2025-02-01"),
+          payment_id: undefined,
+          subscription_id: undefined,
           created_at: created,
         },
       ]);
