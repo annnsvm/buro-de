@@ -5,7 +5,9 @@ import {
   fetchLastQuizAttempt,
   fetchQuizQuestions,
   startQuizAttempt,
+  submitQuizAttempt,
   type AnswerQuestionResponse,
+  type QuizMode,
   type QuizQuestion,
 } from '@/api/quizApi';
 import BaseDialog from '@/components/modal/BaseDialog/BaseDialog';
@@ -21,7 +23,12 @@ import {
 export type QuizResultSummary = {
   correct: number;
   total: number;
+  /** This attempt. */
   percent: number;
+  /** The highest across all attempts — what actually counts as the result. */
+  bestPercent: number;
+  /** False when the result was restored on opening rather than just earned. */
+  justFinished: boolean;
 };
 
 export type QuizPanelProps = {
@@ -61,6 +68,10 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   const [startError, setStartError] = useState<string | null>(null);
   const [answerError, setAnswerError] = useState<string | null>(null);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  const [mode, setMode] = useState<QuizMode>('practice');
+  const [passingScore, setPassingScore] = useState<number | null>(null);
+  const [passed, setPassed] = useState<boolean | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const total = questions.length;
   const answeredCount = Object.keys(feedback).length;
@@ -78,13 +89,16 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     setStartError(null);
     setAttemptId(null);
     try {
-      const [loadedQuestions, previous] = await Promise.all([
+      const [loaded, previous] = await Promise.all([
         fetchQuizQuestions(courseMaterialId),
         fetchLastQuizAttempt(courseMaterialId),
       ]);
-      setQuestions(loadedQuestions);
+      setQuestions(loaded.questions);
+      setMode(loaded.mode);
+      setPassingScore(loaded.passing_score);
 
       if (previous) {
+        setPassed(previous.passed);
         setAttemptId(previous.attempt_id);
         setDrafts(
           Object.fromEntries(
@@ -108,6 +122,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           correct: previous.correct,
           total: previous.total,
           percent: Math.round(previous.score),
+          bestPercent: Math.round(previous.score),
+          justFinished: false,
         };
         setResult(summary);
         onQuizResult?.(summary);
@@ -155,6 +171,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
             correct: data.summary.correct,
             total: data.summary.total,
             percent: Math.round(data.summary.score),
+            bestPercent: Math.round(data.summary.best_score),
+            justFinished: true,
           };
           setResult(summary);
           setResultDialogOpen(true);
@@ -175,6 +193,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
    * until the student says they are, so those get their own confirm button.
    */
   useEffect(() => {
+    // A test is never marked one answer at a time; it is submitted as a whole.
+    if (mode === 'test') return;
     const pending = questions.find(
       (question) =>
         question.type === 'single_choice' &&
@@ -183,7 +203,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         checking !== question.id,
     );
     if (pending) void check(pending);
-  }, [questions, drafts, feedback, checking, check]);
+  }, [mode, questions, drafts, feedback, checking, check]);
 
   /** Clears the screen; the next answer starts a fresh attempt on the server. */
   const handleRetry = useCallback(() => {
@@ -193,8 +213,61 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     setDrafts({});
     setAnswerError(null);
     setAttemptId(null);
+    setPassed(null);
     onQuizResult?.(null);
   }, [onQuizResult]);
+
+  /**
+   * A test is checked in one go. Nothing has been marked until now, so this is the
+   * first moment the student learns anything — and if they did not pass, the answer
+   * key is deliberately not part of what comes back.
+   */
+  const submitTest = useCallback(async () => {
+    const unanswered = questions.filter((q) => !isAnswered(drafts[q.id]));
+    if (unanswered.length > 0) {
+      setAnswerError(t('quiz.answerAllFirst', { count: unanswered.length }));
+      return;
+    }
+    setSubmitting(true);
+    setAnswerError(null);
+    try {
+      const currentAttemptId = await ensureAttempt();
+      const data = await submitQuizAttempt(currentAttemptId, {
+        answers: questions.map((question) => ({
+          question_id: question.id,
+          answer: drafts[question.id] ?? '',
+        })),
+      });
+      setFeedback(
+        Object.fromEntries(
+          data.results.map((item) => [
+            item.question_id,
+            {
+              ...item,
+              answered: data.total,
+              total: data.total,
+              summary: null,
+            },
+          ]),
+        ),
+      );
+      setPassed(data.passed);
+      const summary: QuizResultSummary = {
+        correct: data.correct,
+        total: data.total,
+        percent: Math.round(data.score),
+        bestPercent: Math.round(data.best_score),
+        justFinished: true,
+      };
+      setResult(summary);
+      setResultDialogOpen(true);
+      onQuizResult?.(summary);
+    } catch (err: unknown) {
+      setAnswerError(getErrorMessage(err, t('quiz.submitFailed')));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [drafts, ensureAttempt, onQuizResult, questions, t]);
 
 
   if (loading) {
@@ -227,7 +300,9 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       </h2>
 
       <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-        {t('quiz.answeredCount', { answered: answeredCount, total })}
+        {mode === 'test'
+          ? t('quiz.testIntro', { passing: passingScore ?? 0 })
+          : t('quiz.answeredCount', { answered: answeredCount, total })}
       </p>
 
       {total === 0 ? (
@@ -239,8 +314,10 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           {questions.map((question, index) => {
             const Renderer = getExerciseRenderer(question.type);
             const given = feedback[question.id];
-            const locked = Boolean(given) || checking === question.id;
+            const locked =
+              Boolean(given) || checking === question.id || submitting;
             const needsConfirm =
+              mode === 'practice' &&
               question.type !== 'single_choice' &&
               !given &&
               isAnswered(drafts[question.id]);
@@ -309,6 +386,21 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         </p>
       ) : null}
 
+      {mode === 'test' && !result ? (
+        <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-4 py-3 sm:-mx-6 sm:px-6">
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => void submitTest()}
+              disabled={submitting}
+              className="inline-flex w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[220px]"
+            >
+              {submitting ? t('quiz.submitting') : t('quiz.submitTest')}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {result ? (
         <div
           className="mt-10 rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-surface-section)] px-6 py-6 text-center"
@@ -316,10 +408,10 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           aria-live="polite"
         >
           <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-            {t('quiz.yourResult')}
+            {t('quiz.yourBestResult')}
           </p>
           <p className="mt-2 text-3xl font-bold tabular-nums text-[var(--color-primary)]">
-            {result.percent}%
+            {result.bestPercent}%
           </p>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
             {t('quiz.scoreSummary', {
@@ -327,6 +419,25 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
               total: result.total,
             })}
           </p>
+          {/**
+           * Only worth saying when the two differ: otherwise the student is told the
+           * same number twice. It is what explains a score that went down on a retry.
+           */}
+          {result.justFinished && result.percent !== result.bestPercent ? (
+            <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+              {t('quiz.thisAttempt', { percent: result.percent })}
+            </p>
+          ) : null}
+          {passed === false ? (
+            <p className="mt-3 text-sm text-[var(--color-text-primary)]">
+              {t('quiz.testFailedHint', { passing: passingScore ?? 0 })}
+            </p>
+          ) : null}
+          {passed === true ? (
+            <p className="mt-3 text-sm font-semibold text-[var(--color-success-text)]">
+              {t('quiz.testPassed')}
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={handleRetry}
@@ -361,6 +472,11 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
               total: result.total,
             })}
           </p>
+          {result.percent !== result.bestPercent ? (
+            <p className="mt-3 text-sm text-[var(--color-text-primary)]">
+              {t('quiz.bestStays', { percent: result.bestPercent })}
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => setResultDialogOpen(false)}

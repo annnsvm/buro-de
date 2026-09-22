@@ -56,6 +56,18 @@ enum VocabularyCategory {
 
 /// How a question is answered. The value decides which exercise definition grades it
 /// and which component renders it; the shape of Question.payload follows from it.
+/// How a quiz material behaves.
+///
+/// `practice` is the check after a lesson: every answer is marked the moment it is
+/// given, with the explanation, because the point is to learn. `test` is the check
+/// after a module: nothing is revealed until everything has been answered, and the
+/// answer key stays hidden unless the student passed — otherwise a retake would just
+/// be copying, since the questions are a fixed set rather than drawn from a pool.
+enum QuizMode {
+  practice
+  test
+}
+
 enum QuestionType {
   single_choice
   multi_choice
@@ -231,6 +243,10 @@ model CourseMaterial {
   type       CourseMaterialType
   title      String
   content    Json // JSON/JSONB: scenario nodes, video youtube_video_id, etc.
+  /// Only meaningful for type = quiz; null elsewhere.
+  quizMode   QuizMode?          @map("quiz_mode")
+  /// Percent needed to pass, for a test. Null means there is nothing to fail.
+  passingScore Int?             @map("passing_score")
   orderIndex Int                @map("order_index")
   createdAt  DateTime           @default(now()) @map("created_at")
   updatedAt  DateTime           @updatedAt @map("updated_at")

@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Role } from "src/generated/prisma/enums";
+import { QuizMode, Role } from "src/generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
 import { shuffle } from "./shuffle";
 import { CourseMaterialService } from "../course-materials/course-material.service";
@@ -68,14 +68,22 @@ export class QuizService {
    * has actually answered.
    */
   async getQuestions(materialId: string, userId: string, role: Role) {
-    await this.assertCanAccessQuiz(materialId, userId, role);
+    const material = await this.assertCanAccessQuiz(materialId, userId, role);
 
     const questions = await this.prisma.question.findMany({
       where: { materialId },
       orderBy: { orderIndex: "asc" },
     });
 
-    return questions.map((question) => {
+    /**
+     * The mode travels with the questions because the player has to know, before the
+     * first answer, whether to mark answers one at a time or hold everything back
+     * until the whole test is submitted.
+     */
+    return {
+      mode: material.quizMode ?? QuizMode.practice,
+      passing_score: material.passingScore,
+      questions: questions.map((question) => {
       const payload = (question.payload ?? {}) as {
         options?: Array<{ id: string; text: string }>;
         tokens?: string[];
@@ -99,7 +107,8 @@ export class QuizService {
           tokens: shuffle(payload.tokens),
         }),
       };
-    });
+      }),
+    };
   }
 
   /**
@@ -110,11 +119,16 @@ export class QuizService {
    * lost the moment the student navigated away.
    */
   async getLastAttempt(materialId: string, userId: string, role: Role) {
-    await this.assertCanAccessQuiz(materialId, userId, role);
+    const material = await this.assertCanAccessQuiz(materialId, userId, role);
 
+    /**
+     * The best attempt, not the most recent one: however many times a student tries,
+     * what they see when they come back is the best they have managed. A later, worse
+     * attempt must not replace it.
+     */
     const attempt = await this.prisma.quizAttempt.findFirst({
       where: { userId, courseMaterialId: materialId, completedAt: { not: null } },
-      orderBy: { completedAt: "desc" },
+      orderBy: [{ score: "desc" }, { completedAt: "desc" }],
     });
     if (!attempt) return null;
 
@@ -126,12 +140,24 @@ export class QuizService {
     ]);
     const questionsById = new Map(questions.map((q) => [q.id, q]));
 
+    const score = attempt.score != null ? Number(attempt.score) : 0;
+    const reveal = this.mayRevealAnswers(material, score);
+
+    const attemptCount = await this.prisma.quizAttempt.count({
+      where: { userId, courseMaterialId: materialId, completedAt: { not: null } },
+    });
+
     return {
       attempt_id: attempt.id,
       completed_at: attempt.completedAt?.toISOString() ?? null,
-      score: attempt.score != null ? Number(attempt.score) : 0,
+      score,
       total: questions.length,
       correct: answers.filter((answer) => answer.isCorrect).length,
+      attempts: attemptCount,
+      mode: material.quizMode ?? QuizMode.practice,
+      passing_score: material.passingScore,
+      passed: material.passingScore == null ? null : score >= material.passingScore,
+      reveal_answers: reveal,
       answers: answers.flatMap((answer) => {
         const question = questionsById.get(answer.questionId);
         if (!question) return [];
@@ -148,8 +174,8 @@ export class QuizService {
             question_id: answer.questionId,
             correct: answer.isCorrect,
             quality: graded.quality,
-            explanation: question.explanation,
-            accepted_answers: describeAcceptedAnswers(question),
+            explanation: reveal ? question.explanation : null,
+            accepted_answers: reveal ? describeAcceptedAnswers(question) : [],
             raw_answer: answer.rawAnswer as string | string[],
           },
         ];
@@ -222,6 +248,16 @@ export class QuizService {
     if (attempt.completedAt) {
       throw new BadRequestException(
         "Спробу вже завершено, відповіді не приймаються",
+      );
+    }
+
+    const material = await this.prisma.courseMaterial.findUnique({
+      where: { id: attempt.courseMaterialId },
+      select: { quizMode: true },
+    });
+    if (material?.quizMode === QuizMode.test) {
+      throw new BadRequestException(
+        "Тест перевіряється цілком: надішліть усі відповіді разом",
       );
     }
 
@@ -301,14 +337,19 @@ export class QuizService {
       where: { id: attempt.id },
       data: { score, completedAt },
     });
-    await this.recordMaterialProgress(
+    const bestScore = await this.recordMaterialProgress(
       attempt.courseMaterialId,
       userId,
       score,
       completedAt,
     );
 
-    return { score, total: questionCount, correct: correctCount };
+    /**
+     * Both numbers travel together so the interface never has to guess which it is
+     * showing: a student who does worse on a retry saw their score drop on the page
+     * and then rise again after a reload, with nothing to explain either.
+     */
+    return { score, best_score: bestScore, total: questionCount, correct: correctCount };
   }
 
   private async loadOwnAttempt(attemptId: string, userId: string) {
@@ -322,30 +363,60 @@ export class QuizService {
     return attempt;
   }
 
+  /**
+   * Whether this attempt may see the answer key.
+   *
+   * Practice always may — that is the whole point of it. A test only after it has been
+   * passed: the questions are a fixed set rather than drawn from a pool, so revealing
+   * them after a failure would turn the retake into copying. A failed test still shows
+   * which questions were wrong, which is what tells the student where to go back to.
+   */
+  private mayRevealAnswers(
+    material: { quizMode: QuizMode | null; passingScore: number | null },
+    score: number,
+  ): boolean {
+    if (material.quizMode !== QuizMode.test) return true;
+    if (material.passingScore == null) return true;
+    return score >= material.passingScore;
+  }
+
   private async recordMaterialProgress(
     courseMaterialId: string,
     userId: string,
     score: number,
     completedAt: Date,
-  ) {
+  ): Promise<number> {
     const material = await this.prisma.courseMaterial.findUnique({
       where: { id: courseMaterialId },
       include: { module: true },
     });
     const courseId = material?.module?.courseId;
-    if (!courseId) return;
+    if (!courseId) return score;
+
+    /**
+     * The best attempt is what counts, however many there were: a student who retries
+     * and does worse should not lose the result they already earned. `completedAt` is
+     * always refreshed, so the material still reads as recently worked on.
+     */
+    const existing = await this.prisma.courseProgress.findUnique({
+      where: {
+        userId_courseId_courseMaterialId: { userId, courseId, courseMaterialId },
+      },
+      select: { score: true },
+    });
+    const previousBest = existing?.score != null ? Number(existing.score) : null;
+    const bestScore =
+      previousBest != null ? Math.max(previousBest, score) : score;
 
     await this.prisma.courseProgress.upsert({
       where: {
-        userId_courseId_courseMaterialId: {
-          userId,
-          courseId,
-          courseMaterialId,
-        },
+        userId_courseId_courseMaterialId: { userId, courseId, courseMaterialId },
       },
       create: { userId, courseId, courseMaterialId, completedAt, score },
-      update: { completedAt, score },
+      update: { completedAt, score: bestScore },
     });
+
+    return bestScore;
   }
 
   async submitQuiz(
@@ -473,37 +544,45 @@ export class QuizService {
       })),
     });
 
-    const materialWithModule = await this.prisma.courseMaterial.findUnique({
+    const bestScore = await this.recordMaterialProgress(
+      attempt.courseMaterialId,
+      userId,
+      score,
+      completedAt,
+    );
+
+    const material = await this.prisma.courseMaterial.findUniqueOrThrow({
       where: { id: attempt.courseMaterialId },
-      include: { module: true },
+      select: { quizMode: true, passingScore: true },
     });
-    if (materialWithModule?.module?.courseId) {
-      const courseId = materialWithModule.module.courseId;
-      await this.prisma.courseProgress.upsert({
-        where: {
-          userId_courseId_courseMaterialId: {
-            userId,
-            courseId,
-            courseMaterialId: attempt.courseMaterialId,
-          },
-        },
-        create: {
-          userId,
-          courseId,
-          courseMaterialId: attempt.courseMaterialId,
-          completedAt,
-          score,
-        },
-        update: { completedAt, score },
-      });
-    }
+    const reveal = this.mayRevealAnswers(material, score);
 
     return {
       attempt: this.toAttemptResponse(updated),
       score,
+      best_score: bestScore,
       total,
       correct: correctCount,
-      results,
+      mode: material.quizMode ?? QuizMode.practice,
+      passing_score: material.passingScore,
+      passed: material.passingScore == null ? null : score >= material.passingScore,
+      reveal_answers: reveal,
+      results: results.map((result) =>
+        reveal
+          ? {
+              ...result,
+              accepted_answers: describeAcceptedAnswers(
+                questionsById.get(result.question_id)!,
+              ),
+            }
+          : {
+              question_id: result.question_id,
+              correct: result.correct,
+              quality: result.quality,
+              explanation: null,
+              accepted_answers: [],
+            },
+      ),
     };
   }
 

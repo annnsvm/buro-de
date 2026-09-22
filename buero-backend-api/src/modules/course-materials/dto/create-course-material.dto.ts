@@ -1,6 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsNotEmpty, IsObject, IsString, MaxLength } from 'class-validator';
-import { CourseMaterialType } from '../../../generated/prisma/enums';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { CourseMaterialType, QuizMode } from '../../../generated/prisma/enums';
 
 export class CreateCourseMaterialDto {
   @ApiProperty({
@@ -23,6 +33,26 @@ export class CreateCourseMaterialDto {
   @IsNotEmpty()
   @IsObject()
   content!: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    enum: QuizMode,
+    description:
+      'Лише для type = quiz. practice — перевірка після уроку: кожна відповідь позначається одразу разом із поясненням. ' +
+      'test — підсумковий тест модуля: перевірка цілком, а правильні відповіді показуються лише після успішної здачі.',
+  })
+  @IsOptional()
+  @IsEnum(QuizMode)
+  quiz_mode?: QuizMode;
+
+  @ApiPropertyOptional({
+    example: 60,
+    description: 'Відсоток для зарахування тесту. Без нього тест неможливо провалити.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  passing_score?: number;
 
   @ApiProperty({ example: 0, description: 'Порядок у модулі (order_index)' })
   @IsInt()

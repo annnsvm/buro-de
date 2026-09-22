@@ -12,6 +12,12 @@ export type QuizQuestionType =
 export type QuizQuestionOption = { id: string; text: string };
 
 /**
+ * `practice` marks each answer as it is given; `test` checks everything at once and
+ * keeps the answer key back unless the student passed.
+ */
+export type QuizMode = 'practice' | 'test';
+
+/**
  * A question as a student may see it. The answer key never leaves the server, and the
  * explanation arrives with the submit response once the question has been answered.
  */
@@ -26,10 +32,16 @@ export type QuizQuestion = {
   tokens?: string[];
 };
 
+export type QuizQuestionsResponse = {
+  mode: QuizMode;
+  passing_score: number | null;
+  questions: QuizQuestion[];
+};
+
 export const fetchQuizQuestions = async (
   materialId: string,
-): Promise<QuizQuestion[]> => {
-  const { data } = await apiInstance.get<QuizQuestion[]>(
+): Promise<QuizQuestionsResponse> => {
+  const { data } = await apiInstance.get<QuizQuestionsResponse>(
     API_ENDPOINTS.quiz.questions(materialId),
   );
   return data;
@@ -75,7 +87,13 @@ export type AnswerQuestionResponse = {
   answered: number;
   total: number;
   /** Present once every question has been answered and the attempt closed itself. */
-  summary: { score: number; total: number; correct: number } | null;
+  summary: {
+    score: number;
+    /** Highest score across all attempts, which is what counts as the result. */
+    best_score: number;
+    total: number;
+    correct: number;
+  } | null;
 };
 
 export const answerQuizQuestion = async (
@@ -96,6 +114,11 @@ export type LastQuizAttempt = {
   score: number;
   total: number;
   correct: number;
+  attempts: number;
+  mode: QuizMode;
+  passing_score: number | null;
+  passed: boolean | null;
+  reveal_answers: boolean;
   answers: Array<{
     question_id: string;
     correct: boolean;
@@ -117,9 +140,15 @@ export const fetchLastQuizAttempt = async (
 
 export type SubmitQuizResponse = {
   score: number;
+  best_score: number;
   total: number;
   correct: number;
-  results: QuizQuestionResult[];
+  mode: QuizMode;
+  passing_score: number | null;
+  passed: boolean | null;
+  /** False after a failed test: the answer key stays back so a retake is not copying. */
+  reveal_answers: boolean;
+  results: Array<QuizQuestionResult & { accepted_answers: string[] }>;
   attempt: QuizAttemptResponse;
 };
 
