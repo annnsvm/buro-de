@@ -9,7 +9,6 @@ import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { UserService } from "../../user/user.service";
 import type { Role } from "src/generated/prisma/enums";
-import type { UserWithoutPassword } from "../../user/types/user-response.type";
 
 type AccessPayload = {
   sub: string;
@@ -33,11 +32,12 @@ export class JwtAuthGuard implements CanActivate {
       const payload = this.jwtService.verify<AccessPayload>(token, { secret });
       if (!payload.sub) throw new UnauthorizedException("Invalid token");
 
-      if (payload.role) {
-        request.user = { id: payload.sub, role: payload.role } as UserWithoutPassword;
-        return true;
-      }
-
+      /**
+       * Always resolve the user from the database, even when the token carries a role.
+       * Trusting the token alone would keep soft-deleted users authorized and would let
+       * a stale role outlive a role change for the remaining token lifetime. It also
+       * means @CurrentUser() receives a complete user, not just { id, role }.
+       */
       const user = await this.userService.findUserById(payload.sub);
       if (!user) throw new UnauthorizedException("Invalid token");
       request.user = user;

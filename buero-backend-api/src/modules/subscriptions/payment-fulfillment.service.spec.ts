@@ -13,6 +13,7 @@ describe("PaymentFulfillmentService", () => {
       updateMany: jest.Mock;
     };
     userCourseAccess: { upsert: jest.Mock };
+    $transaction: jest.Mock;
   };
   let wayForPay: {
     isConfigured: jest.Mock;
@@ -40,6 +41,13 @@ describe("PaymentFulfillmentService", () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       userCourseAccess: { upsert: jest.fn() },
+      /**
+       * markPaid writes the payment status and the course access inside one transaction.
+       * Run the callback against the same mock so assertions keep seeing the calls.
+       */
+      $transaction: jest.fn((callback: (tx: unknown) => unknown) =>
+        callback(prisma),
+      ),
     };
 
     wayForPay = {

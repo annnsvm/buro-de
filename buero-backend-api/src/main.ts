@@ -47,6 +47,12 @@ async function bootstrap() {
     "WAYFORPAY_MERCHANT_SECRET",
     "WAYFORPAY_MERCHANT_DOMAIN",
     "WAYFORPAY_SERVICE_URL",
+    /**
+     * Required in production: without it CORS falls back to reflecting any Origin,
+     * which combined with credentialed cookies would let any site issue authenticated
+     * requests on behalf of a logged-in user.
+     */
+    ...(isProduction ? (["CORS_ORIGIN"] as const) : []),
   ] as const;
   const optionalEnv = [
     "PORT",
@@ -55,7 +61,7 @@ async function bootstrap() {
     "JWT_REFRESH_EXPIRES_IN",
     "COOKIE_DOMAIN",
     "COOKIE_SECURE",
-    "CORS_ORIGIN",
+    ...(isProduction ? ([] as const) : (["CORS_ORIGIN"] as const)),
     "WAYFORPAY_CURRENCY",
     "WAYFORPAY_RETURN_URL",
   ] as const;
@@ -76,10 +82,19 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api");
 
+  /**
+   * Never fall back to `origin: true` — with `credentials: true` that reflects whatever
+   * Origin the request carries. In production CORS_ORIGIN is required (see requiredEnv);
+   * locally we allow only the dev front-end origins.
+   */
+  const DEV_CORS_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
+  const allowedOrigins = corsOrigin
+    ? corsOrigin.split(",").map((origin) => origin.trim()).filter(Boolean)
+    : DEV_CORS_ORIGINS;
+  logger.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
+
   app.enableCors({
-    origin: corsOrigin
-      ? corsOrigin.split(",").map((origin) => origin.trim())
-      : true,
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -110,12 +125,20 @@ async function bootstrap() {
     )
     .addCookieAuth("access_token")
     .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("api-docs", app, document);
+  /**
+   * Swagger documents the entire API surface, including teacher-only routes. Keep it off
+   * in production so it is not a free map of the backend for anyone who finds /api-docs.
+   */
+  if (!isProduction) {
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup("api-docs", app, document);
+  }
 
   await app.listen(port);
   logger.log(`Backend is running on http://localhost:${port}`);
-  logger.log(`Swagger docs: http://localhost:${port}/api-docs`);
+  if (!isProduction) {
+    logger.log(`Swagger docs: http://localhost:${port}/api-docs`);
+  }
 }
 
 bootstrap();
