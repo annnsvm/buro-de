@@ -95,6 +95,7 @@ describe("CourseMaterialService", () => {
       expect(prisma.courseMaterial.findMany).toHaveBeenCalledWith({
         where: { moduleId },
         orderBy: { orderIndex: "asc" },
+        include: { attachments: { orderBy: { orderIndex: "asc" } } },
       });
     });
   });
