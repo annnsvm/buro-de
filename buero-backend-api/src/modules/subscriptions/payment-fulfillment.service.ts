@@ -94,42 +94,61 @@ export class PaymentFulfillmentService {
       return { granted: false };
     }
 
-    if (payment.status !== PAYMENT_STATUS.paid) {
-      await this.prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: PAYMENT_STATUS.paid,
-          ...(params.amount != null && { amount: params.amount }),
-          ...(params.currency && { currency: params.currency.toLowerCase() }),
-        },
-      });
-    }
+    const needsStatusUpdate = payment.status !== PAYMENT_STATUS.paid;
+    const paidData = {
+      status: PAYMENT_STATUS.paid,
+      ...(params.amount != null && { amount: params.amount }),
+      ...(params.currency && { currency: params.currency.toLowerCase() }),
+    };
 
     if (!payment.courseId) {
+      if (needsStatusUpdate) {
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: paidData,
+        });
+      }
       this.logger.warn(
         `Payment ${payment.id} has no course, access not granted`,
       );
       return { granted: false };
     }
 
-    await this.prisma.userCourseAccess.upsert({
-      where: {
-        userId_courseId: {
-          userId: payment.userId,
-          courseId: payment.courseId,
+    const courseId = payment.courseId;
+
+    /**
+     * Marking the payment paid and granting course access must succeed or fail together.
+     * Outside a transaction, a crash between them leaves money collected with no course
+     * unlocked, and webhook idempotency (payment_webhook_events.event_key) means the
+     * callback is never replayed to repair it.
+     */
+    await this.prisma.$transaction(async (tx) => {
+      if (needsStatusUpdate) {
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: paidData,
+        });
+      }
+
+      await tx.userCourseAccess.upsert({
+        where: {
+          userId_courseId: {
+            userId: payment.userId,
+            courseId,
+          },
         },
-      },
-      create: {
-        userId: payment.userId,
-        courseId: payment.courseId,
-        accessType: UserCourseAccessType.purchase,
-        paymentId: payment.id,
-      },
-      update: {
-        accessType: UserCourseAccessType.purchase,
-        paymentId: payment.id,
-        trialEndsAt: null,
-      },
+        create: {
+          userId: payment.userId,
+          courseId,
+          accessType: UserCourseAccessType.purchase,
+          paymentId: payment.id,
+        },
+        update: {
+          accessType: UserCourseAccessType.purchase,
+          paymentId: payment.id,
+          trialEndsAt: null,
+        },
+      });
     });
 
     this.logger.log(

@@ -51,10 +51,14 @@ export class CourseProgressController {
   @ApiBody({ type: CompleteMaterialDto, required: false })
   @ApiResponse({ status: 200, description: 'Матеріал позначено пройденим' })
   @ApiResponse({ status: 401, description: 'Не авторизовано' })
-  @ApiResponse({ status: 403, description: 'Тільки для студентів' })
+  @ApiResponse({
+    status: 403,
+    description: 'Тільки для студентів або немає доступу до курсу',
+  })
   @ApiResponse({ status: 404, description: 'Курс, модуль або матеріал не знайдено' })
   completeMaterial(
     @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: Role,
     @Param('courseId') courseId: string,
     @Param('moduleId') moduleId: string,
     @Param('materialId') materialId: string,
@@ -62,6 +66,7 @@ export class CourseProgressController {
   ) {
     return this.progressService.completeMaterial(
       userId,
+      role,
       courseId,
       moduleId,
       materialId,

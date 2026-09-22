@@ -7,154 +7,164 @@ import {
   Param,
   Patch,
   Post,
-  Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Role } from 'src/generated/prisma/enums';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import type { UserWithoutPassword } from '../user/types/user-response.type';
 import { LessonRequestService } from './lesson-request.service';
 import { CreateLessonRequestDto } from './dto/create-lesson-request.dto';
-import { LessonRequestActorQueryDto } from './dto/lesson-request-actor.query.dto';
 import { LessonRequestResponseDto } from './dto/lesson-request-response.dto';
 
 @ApiTags('lesson-requests')
 @Controller('lesson-requests')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth('access_token')
 export class LessonRequestsController {
   constructor(private readonly lessonRequestService: LessonRequestService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Roles(Role.student)
   @ApiOperation({
     summary: 'Створити запит на заняття',
     description:
-      'Студент створює запит (status = pending). Ідентичність: query userId + role (тимчасово).',
+      'Студент створює запит (status = pending). Ідентичність береться з access-токена.',
   })
-  @ApiQuery({ name: 'userId', required: true })
-  @ApiQuery({ name: 'role', enum: ['student', 'teacher'], required: true })
   @ApiBody({ type: CreateLessonRequestDto })
   @ApiResponse({
     status: 201,
     description: 'Створений запит',
     type: LessonRequestResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Невалідні дані або не студент' })
+  @ApiResponse({ status: 400, description: 'Невалідні дані' })
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  @ApiResponse({ status: 403, description: 'Тільки для студентів' })
   @ApiResponse({ status: 404, description: 'Користувача не знайдено' })
   create(
-    @Query() actor: LessonRequestActorQueryDto,
+    @CurrentUser() user: UserWithoutPassword,
     @Body() dto: CreateLessonRequestDto,
   ) {
-    return this.lessonRequestService.create(actor.userId, actor.role, dto);
+    return this.lessonRequestService.create(user.id, user.role, dto);
   }
 
   @Get('me')
   @ApiOperation({
     summary: 'Мої запити',
     description:
-      'Студент: усі запити з student_id = userId. Вчитель: усі pending + запити з teacher_id = userId.',
+      'Студент: усі запити з student_id = поточний користувач. Вчитель: усі pending + запити з teacher_id = поточний користувач.',
   })
-  @ApiQuery({ name: 'userId', required: true })
-  @ApiQuery({ name: 'role', enum: ['student', 'teacher'], required: true })
   @ApiResponse({
     status: 200,
     description: 'Список запитів',
     type: [LessonRequestResponseDto],
   })
-  @ApiResponse({ status: 400, description: 'Роль не збігається з обліковим записом' })
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
   @ApiResponse({ status: 404, description: 'Користувача не знайдено' })
-  findMy(@Query() actor: LessonRequestActorQueryDto) {
-    return this.lessonRequestService.findMyRequests(actor.userId, actor.role);
+  findMy(@CurrentUser() user: UserWithoutPassword) {
+    return this.lessonRequestService.findMyRequests(user.id, user.role);
   }
 
   @Patch(':id/accept')
+  @Roles(Role.teacher)
   @ApiOperation({
     summary: 'Прийняти запит',
     description: 'pending → accepted, teacher_id = поточний вчитель.',
   })
   @ApiParam({ name: 'id', description: 'UUID запиту' })
-  @ApiQuery({ name: 'userId', required: true })
-  @ApiQuery({ name: 'role', enum: ['student', 'teacher'], required: true })
   @ApiResponse({
     status: 200,
     description: 'Оновлений запит',
     type: LessonRequestResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Статус не pending або не вчитель' })
+  @ApiResponse({ status: 400, description: 'Статус не pending' })
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
   @ApiResponse({ status: 404, description: 'Запит або користувача не знайдено' })
   accept(
     @Param('id') id: string,
-    @Query() actor: LessonRequestActorQueryDto,
+    @CurrentUser() user: UserWithoutPassword,
   ) {
-    return this.lessonRequestService.accept(id, actor.userId, actor.role);
+    return this.lessonRequestService.accept(id, user.id, user.role);
   }
 
   @Patch(':id/reject')
+  @Roles(Role.teacher)
   @ApiOperation({
     summary: 'Відхилити запит (до прийняття)',
     description: 'pending → rejected.',
   })
   @ApiParam({ name: 'id', description: 'UUID запиту' })
-  @ApiQuery({ name: 'userId', required: true })
-  @ApiQuery({ name: 'role', enum: ['student', 'teacher'], required: true })
   @ApiResponse({
     status: 200,
     description: 'Оновлений запит',
     type: LessonRequestResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Статус не pending або не вчитель' })
+  @ApiResponse({ status: 400, description: 'Статус не pending' })
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
   @ApiResponse({ status: 404, description: 'Запит або користувача не знайдено' })
   reject(
     @Param('id') id: string,
-    @Query() actor: LessonRequestActorQueryDto,
+    @CurrentUser() user: UserWithoutPassword,
   ) {
-    return this.lessonRequestService.reject(id, actor.userId, actor.role);
+    return this.lessonRequestService.reject(id, user.id, user.role);
   }
 
   @Patch(':id/complete')
+  @Roles(Role.teacher)
   @ApiOperation({
     summary: 'Позначити заняття як проведене',
     description: 'accepted + ваш teacher_id → completed.',
   })
   @ApiParam({ name: 'id', description: 'UUID запиту' })
-  @ApiQuery({ name: 'userId', required: true })
-  @ApiQuery({ name: 'role', enum: ['student', 'teacher'], required: true })
   @ApiResponse({
     status: 200,
     description: 'Оновлений запит',
     type: LessonRequestResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Невалідний стан або не вчитель' })
+  @ApiResponse({ status: 400, description: 'Невалідний стан' })
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
   @ApiResponse({ status: 404, description: 'Запит або користувача не знайдено' })
   complete(
     @Param('id') id: string,
-    @Query() actor: LessonRequestActorQueryDto,
+    @CurrentUser() user: UserWithoutPassword,
   ) {
-    return this.lessonRequestService.complete(id, actor.userId, actor.role);
+    return this.lessonRequestService.complete(id, user.id, user.role);
   }
 
   @Patch(':id/cancel')
+  @Roles(Role.teacher)
   @ApiOperation({
     summary: 'Скасувати після прийняття',
     description: 'accepted + ваш teacher_id → rejected.',
   })
   @ApiParam({ name: 'id', description: 'UUID запиту' })
-  @ApiQuery({ name: 'userId', required: true })
-  @ApiQuery({ name: 'role', enum: ['student', 'teacher'], required: true })
   @ApiResponse({
     status: 200,
     description: 'Оновлений запит',
     type: LessonRequestResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Невалідний стан або не вчитель' })
+  @ApiResponse({ status: 400, description: 'Невалідний стан' })
+  @ApiResponse({ status: 401, description: 'Не авторизовано' })
+  @ApiResponse({ status: 403, description: 'Тільки для вчителів' })
   @ApiResponse({ status: 404, description: 'Запит або користувача не знайдено' })
   cancel(
     @Param('id') id: string,
-    @Query() actor: LessonRequestActorQueryDto,
+    @CurrentUser() user: UserWithoutPassword,
   ) {
-    return this.lessonRequestService.cancel(id, actor.userId, actor.role);
+    return this.lessonRequestService.cancel(id, user.id, user.role);
   }
 }

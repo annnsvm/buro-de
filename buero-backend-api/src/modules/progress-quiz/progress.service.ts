@@ -3,11 +3,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Role } from 'src/generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CourseMaterialService } from '../course-materials/course-material.service';
 
 @Injectable()
 export class ProgressService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly courseMaterialService: CourseMaterialService,
+  ) {}
 
   async getMyProgress(userId: string) {
     const [progressRows, profile] = await Promise.all([
@@ -101,11 +106,25 @@ export class ProgressService {
 
   async completeMaterial(
     userId: string,
+    role: Role,
     courseId: string,
     moduleId: string,
     materialId: string,
     score?: number,
   ) {
+    /**
+     * Structural checks below only prove the material belongs to the course. Without this
+     * call any authenticated student could mark materials of a course they never bought,
+     * inflating their own progress. Uses the module-level check so it matches what the
+     * material listing allows — on trial that is the first module only.
+     */
+    await this.courseMaterialService.assertCanAccessModule(
+      userId,
+      role,
+      courseId,
+      moduleId,
+    );
+
     const material = await this.prisma.courseMaterial.findFirst({
       where: { id: materialId, moduleId },
       include: { module: { select: { courseId: true } } },
