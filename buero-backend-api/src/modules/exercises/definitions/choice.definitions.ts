@@ -60,12 +60,38 @@ const gradeChoice = (question: GradableQuestion, answer: RawAnswer) => {
   return { correct, quality: correct ? ('exact' as const) : ('none' as const) };
 };
 
+const readOptionTexts = (payload: unknown): Map<string, string> => {
+  const options = (payload as ChoicePayload | null)?.options;
+  const byId = new Map<string, string>();
+  if (!Array.isArray(options)) return byId;
+  for (const option of options) {
+    if (typeof option?.id === 'string') {
+      byId.set(option.id, typeof option.text === 'string' ? option.text : option.id);
+    }
+  }
+  return byId;
+};
+
+/** Turns each stored answer key into the option text a student recognises. */
+const describeChoice = (question: GradableQuestion): string[] => {
+  const byId = readOptionTexts(question.payload);
+  return question.acceptedAnswers.map((accepted) =>
+    accepted
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((id) => byId.get(id) ?? id)
+      .join(', '),
+  );
+};
+
 /** One option out of several; the answer is a single option id. */
 export const singleChoiceDefinition: ExerciseDefinition = {
   type: QuestionType.single_choice,
   validatePayload: (payload, acceptedAnswers) =>
     validateChoice(payload, acceptedAnswers, { multi: false }),
   grade: gradeChoice,
+  describeAcceptedAnswers: describeChoice,
 };
 
 /** Several options at once; the whole set has to match, order does not matter. */
@@ -74,4 +100,5 @@ export const multiChoiceDefinition: ExerciseDefinition = {
   validatePayload: (payload, acceptedAnswers) =>
     validateChoice(payload, acceptedAnswers, { multi: true }),
   grade: gradeChoice,
+  describeAcceptedAnswers: describeChoice,
 };

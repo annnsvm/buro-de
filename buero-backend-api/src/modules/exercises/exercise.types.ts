@@ -34,6 +34,12 @@ export type ExerciseDefinition = {
   /** Rejects authored content that cannot be answered, before it reaches a student. */
   validatePayload(payload: unknown, acceptedAnswers: string[]): string[];
   grade(question: GradableQuestion, answer: RawAnswer): GradeResult;
+  /**
+   * The answer key as a person reads it. Choice questions store option ids, and one
+   * multi-choice answer is a comma-joined set of them — encodings that belong to the
+   * server and must never reach a student's screen.
+   */
+  describeAcceptedAnswers(question: GradableQuestion): string[];
 };
 
 export const asStringArray = (value: RawAnswer): string[] =>

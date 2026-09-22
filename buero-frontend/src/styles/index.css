@@ -114,7 +114,15 @@
   --color-accent-secondary-hover: var(--color-burnt-siena-darker);
   --color-accent-danger: var(--color-burnt-siena-dark);
 
+  /**
+   * Feedback colours. `--color-error` used to be an alias of the brand orange, which
+   * made every error look like a call to action; a wrong quiz answer and the "check"
+   * button were the same colour. Red and green are kept for correctness feedback only.
+   */
   --color-success: #f1f9f1;
+  --color-success-soft: #f1f9f1;
+  --color-success-text: #2f7a45;
+  --color-error-soft: #fdf2f2;
 
   --color-primary: var(--color-accent-primary);
   --color-primary-foreground: var(--color-text-on-accent);
@@ -134,8 +142,8 @@
 
   --color-primary-hover: var(--color-accent-primary-hover);
   --color-secondary-hover: var(--color-accent-secondary-hover);
-  --color-error: var(--color-accent-primary);
-  --color-error-border: var(--color-accent-primary-hover);
+  --color-error: #c8412f;
+  --color-error-border: #a8331f;
   --color-skeleton: var(--color-surface-section);
   --color-skeleton-shine: var(--color-neutral-lightest);
 

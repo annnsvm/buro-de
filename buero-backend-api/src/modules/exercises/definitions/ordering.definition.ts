@@ -42,4 +42,6 @@ export const orderingDefinition: ExerciseDefinition = {
     const match = matchGermanAnswer(given, question.acceptedAnswers);
     return { correct: match.correct, quality: match.quality };
   },
+
+  describeAcceptedAnswers: (question) => question.acceptedAnswers,
 };

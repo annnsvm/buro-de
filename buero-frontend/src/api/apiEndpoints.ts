@@ -70,6 +70,9 @@ export const API_ENDPOINTS = {
     startAttempt: '/quiz/attempts',
     getAttempt: (attemptId: string) => `/quiz/attempts/${attemptId}`,
     submit: (attemptId: string) => `/quiz/attempts/${attemptId}/submit`,
+    answer: (attemptId: string) => `/quiz/attempts/${attemptId}/answers`,
+    questions: (materialId: string) => `/quiz/materials/${materialId}/questions`,
+    lastAttempt: (materialId: string) => `/quiz/materials/${materialId}/last-attempt`,
   },
   progress: {
     course: (courseId: string) => `/courses/${courseId}/progress`,
