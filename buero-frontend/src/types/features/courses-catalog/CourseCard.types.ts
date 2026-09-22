@@ -18,7 +18,6 @@ export type CourseCardProps = {
   rating?: number;
   isAdded?: boolean;
   hasTrial?: boolean;
-  activeTrialCourseId?: string | null;
   isPublished?: boolean;
   onClick?: () => void;
   modulesCount?: number;

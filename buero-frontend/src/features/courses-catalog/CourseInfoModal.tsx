@@ -18,10 +18,7 @@ import type { CourseInfoData } from '@/types/components/modal/UIModalType.types'
 import { selectIsAuthenticated } from '@/redux/slices/auth';
 import CourseStructure from './CourseStructure';
 import { courseStructureKeyFromModules } from './courseStructure.helpers';
-import {
-  getActiveTrialCourseIdFromAccessList,
-  userHasAccessToCourse,
-} from './courseAccessModal.helpers';
+import { userHasAccessToCourse } from './courseAccessModal.helpers';
 import { fetchCourseByIdThunk } from '@/redux/slices/coursesCatalog/courseDetailsThunks';
 import { clearCourseDetails } from '@/redux/slices/coursesCatalog/courseDetailsSlice';
 import {
@@ -67,7 +64,6 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
 
   const [accessResolved, setAccessResolved] = useState(false);
   const [hasCourseAccess, setHasCourseAccess] = useState(false);
-  const [activeTrialCourseIdFromApi, setActiveTrialCourseIdFromApi] = useState<string | null>(null);
   const [localPublished, setLocalPublished] = useState<boolean | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -90,7 +86,6 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
     if (!isOpen) {
       setAccessResolved(false);
       setHasCourseAccess(false);
-      setActiveTrialCourseIdFromApi(null);
       setLocalPublished(null);
     } else {
       setLocalPublished(null);
@@ -116,12 +111,10 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
         const arr = Array.isArray(list) ? list : [];
         const hasAccess = userHasAccessToCourse(arr, courseId);
         setHasCourseAccess(hasAccess);
-        setActiveTrialCourseIdFromApi(getActiveTrialCourseIdFromAccessList(arr));
         if (hasAccess) prefetchCourseWorkspace(courseId);
       } catch {
         if (!cancelled) {
           setHasCourseAccess(false);
-          setActiveTrialCourseIdFromApi(null);
         }
       } finally {
         if (!cancelled) setAccessResolved(true);
@@ -185,11 +178,12 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
     currency: 'EUR',
   }).format(cleanPrice);
 
-  const canShowTryForFree =
-    course.hasTrial !== false &&
-    (activeTrialCourseIdFromApi == null ||
-      activeTrialCourseIdFromApi === '' ||
-      activeTrialCourseIdFromApi === courseId);
+  /**
+   * A trial is a standing per-course free tier, so an active trial on another course
+   * must not hide this one's button. Courses already unlocked show "Continue learning"
+   * via `hasCourseAccess` above, so reaching here means the student may still try it.
+   */
+  const canShowTryForFree = course.hasTrial !== false;
 
   const comingSoon = isCourseComingSoon({
     isPublished: publishedEffective,

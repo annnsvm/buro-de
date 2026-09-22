@@ -218,7 +218,7 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
             <SortableCourseModule
               key={mod.id}
               module={mod}
-              displayPosition={index + 1}
+              displayPosition={index}
               dragEnabled={dragEnabled}
               forceExpanded={forceExpandedModuleId === mod.id}
               onCreateMaterial={onCreateMaterial}

@@ -52,18 +52,37 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
   const trialOutline =
     Boolean(checkoutCourseId) && Boolean(lockedModuleIds && lockedModuleIds.size > 0);
 
+  const sortedModules = useMemo(
+    () => [...modules].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)),
+    [modules],
+  );
+
+  /**
+   * On a trial the server unlocks the opening modules (module 0 with the course
+   * instructions plus the first teaching module). Show every module the caller may
+   * actually study — the ones that are not in lockedModuleIds — and reserve the
+   * blurred teaser for the first module still behind the paywall.
+   */
   const displayModules = useMemo(() => {
     if (!trialOutline) return modules;
-    const sorted = [...modules].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
-    return sorted.slice(0, 1);
-  }, [modules, trialOutline]);
+    return sortedModules.filter((mod) => !lockedModuleIds?.has(mod.id));
+  }, [modules, trialOutline, sortedModules, lockedModuleIds]);
 
+  /**
+   * Modules are numbered from zero, so a module's index is its number. Taking it from
+   * the position rather than from how many modules are unlocked keeps the teaser right
+   * even if the free modules ever stop being a run from the start of the course.
+   */
   const nextLockedModulePreview = useMemo(() => {
-    const sorted = [...modules].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
-    const second = sorted[1];
-    if (!second) return null;
-    return { title: second.title, materialCount: second.materials?.length ?? 0 };
-  }, [modules]);
+    const index = sortedModules.findIndex((mod) => lockedModuleIds?.has(mod.id));
+    if (index < 0) return null;
+    const firstLocked = sortedModules[index];
+    return {
+      number: index,
+      title: firstLocked.title,
+      materialCount: firstLocked.materials?.length ?? 0,
+    };
+  }, [sortedModules, lockedModuleIds]);
 
   const structureKey = courseStructureKeyFromModules(displayModules);
 
@@ -81,6 +100,7 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
           <TrialSidebarBlurTail
             courseId={checkoutCourseId}
             previewModule={nextLockedModulePreview}
+            moduleNumber={nextLockedModulePreview?.number}
           />
         ) : null}
       </>

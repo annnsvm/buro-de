@@ -7,6 +7,7 @@ import { TrialSidebarBlurTailProps } from '@/types/features/courseManagment';
 const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
   courseId,
   previewModule = null,
+  moduleNumber = 2,
 }) => {
   const moduleTitle = previewModule?.title ?? 'More in this course';
   const completedTotal = previewModule != null ? String(previewModule.materialCount) : '?';
@@ -19,7 +20,7 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
       >
         <div className="flex flex-col">
           <span className="text-xs font-semibold tracking-wider text-[var(--color-neutral-dark)] uppercase">
-            MODULE&nbsp;&nbsp;2
+            MODULE&nbsp;&nbsp;{moduleNumber}
           </span>
           <span className="mt-0.5 text-base leading-tight font-semibold text-[var(--color-neutral-darkest)]">
             {moduleTitle}

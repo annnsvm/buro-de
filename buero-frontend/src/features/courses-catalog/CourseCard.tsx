@@ -38,7 +38,6 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
     rating,
     isAdded,
     hasTrial = true,
-    activeTrialCourseId = null,
     isPublished,
     variant = '',
     modulesCount: modulesCountProp,
@@ -91,7 +90,6 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
         rating,
         isAdded,
         hasTrial,
-        activeTrialCourseId,
         isPublished,
       },
     });
@@ -114,11 +112,12 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
   const trialButtonClassName =
     'flex max-w-[140px] items-center justify-center rounded-full border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm transition-all hover:border-[var(--color-border-strong)] hover:bg-[var(--opacity-neutral-darkest-5)] active:scale-95 sm:px-5 sm:py-2 sm:text-lg';
 
-  const canShowTrialButton =
-    hasTrial &&
-    (activeTrialCourseId == null ||
-      activeTrialCourseId === '' ||
-      activeTrialCourseId === id);
+  /**
+   * A trial is a standing free tier granted per course, not one trial per account,
+   * so having a trial on another course must not hide the button here. Courses the
+   * student already has access to render "Continue learning" via `isAdded` instead.
+   */
+  const canShowTrialButton = hasTrial;
 
   const handleTrialClick = async (e: MouseEvent) => {
     e.stopPropagation();

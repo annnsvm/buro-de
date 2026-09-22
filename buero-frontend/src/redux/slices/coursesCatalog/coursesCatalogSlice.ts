@@ -14,7 +14,6 @@ export type CoursesCatalogFilters = {
 
 export type CoursesCatalogState = {
   items: CourseCardProps[];
-  activeTrialCourseId: string | null;
   filters: CoursesCatalogFilters;
   totalCount: number;
   page: number;
@@ -27,7 +26,6 @@ export type CoursesCatalogState = {
 
 const initialState: CoursesCatalogState = {
   items: [],
-  activeTrialCourseId: null,
   filters: {},
   totalCount: 0,
   page: 1,
@@ -55,7 +53,6 @@ const coursesCatalogSlice = createSlice({
     },
     resetCoursesCatalog: (state) => {
       state.items = [];
-      state.activeTrialCourseId = null;
       state.totalCount = 0;
       state.status = 'idle';
       state.error = null;
@@ -78,7 +75,6 @@ const coursesCatalogSlice = createSlice({
         state.status = 'succeeded';
         state.items = action.payload.items;
         state.totalCount = action.payload.totalCount;
-        state.activeTrialCourseId = action.payload.activeTrialCourseId ?? null;
         state.lastFetchKey = action.payload.fetchKey;
         state.lastFetchAt = Date.now();
       })
