@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Role, UserCourseAccessType } from 'src/generated/prisma/enums';
+import { getTrialModuleIds } from '../../common/access/trial-scope';
+import { stripQuizAnswers } from '../../common/content/strip-quiz-answers';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCourseMaterialDto } from './dto/create-course-material.dto';
 import { UpdateCourseMaterialDto } from './dto/update-course-material.dto';
@@ -28,16 +30,9 @@ export class CourseMaterialService {
     if (!access) {
       throw new ForbiddenException('Немає доступу до цього курсу');
     }
-    if (
-      access.accessType === UserCourseAccessType.trial &&
-      access.trialEndsAt &&
-      access.trialEndsAt < new Date()
-    ) {
-      throw new ForbiddenException('Пробний період закінчився');
-    }
   }
 
-  /** Перевірка доступу до модуля (для матеріалів); при trial дозволений лише перший модуль. */
+  /** Перевірка доступу до модуля (для матеріалів); при trial доступні лише вступні модулі. */
   async assertCanAccessModule(
     userId: string,
     role: Role,
@@ -53,22 +48,13 @@ export class CourseMaterialService {
       throw new ForbiddenException('Немає доступу до цього курсу');
     }
     if (access.accessType === UserCourseAccessType.trial) {
-      const firstModuleId = await this.getFirstModuleId(courseId);
-      if (firstModuleId !== null && moduleId !== firstModuleId) {
+      const trialModuleIds = await getTrialModuleIds(this.prisma, courseId);
+      if (trialModuleIds.length > 0 && !trialModuleIds.includes(moduleId)) {
         throw new ForbiddenException(
-          'На пробному періоді доступні лише матеріали першого модуля',
+          'На пробному періоді доступні лише матеріали вступних модулів',
         );
       }
     }
-  }
-
-  private async getFirstModuleId(courseId: string): Promise<string | null> {
-    const first = await this.prisma.courseModule.findFirst({
-      where: { courseId },
-      orderBy: { orderIndex: 'asc' },
-      select: { id: true },
-    });
-    return first?.id ?? null;
   }
 
   private async ensureCourseExists(courseId: string): Promise<void> {
@@ -94,7 +80,7 @@ export class CourseMaterialService {
     }
   }
 
-  async findAllByModuleId(courseId: string, moduleId: string) {
+  async findAllByModuleId(courseId: string, moduleId: string, viewerRole?: Role) {
     try {
       await this.ensureModuleBelongsToCourse(moduleId, courseId);
       const items = await this.prisma.courseMaterial.findMany({
@@ -104,14 +90,21 @@ export class CourseMaterialService {
           attachments: { orderBy: { orderIndex: 'asc' } },
         },
       });
-      return items.map((item) => this.omitAttachmentStorageKeys(item));
+      return items.map((item) =>
+        this.toLearnerMaterial(this.omitAttachmentStorageKeys(item), viewerRole),
+      );
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw this.mapError(error);
     }
   }
 
-  async findOne(courseId: string, moduleId: string, id: string) {
+  async findOne(
+    courseId: string,
+    moduleId: string,
+    id: string,
+    viewerRole?: Role,
+  ) {
     try {
       await this.ensureModuleBelongsToCourse(moduleId, courseId);
       const material = await this.prisma.courseMaterial.findFirst({
@@ -125,7 +118,10 @@ export class CourseMaterialService {
           `Матеріал з id ${id} не знайдено або не належить модулю`,
         );
       }
-      return this.omitAttachmentStorageKeys(material);
+      return this.toLearnerMaterial(
+        this.omitAttachmentStorageKeys(material),
+        viewerRole,
+      );
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw this.mapError(error);
@@ -201,6 +197,20 @@ export class CourseMaterialService {
         return rest;
       }),
     };
+  }
+
+  /**
+   * Access to a material is not access to its answer key: a student who paid for the
+   * course must still not be able to read `correct` out of the response. Teachers
+   * author the quizzes, so they keep it — the editor needs it to pre-select options.
+   * An absent role means an internal lookup that never reaches a client.
+   */
+  private toLearnerMaterial<T extends { content?: unknown }>(
+    material: T,
+    viewerRole?: Role,
+  ): T {
+    if (viewerRole === undefined || viewerRole === Role.teacher) return material;
+    return { ...material, content: stripQuizAnswers(material.content) };
   }
 
   private mapError(error: unknown): never {

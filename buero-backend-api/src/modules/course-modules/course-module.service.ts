@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Role, UserCourseAccessType } from "src/generated/prisma/enums";
+import { getTrialModuleIds } from "../../common/access/trial-scope";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CreateCourseModuleDto } from "./dto/create-course-module.dto";
 import { ReorderCourseStructureDto } from "./dto/reorder-course-structure.dto";
@@ -27,16 +28,9 @@ export class CourseModuleService {
     if (!access) {
       throw new ForbiddenException("Немає доступу до цього курсу");
     }
-    if (
-      access.accessType === UserCourseAccessType.trial &&
-      access.trialEndsAt &&
-      access.trialEndsAt < new Date()
-    ) {
-      throw new ForbiddenException("Пробний період закінчився");
-    }
   }
 
-  /** Перевірка доступу до конкретного модуля; при trial дозволений лише перший модуль. */
+  /** Перевірка доступу до конкретного модуля; при trial доступні лише вступні модулі. */
   async assertCanAccessModule(
     userId: string,
     role: Role,
@@ -52,22 +46,13 @@ export class CourseModuleService {
       throw new ForbiddenException("Немає доступу до цього курсу");
     }
     if (access.accessType === UserCourseAccessType.trial) {
-      const firstModuleId = await this.getFirstModuleId(courseId);
-      if (firstModuleId !== null && moduleId !== firstModuleId) {
+      const trialModuleIds = await getTrialModuleIds(this.prisma, courseId);
+      if (trialModuleIds.length > 0 && !trialModuleIds.includes(moduleId)) {
         throw new ForbiddenException(
-          "На пробному періоді доступний лише перший модуль курсу"
+          "На пробному періоді доступні лише вступні модулі курсу"
         );
       }
     }
-  }
-
-  private async getFirstModuleId(courseId: string): Promise<string | null> {
-    const first = await this.prisma.courseModule.findFirst({
-      where: { courseId },
-      orderBy: { orderIndex: "asc" },
-      select: { id: true },
-    });
-    return first?.id ?? null;
   }
 
   private async ensureCourseExists(courseId: string): Promise<void> {
@@ -101,10 +86,10 @@ export class CourseModuleService {
           where: { userId_courseId: { userId, courseId } },
         });
         if (access?.accessType === UserCourseAccessType.trial) {
-          const firstModuleId = await this.getFirstModuleId(courseId);
-          if (firstModuleId) {
+          const trialModuleIds = await getTrialModuleIds(this.prisma, courseId);
+          if (trialModuleIds.length > 0) {
             return this.prisma.courseModule.findMany({
-              where: { courseId, id: firstModuleId },
+              where: { courseId, id: { in: trialModuleIds } },
               orderBy: { orderIndex: "asc" },
             });
           }

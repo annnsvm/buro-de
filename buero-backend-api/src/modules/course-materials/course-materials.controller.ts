@@ -58,7 +58,11 @@ export class CourseMaterialsController {
       courseId,
       moduleId,
     );
-    return this.courseMaterialService.findAllByModuleId(courseId, moduleId);
+    return this.courseMaterialService.findAllByModuleId(
+      courseId,
+      moduleId,
+      user.role,
+    );
   }
 
   @Get(':id')
@@ -88,7 +92,12 @@ export class CourseMaterialsController {
       courseId,
       moduleId,
     );
-    return this.courseMaterialService.findOne(courseId, moduleId, id);
+    return this.courseMaterialService.findOne(
+      courseId,
+      moduleId,
+      id,
+      user.role,
+    );
   }
 
   @Post()

@@ -13,6 +13,8 @@ import {
   UserCourseAccessType,
 } from "../../generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
+import { stripQuizAnswers } from "../../common/content/strip-quiz-answers";
+import { TRIAL_FREE_MODULE_COUNT } from "../../common/access/trial-scope";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
@@ -35,6 +37,12 @@ const LIST_STALE_MS = 5 * 60_000;
 
 type CourseListItem = Record<string, unknown>;
 
+/** Who is asking for a course, so content can be scoped to what they paid for. */
+export type CourseViewer = { id: string; role: Role };
+
+/** Modules whose `content` may be serialized: every one, or an explicit allow-list. */
+type ReadableModules = "all" | ReadonlySet<string>;
+
 @Injectable()
 export class CourseService {
   private readonly logger = new Logger(CourseService.name);
@@ -52,9 +60,7 @@ export class CourseService {
     private readonly paymentFulfillment: PaymentFulfillmentService
   ) {}
 
-  /**
-   * Курси, до яких у користувача є активний доступ (trial без прострочки, purchase, subscription).
-   */
+  /** Курси, до яких у користувача є доступ (trial, purchase, subscription). */
   async findMyAccessibleCourses(userId: string) {
     try {
       void this.paymentFulfillment.reconcilePendingForUser(userId);
@@ -68,23 +74,14 @@ export class CourseService {
           }),
           this.countLessonsByCourseIds(),
         ]);
-      const now = new Date();
-      const active = accesses.filter((a) => {
-        if (a.accessType !== UserCourseAccessType.trial) return true;
-        if (!a.trialEndsAt) return true;
-        return a.trialEndsAt >= now;
-      });
-      return active.map((a) => ({
+      // A trial never lapses, so every access row stays in the list.
+      return accesses.map((a) => ({
         ...this.serializeCourse(a.course as Record<string, unknown>),
         videoLessonCount: videoByCourse.get(a.courseId) ?? 0,
         lessonsCount: lessonsByCourse.get(a.courseId) ?? 0,
         avgVideoLessonMinutes: null,
         my_access: {
           access_type: a.accessType,
-          ...(a.accessType === "trial" &&
-            a.trialEndsAt && {
-              trial_ends_at: a.trialEndsAt.toISOString(),
-            }),
         },
       }));
     } catch (error) {
@@ -148,8 +145,13 @@ export class CourseService {
     }
   }
 
-  async findById(id: string, includeModules = true, userId?: string | null) {
+  async findById(
+    id: string,
+    includeModules = true,
+    viewer?: CourseViewer | null,
+  ) {
     try {
+      const userId = viewer?.id ?? null;
       const [course, access] = await Promise.all([
         includeModules
           ? this.loadCourseTree(id)
@@ -164,38 +166,132 @@ export class CourseService {
         throw new NotFoundException(`Курс з id ${id} не знайдено`);
       }
 
-      if (!access)
-        return this.serializeCourse(course as Record<string, unknown>) as any;
+      /**
+       * Drafts are teacher-only. Without this an unpublished course stays readable
+       * by anyone who knows (or guesses) its id, which is how unfinished content leaks.
+       * 404 rather than 403 so the id itself is not confirmed.
+       */
+      const isTeacher = viewer?.role === Role.teacher;
+      if (course.isPublished !== true && !isTeacher) {
+        throw new NotFoundException(`Курс з id ${id} не знайдено`);
+      }
 
-      const firstModule =
-        "modules" in course &&
-        Array.isArray(course.modules) &&
-        course.modules.length > 0
-          ? course.modules[0]
-          : null;
-      const firstModuleId =
-        firstModule && typeof firstModule === "object" && "id" in firstModule
-          ? (firstModule as { id: string }).id
-          : undefined;
+      /**
+       * The tree is already ordered by order_index, so the trial scope can be read
+       * off it without a second query.
+       */
+      const orderedModules =
+        "modules" in course && Array.isArray(course.modules)
+          ? (course.modules as Array<{ id?: unknown }>)
+          : [];
+      const trialModuleIds = orderedModules
+        .slice(0, TRIAL_FREE_MODULE_COUNT)
+        .map((mod) => (typeof mod.id === "string" ? mod.id : null))
+        .filter((moduleId): moduleId is string => moduleId !== null);
+
+      const scoped = this.applyContentAccess(
+        course as Record<string, unknown>,
+        this.resolveReadableModules(access, isTeacher, trialModuleIds),
+        isTeacher,
+      );
+      const serialized = this.serializeCourse(scoped);
+
+      if (!access) return serialized as any;
 
       const my_access = {
         access_type: access.accessType,
         ...(access.accessType === "trial" &&
-          access.trialEndsAt && {
-            trial_ends_at: access.trialEndsAt.toISOString(),
+          trialModuleIds.length > 0 && {
+            /** Kept for older clients; trial_module_ids is the full list. */
+            first_module_id: trialModuleIds[0],
+            trial_module_ids: trialModuleIds,
           }),
-        ...(access.accessType === "trial" &&
-          firstModuleId && { first_module_id: firstModuleId }),
       };
 
-      const serialized = this.serializeCourse(
-        course as Record<string, unknown>
-      );
       return { ...serialized, my_access } as any;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw this.mapPrismaError(error);
     }
+  }
+
+  /**
+   * Which modules of this course may have their `content` and attachments served.
+   * "all" for teachers and paid access, the opening modules on a trial, nothing for
+   * guests and for users with no access row. Trials do not lapse.
+   */
+  private resolveReadableModules(
+    access: { accessType: string } | null,
+    isTeacher: boolean,
+    trialModuleIds: string[],
+  ): ReadableModules {
+    if (isTeacher) return "all";
+    if (!access) return new Set<string>();
+    if (access.accessType === UserCourseAccessType.trial) {
+      return new Set(trialModuleIds);
+    }
+    return "all";
+  }
+
+  /** Drops `content` and attachments of every module the viewer may not read. */
+  private applyContentAccess(
+    course: Record<string, unknown>,
+    readable: ReadableModules,
+    isTeacher: boolean,
+  ): Record<string, unknown> {
+    const modules = course.modules;
+    if (!Array.isArray(modules)) return course;
+    return {
+      ...course,
+      modules: modules.map((mod: Record<string, unknown>) => {
+        const materials = mod.materials;
+        if (!Array.isArray(materials)) return mod;
+        const moduleId = typeof mod.id === "string" ? mod.id : "";
+        const unlocked = readable === "all" || readable.has(moduleId);
+        return {
+          ...mod,
+          materials: materials.map((mat: Record<string, unknown>) =>
+            this.applyMaterialAccess(mat, unlocked, isTeacher),
+          ),
+        };
+      }),
+    };
+  }
+
+  private applyMaterialAccess(
+    material: Record<string, unknown>,
+    unlocked: boolean,
+    isTeacher: boolean,
+  ): Record<string, unknown> {
+    const { content, attachments, ...rest } = material;
+    /**
+     * Duration is showcase data, not paid content — the catalog and the lesson list
+     * show it for locked lessons too. Lift it out before `content` is dropped.
+     */
+    const base = {
+      ...rest,
+      duration: this.extractDuration(content),
+      locked: !unlocked,
+    };
+    if (!unlocked) {
+      return { ...base, content: null, attachments: [] };
+    }
+    /**
+     * Teachers author the quizzes, and the material editor pre-selects the right
+     * options from `correct` — stripping it for them would blank the answer key on
+     * the next save. Everyone else gets the content without the key.
+     */
+    return {
+      ...base,
+      content: isTeacher ? (content ?? null) : stripQuizAnswers(content),
+      attachments: attachments ?? [],
+    };
+  }
+
+  private extractDuration(content: unknown): string | null {
+    if (!content || typeof content !== "object") return null;
+    const value = (content as { duration?: unknown }).duration;
+    return typeof value === "string" && value.trim() ? value : null;
   }
 
   async create(dto: CreateCourseDto) {
@@ -340,7 +436,17 @@ export class CourseService {
    */
   async uploadCover(courseId: string, file: Express.Multer.File) {
     try {
-      await this.findById(courseId, false);
+      /**
+       * A direct existence check, not findById: covers are uploaded while the course
+       * is still a draft, and findById now hides drafts from anyone but a teacher.
+       */
+      const existing = await this.prisma.course.findUnique({
+        where: { id: courseId },
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new NotFoundException(`Курс з id ${courseId} не знайдено`);
+      }
 
       const secureUrl = await this.cloudinaryService.uploadImage(file.buffer, {
         folder: "courses",
@@ -361,14 +467,6 @@ export class CourseService {
 
   async startTrial(userId: string, courseId: string) {
     try {
-      const trialDaysRaw = this.configService.get<string | number>(
-        "TRIAL_DAYS"
-      );
-      const trialDays = trialDaysRaw != null ? Number(trialDaysRaw) : 7;
-      if (!Number.isFinite(trialDays) || trialDays < 1) {
-        throw new BadRequestException("TRIAL_DAYS має бути додатним числом");
-      }
-
       const course = await this.prisma.course.findUnique({
         where: { id: courseId },
         select: { id: true, isPublished: true },
@@ -403,22 +501,21 @@ export class CourseService {
         );
       }
 
-      const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
-
+      /**
+       * No trialEndsAt: the trial is a standing free tier, not a countdown, so it
+       * is never given an end date.
+       */
       await this.prisma.userCourseAccess.create({
         data: {
           userId,
           courseId,
           accessType: UserCourseAccessType.trial,
-          trialEndsAt,
         },
       });
 
       return {
         course_id: courseId,
         access_type: "trial" as const,
-        trial_ends_at: trialEndsAt.toISOString(),
       };
     } catch (error) {
       if (

@@ -6,7 +6,6 @@ import type { CourseCardProps } from '@/types/features/courses-catalog/CourseCar
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { selectUserRole } from '@/redux/slices/user/userSelectors';
 import { fetchCoursesCatalogThunk } from '@/redux/slices/coursesCatalog/coursesCatalogThunks';
-import { selectCatalogActiveTrialCourseId } from '@/redux/slices/coursesCatalog/coursesCatalogSelectors';
 
 type CoursesGridProps = {
   courses: CourseCardProps[];
@@ -16,7 +15,6 @@ type CoursesGridProps = {
 const CoursesCatalogList = ({ courses, canReorderCourses = false }: CoursesGridProps) => {
   const dispatch = useAppDispatch();
   const role = useAppSelector(selectUserRole);
-  const activeTrialCourseId = useAppSelector(selectCatalogActiveTrialCourseId);
 
   const handleCourseDeleted = useCallback(() => {
     void dispatch(fetchCoursesCatalogThunk({ force: true }));
@@ -39,7 +37,6 @@ const CoursesCatalogList = ({ courses, canReorderCourses = false }: CoursesGridP
                   <CourseCard
                     {...course}
                     imagePriority={index < 3}
-                    activeTrialCourseId={role === 'student' ? activeTrialCourseId : null}
                     variant="catalog"
                   />
                 </li>

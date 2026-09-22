@@ -170,7 +170,7 @@ export class SubscriptionsService {
       id: a.id,
       course_id: a.courseId,
       access_type: a.accessType,
-      trial_ends_at: a.trialEndsAt ?? undefined,
+      // Trials do not expire, so no end date is reported.
       payment_id: a.paymentId ?? undefined,
       subscription_id: a.subscriptionId ?? undefined,
       created_at: a.createdAt,

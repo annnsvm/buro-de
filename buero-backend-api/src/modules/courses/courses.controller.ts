@@ -32,6 +32,7 @@ import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Role } from "src/generated/prisma/enums";
+import type { UserWithoutPassword } from "../user/types/user-response.type";
 import { CourseService } from "./course.service";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
@@ -141,7 +142,14 @@ export class CoursesController {
   @ApiOperation({
     summary: "Один курс по id (з модулями та матеріалами)",
     description:
-      "Публічний перегляд структури курсу (модулі + матеріали). JWT опційний: якщо є валідний токен і доступ до курсу — у відповіді також my_access. Модулі та матеріали відсортовані за order_index.",
+      "Структура курсу (модулі + матеріали) з поетапним доступом до вмісту. JWT опційний. " +
+      "Завжди повертаються id, title, type, order_index та duration матеріалу. " +
+      "Поле content і attachments приходять лише для доступних модулів: " +
+      "вчителю — усі; після купівлі чи підписки — усі; на trial — лише вступні модулі (0 і 1); " +
+      "гостю та після закінчення trial — жодного (content: null, locked: true). " +
+      "Правильні відповіді на квізи не повертаються нікому — перевірка виконується на сервері. " +
+      "Неопубліковані курси видно лише вчителю (інакше 404). " +
+      "За наявності доступу у відповіді також my_access.",
   })
   @ApiParam({ name: "id", description: "UUID курсу" })
   @ApiResponse({
@@ -175,7 +183,10 @@ export class CoursesController {
                 moduleId: "m1000000-0000-0000-0000-000000000001",
                 type: "video",
                 title: "Greetings",
-                content: { youtube_video_id: "dQw4w9WgXcQ" },
+                duration: "07:12",
+                locked: false,
+                content: { youtube_video_id: "abc123", duration: "07:12" },
+                attachments: [],
                 orderIndex: 0,
                 createdAt: "2025-02-16T10:00:00.000Z",
                 updatedAt: "2025-02-16T10:00:00.000Z",
@@ -183,9 +194,12 @@ export class CoursesController {
               {
                 id: "mat10000-0000-0000-0000-00000000002",
                 moduleId: "m1000000-0000-0000-0000-000000000001",
-                type: "vocabulary",
-                title: "Basic words",
-                content: {},
+                type: "quiz",
+                title: "Module 1 check",
+                duration: null,
+                locked: true,
+                content: null,
+                attachments: [],
                 orderIndex: 1,
                 createdAt: "2025-02-16T10:00:00.000Z",
                 updatedAt: "2025-02-16T10:00:00.000Z",
@@ -212,10 +226,14 @@ export class CoursesController {
       "При наявному доступі до курсу у відповіді є my_access: { access_type, trial_ends_at?, first_module_id? }",
   })
   getById(
-    @CurrentUser("id") userId: string | undefined,
+    @CurrentUser() user: UserWithoutPassword | undefined,
     @Param("id") id: string,
   ) {
-    return this.courseService.findById(id, true, userId ?? null);
+    return this.courseService.findById(
+      id,
+      true,
+      user ? { id: user.id, role: user.role } : null,
+    );
   }
 
   @Post()
@@ -358,7 +376,7 @@ export class CoursesController {
   @ApiOperation({
     summary: "Розпочати пробний період",
     description:
-      "Тільки для студентів. Розпочати пробний період для курсу (доступ лише до першого модуля). Повертає course_id, access_type, trial_ends_at.",
+      "Тільки для студентів. Розпочати пробний період для курсу (доступ до двох вступних модулів: модуль 0 з інструкціями та перший навчальний модуль). Повертає course_id, access_type, trial_ends_at.",
   })
   @ApiParam({ name: "id", description: "UUID курсу" })
   @ApiResponse({

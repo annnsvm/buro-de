@@ -10,14 +10,8 @@ const buildSubscriptionSummary = (accessList: GetMyCourseAccessResponse): Subscr
       currentPeriodEnd: null,
       trialEndsAt: null,
     };
-  const now = new Date().getTime();
-  const activeTrial = accessList.find((access) => {
-    if (!access.trialEndsAt) return false;
-    if (access.accessType !== 'trial') return false;
-
-    const trialEnd = new Date(access.trialEndsAt);
-    return trialEnd.getTime() > now;
-  });
+  // Trials never lapse, so any trial row counts as active.
+  const activeTrial = accessList.find((access) => access.accessType === 'trial');
 
   if (activeTrial) {
     return {

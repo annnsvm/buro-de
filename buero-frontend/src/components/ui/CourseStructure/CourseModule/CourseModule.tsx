@@ -26,7 +26,11 @@ const CourseModule: React.FC<ModulesProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const expanded = isExpanded || forceExpanded;
-  const moduleNumber = displayPosition ?? (orderIndex ?? 0) + 1;
+  /**
+   * Modules are numbered from zero: module 0 holds the course instructions and
+   * module 1 is the first teaching module, which is also what the free trial covers.
+   */
+  const moduleNumber = displayPosition ?? orderIndex ?? 0;
 
   return (
     <li ref={sortableRef} style={sortableStyle} className={isDragging ? 'z-10 opacity-80' : undefined}>

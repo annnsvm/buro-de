@@ -116,7 +116,7 @@ export class ProgressService {
      * Structural checks below only prove the material belongs to the course. Without this
      * call any authenticated student could mark materials of a course they never bought,
      * inflating their own progress. Uses the module-level check so it matches what the
-     * material listing allows — on trial that is the first module only.
+     * material listing allows — on trial that is the opening modules only.
      */
     await this.courseMaterialService.assertCanAccessModule(
       userId,

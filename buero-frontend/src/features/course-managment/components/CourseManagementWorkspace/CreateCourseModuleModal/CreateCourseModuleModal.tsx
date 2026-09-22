@@ -75,7 +75,7 @@ const CreateCourseModuleModal: React.FC<CreateCourseModuleModalProps> = ({
             id="moduleTitle"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Module 1: Getting Started"
+            placeholder="e.g. How to study on this course"
             disabled={isSubmitting}
           />
         </FormField>

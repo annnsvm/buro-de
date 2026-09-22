@@ -82,7 +82,7 @@ const CourseStructure: React.FC<CourseStructureProps> = ({
             >
               <div className="flex flex-col">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-neutral-dark)]">
-                  {t('courses.structure.module')}&nbsp;&nbsp;{modIdx + 1}
+                  {t('courses.structure.module')}&nbsp;&nbsp;{modIdx}
                 </span>
                 <span className="mt-0.5 text-base font-semibold leading-tight text-[var(--color-neutral-darkest)]">
                   {mod.title}

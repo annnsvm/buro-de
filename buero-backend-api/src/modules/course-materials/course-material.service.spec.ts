@@ -8,7 +8,7 @@ describe("CourseMaterialService", () => {
   let service: CourseMaterialService;
   let prisma: {
     course: { findUnique: jest.Mock };
-    courseModule: { findFirst: jest.Mock };
+    courseModule: { findFirst: jest.Mock; findMany: jest.Mock };
     courseMaterial: {
       findMany: jest.Mock;
       findFirst: jest.Mock;
@@ -26,7 +26,7 @@ describe("CourseMaterialService", () => {
   beforeEach(async () => {
     prisma = {
       course: { findUnique: jest.fn() },
-      courseModule: { findFirst: jest.fn() },
+      courseModule: { findFirst: jest.fn(), findMany: jest.fn() },
       courseMaterial: {
         findMany: jest.fn(),
         findFirst: jest.fn(),
@@ -188,22 +188,45 @@ describe("CourseMaterialService", () => {
   });
 
   describe("assertCanAccessModule", () => {
-    it("forbids student on non-first module during trial", async () => {
+    /** Module 0 holds the course instructions, module 1 the first real lessons. */
+    const arrangeTrial = (trialEndsAt: Date) => {
       prisma.course.findUnique.mockResolvedValue({ id: courseId });
       prisma.userCourseAccess.findUnique.mockResolvedValue({
         accessType: "trial",
-        trialEndsAt: new Date("2099-01-01"),
+        trialEndsAt,
       });
-      prisma.courseModule.findFirst.mockResolvedValue({ id: "first-mod" });
+      prisma.courseModule.findMany.mockResolvedValue([
+        { id: "mod-0" },
+        { id: "mod-1" },
+      ]);
+    };
+    const anyDate = new Date("2099-01-01");
+
+    it("allows both opening modules during a trial", async () => {
+      arrangeTrial(anyDate);
 
       await expect(
-        service.assertCanAccessModule(
-          "stu",
-          Role.student,
-          courseId,
-          "second-mod",
-        ),
+        service.assertCanAccessModule("stu", Role.student, courseId, "mod-0"),
+      ).resolves.toBeUndefined();
+      await expect(
+        service.assertCanAccessModule("stu", Role.student, courseId, "mod-1"),
+      ).resolves.toBeUndefined();
+    });
+
+    it("forbids a later module during a trial", async () => {
+      arrangeTrial(anyDate);
+
+      await expect(
+        service.assertCanAccessModule("stu", Role.student, courseId, "mod-2"),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("still allows the opening modules when an old end date is stored", async () => {
+      arrangeTrial(new Date("2000-01-01"));
+
+      await expect(
+        service.assertCanAccessModule("stu", Role.student, courseId, "mod-0"),
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -225,16 +248,17 @@ describe("CourseMaterialService", () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it("forbids student when trial expired", async () => {
+    it("allows a student whose trial row carries an old end date", async () => {
       prisma.course.findUnique.mockResolvedValue({ id: courseId });
       prisma.userCourseAccess.findUnique.mockResolvedValue({
         accessType: "trial",
         trialEndsAt: new Date("2000-01-01"),
       });
 
+      // Trials are a standing free tier; a stored date must not revoke access.
       await expect(
         service.assertCanAccessCourse("stu", Role.student, courseId),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).resolves.toBeUndefined();
     });
   });
 });

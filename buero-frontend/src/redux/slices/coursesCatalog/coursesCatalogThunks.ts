@@ -4,7 +4,6 @@ import { API_ENDPOINTS } from '@/api/apiEndpoints';
 import { mapApiCourseToCourseCard } from '@/api/myLearningCourses';
 import type { CatalogCourse } from '@/types/api/myLearningCourses.types';
 import type { CourseCardProps } from '@/types/features/courses-catalog/CourseCard.types';
-import { getActiveTrialCourseIdFromAccess } from '@/features/courses-catalog/activeTrialFromMyCourses';
 import { buildCoursesCatalogQueryString } from './coursesCatalogQueryString';
 
 const CATALOG_CLIENT_TTL_MS = 20_000;
@@ -12,7 +11,6 @@ const CATALOG_CLIENT_TTL_MS = 20_000;
 type FetchCoursesResponse = {
   items: CourseCardProps[];
   totalCount: number;
-  activeTrialCourseId: string | null;
   fetchKey: string;
 };
 
@@ -78,7 +76,6 @@ export const fetchCoursesCatalogThunk = createAsyncThunk<
       const accessibleCourseIds = new Set(
         accessRows.map(readAccessCourseId).filter((id): id is string => Boolean(id)),
       );
-      const activeTrialCourseId = getActiveTrialCourseIdFromAccess(accessRows);
 
       const items = raw.map((row) => {
         const card = mapApiCourseToCourseCard(row as CatalogCourse);
@@ -89,7 +86,6 @@ export const fetchCoursesCatalogThunk = createAsyncThunk<
       return {
         items,
         totalCount: items.length,
-        activeTrialCourseId,
         fetchKey: buildCatalogFetchKey(state),
       };
     } catch (error: any) {

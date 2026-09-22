@@ -100,25 +100,29 @@ describe("CourseModuleService", () => {
       });
     });
 
-    it("trial student sees only first module", async () => {
+    it("trial student sees the two opening modules", async () => {
+      const secondModuleId = "mod-second";
       prisma.course.findUnique.mockResolvedValue({ id: courseId });
       prisma.userCourseAccess.findUnique.mockResolvedValue({
         accessType: "trial",
         trialEndsAt: new Date("2099-01-01"),
       });
-      prisma.courseModule.findFirst.mockResolvedValue({ id: moduleId });
-      prisma.courseModule.findMany.mockResolvedValue([
-        { id: moduleId, courseId, title: "First", orderIndex: 0 },
-      ]);
+      // First call resolves the trial scope, the second returns those modules.
+      prisma.courseModule.findMany
+        .mockResolvedValueOnce([{ id: moduleId }, { id: secondModuleId }])
+        .mockResolvedValueOnce([
+          { id: moduleId, courseId, title: "Instructions", orderIndex: 0 },
+          { id: secondModuleId, courseId, title: "First", orderIndex: 1 },
+        ]);
 
       const list = await service.findAllByCourseId(
         courseId,
         "stu",
         Role.student,
       );
-      expect(list).toHaveLength(1);
-      expect(prisma.courseModule.findMany).toHaveBeenCalledWith({
-        where: { courseId, id: moduleId },
+      expect(list).toHaveLength(2);
+      expect(prisma.courseModule.findMany).toHaveBeenLastCalledWith({
+        where: { courseId, id: { in: [moduleId, secondModuleId] } },
         orderBy: { orderIndex: "asc" },
       });
     });
