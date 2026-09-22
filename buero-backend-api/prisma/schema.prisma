@@ -54,6 +54,16 @@ enum VocabularyCategory {
   other
 }
 
+/// How a question is answered. The value decides which exercise definition grades it
+/// and which component renders it; the shape of Question.payload follows from it.
+enum QuestionType {
+  single_choice
+  multi_choice
+  fill_blank
+  text_input
+  ordering
+}
+
 enum UserCourseAccessType {
   trial
   purchase
@@ -102,6 +112,7 @@ model User {
   lessonRequestsAsTeacher LessonRequest[]    @relation("LessonRequestTeacher")
   placementResults        PlacementResult[]
   vocabularyEntries       UserVocabularyEntry[]
+  questionAttempts        QuestionAttempt[]
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -228,6 +239,7 @@ model CourseMaterial {
   courseProgress CourseProgress[]
   quizAttempts   QuizAttempt[]
   attachments    MaterialAttachment[]
+  questions      Question[]
 
   @@index([moduleId])
   @@map("course_materials")
@@ -374,7 +386,8 @@ model QuizAttempt {
   createdAt        DateTime  @default(now()) @map("created_at")
 
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseMaterial CourseMaterial @relation(fields: [courseMaterialId], references: [id], onDelete: Cascade)
+  courseMaterial   CourseMaterial    @relation(fields: [courseMaterialId], references: [id], onDelete: Cascade)
+  questionAttempts QuestionAttempt[]
 
   @@index([userId])
   @@map("quiz_attempts")
@@ -448,4 +461,61 @@ model PlacementResult {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("placement_results")
+}
+
+/// One question of a quiz material.
+///
+/// Questions used to live as untyped JSON inside CourseMaterial.content, which made it
+/// impossible to ask "which questions about the dative has this student failed" — the
+/// query every review queue, error breakdown and per-topic report needs. The row's id
+/// is the id the question already had in that JSON, so answers submitted by the browser
+/// keep working unchanged.
+///
+/// `payload` holds only what is specific to the type:
+///   single_choice / multi_choice -> { options: [{ id, text }] }
+///   fill_blank / text_input      -> {}
+///   ordering                     -> { tokens: [string] }
+model Question {
+  id              String       @id
+  materialId      String       @map("material_id")
+  type            QuestionType @default(single_choice)
+  prompt          String
+  payload         Json
+  /// Every answer counted as correct. For multi_choice one entry is the whole set of
+  /// option ids, sorted and comma-joined; for written types, each accepted wording.
+  acceptedAnswers String[]     @default([]) @map("accepted_answers")
+  /// Shown after answering. The authored content already carries these.
+  explanation     String?
+  points          Int          @default(1)
+  /// Topic tags such as "weil" or "praeteritum", for per-topic reporting later.
+  skills          String[]     @default([])
+  orderIndex      Int          @default(0) @map("order_index")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  material CourseMaterial    @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  attempts QuestionAttempt[]
+
+  @@index([materialId, orderIndex])
+  @@map("questions")
+}
+
+/// One answer to one question. This is the record that makes review, error analysis and
+/// per-topic progress possible; a quiz-level score alone cannot answer any of it.
+model QuestionAttempt {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  questionId    String   @map("question_id")
+  quizAttemptId String?  @map("quiz_attempt_id")
+  isCorrect     Boolean  @map("is_correct")
+  rawAnswer     Json     @map("raw_answer")
+  answeredAt    DateTime @default(now()) @map("answered_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  quizAttempt QuizAttempt? @relation(fields: [quizAttemptId], references: [id], onDelete: SetNull)
+
+  @@index([userId, questionId])
+  @@index([userId, answeredAt])
+  @@map("question_attempts")
 }

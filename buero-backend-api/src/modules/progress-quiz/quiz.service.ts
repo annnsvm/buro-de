@@ -6,8 +6,9 @@ import {
 import { Role } from "src/generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CourseMaterialService } from "../course-materials/course-material.service";
+import { gradeAnswer } from "../exercises/exercise-registry";
+import type { AnswerMatchQuality } from "../exercises/normalize-german";
 import type { SubmitQuizDto } from "./dto/submit-quiz.dto";
-import type { QuizContentAny, QuizQuestion } from "./types/quiz-content.types";
 
 @Injectable()
 export class QuizService {
@@ -92,35 +93,71 @@ export class QuizService {
       );
     }
 
-    const content = attempt.courseMaterial.content as QuizContentAny | null;
-    const questionsMap = this.getQuestionsByIdMap(content);
-    if (questionsMap.size === 0) {
+    /**
+     * Questions come from the table, not from the material's JSON. That is what makes
+     * a per-question record possible, and it is also why the score is now out of the
+     * number of questions in the quiz rather than the number of answers the browser
+     * happened to send — previously one correct answer out of ten scored 100%.
+     */
+    const questions = await this.prisma.question.findMany({
+      where: { materialId: attempt.courseMaterialId },
+      orderBy: { orderIndex: "asc" },
+    });
+    if (questions.length === 0) {
       throw new BadRequestException(
-        "Контент квізу невалідний (відсутні questions або blocks[].questions)",
+        "Квіз не містить питань",
       );
     }
+    const questionsById = new Map(questions.map((q) => [q.id, q]));
 
     const snapshot: Record<string, { question_id: string; answer: string | string[] }> = {};
-    const results: Array<{ question_id: string; correct: boolean }> = [];
+    const results: Array<{
+      question_id: string;
+      correct: boolean;
+      quality: AnswerMatchQuality;
+    }> = [];
+    const answeredIds = new Set<string>();
     let correctCount = 0;
 
     for (const a of body.answers) {
-      const question = questionsMap.get(a.question_id);
+      const question = questionsById.get(a.question_id);
       if (!question) {
         throw new BadRequestException(
           `Питання з id "${a.question_id}" не знайдено в квізі`,
         );
       }
+      if (answeredIds.has(a.question_id)) {
+        throw new BadRequestException(
+          `Питання з id "${a.question_id}" надіслано двічі`,
+        );
+      }
+      answeredIds.add(a.question_id);
 
-      const key = `question_${a.question_id}`;
-      snapshot[key] = { question_id: a.question_id, answer: a.answer };
+      snapshot[`question_${a.question_id}`] = {
+        question_id: a.question_id,
+        answer: a.answer,
+      };
 
-      const isCorrect = this.isAnswerCorrect(question.correct, a.answer);
-      results.push({ question_id: a.question_id, correct: isCorrect });
-      if (isCorrect) correctCount += 1;
+      const graded = gradeAnswer(question, a.answer);
+      results.push({
+        question_id: a.question_id,
+        correct: graded.correct,
+        quality: graded.quality,
+      });
+      if (graded.correct) correctCount += 1;
     }
 
-    const total = results.length;
+    // An unanswered question is a wrong one, so it still appears in the breakdown.
+    for (const question of questions) {
+      if (answeredIds.has(question.id)) continue;
+      results.push({
+        question_id: question.id,
+        correct: false,
+        quality: "none",
+      });
+    }
+
+    const total = questions.length;
     const score =
       total > 0 ? Math.round((correctCount / total) * 10000) / 100 : 0;
     const completedAt = new Date();
@@ -132,6 +169,22 @@ export class QuizService {
         score,
         completedAt,
       },
+    });
+
+    /**
+     * One row per answered question. This is the record every later feature needs —
+     * reviewing mistakes, repeating what was failed, a breakdown by topic — none of
+     * which a single quiz score can answer.
+     */
+    await this.prisma.questionAttempt.createMany({
+      data: body.answers.map((a) => ({
+        userId,
+        questionId: a.question_id,
+        quizAttemptId: attemptId,
+        isCorrect:
+          results.find((r) => r.question_id === a.question_id)?.correct ?? false,
+        rawAnswer: a.answer as object,
+      })),
     });
 
     const materialWithModule = await this.prisma.courseMaterial.findUnique({
@@ -166,43 +219,6 @@ export class QuizService {
       correct: correctCount,
       results,
     };
-  }
-
-  /**
-   * Повертає мапу question_id -> question з контенту.
-   * Підтримує обидва формати: content.questions[] (плоский) та content.blocks[].questions[] (legacy).
-   */
-  private getQuestionsByIdMap(content: QuizContentAny | null): Map<string, QuizQuestion> {
-    const map = new Map<string, QuizQuestion>();
-    if (content == null || typeof content !== "object") return map;
-    const withBlocks = content as { blocks?: Array<{ questions?: QuizQuestion[] }> };
-    const flat = content as { questions?: QuizQuestion[] };
-    if (Array.isArray(flat.questions)) {
-      for (const q of flat.questions) {
-        if (q?.id != null) map.set(q.id, q);
-      }
-      return map;
-    }
-    if (Array.isArray(withBlocks.blocks)) {
-      for (const block of withBlocks.blocks) {
-        if (!Array.isArray(block.questions)) continue;
-        for (const q of block.questions) {
-          if (q?.id != null) map.set(q.id, q);
-        }
-      }
-    }
-    return map;
-  }
-
-  /** Порівняння відповіді з правильним значенням (string або масив правильних) */
-  private isAnswerCorrect(
-    correct: string | string[] | undefined,
-    answer: string | string[],
-  ): boolean {
-    if (correct === undefined) return false;
-    const norm = (v: string | string[]) =>
-      Array.isArray(v) ? v.map(String).sort().join(",") : String(v);
-    return norm(correct) === norm(answer);
   }
 
   private toAttemptResponse(attempt: {

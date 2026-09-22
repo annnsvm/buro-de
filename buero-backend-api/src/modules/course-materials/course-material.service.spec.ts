@@ -2,10 +2,12 @@ import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { CourseMaterialType, Role } from "src/generated/prisma/enums";
 import { PrismaService } from "src/prisma/prisma.service";
+import { QuestionSyncService } from "../exercises/question-sync.service";
 import { CourseMaterialService } from "./course-material.service";
 
 describe("CourseMaterialService", () => {
   let service: CourseMaterialService;
+  let questionSync: { syncMaterial: jest.Mock };
   let prisma: {
     course: { findUnique: jest.Mock };
     courseModule: { findFirst: jest.Mock; findMany: jest.Mock };
@@ -37,10 +39,16 @@ describe("CourseMaterialService", () => {
       userCourseAccess: { findUnique: jest.fn() },
     };
 
+    questionSync = { syncMaterial: jest.fn().mockResolvedValue(0) };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CourseMaterialService,
         { provide: PrismaService, useValue: prisma as unknown as PrismaService },
+        {
+          provide: QuestionSyncService,
+          useValue: questionSync as unknown as QuestionSyncService,
+        },
       ],
     }).compile();
 
@@ -146,6 +154,49 @@ describe("CourseMaterialService", () => {
         },
       });
       expect(out.title).toBe("Intro");
+    });
+
+    it("rebuilds the questions table for the saved material", async () => {
+      prisma.courseModule.findFirst.mockResolvedValue({ id: moduleId });
+      const content = { questions: [{ id: "q1", text: "?", correct: "a" }] };
+      prisma.courseMaterial.create.mockResolvedValue({
+        id: materialId,
+        moduleId,
+        type: CourseMaterialType.quiz,
+        title: "Check",
+        content,
+        orderIndex: 0,
+      });
+
+      await service.create(courseId, moduleId, {
+        type: CourseMaterialType.quiz,
+        title: "Check",
+        content,
+        order_index: 0,
+      });
+
+      expect(questionSync.syncMaterial).toHaveBeenCalledWith(materialId, content);
+    });
+
+    it("clears the questions of a material that is not a quiz", async () => {
+      prisma.courseModule.findFirst.mockResolvedValue({ id: moduleId });
+      prisma.courseMaterial.create.mockResolvedValue({
+        id: materialId,
+        moduleId,
+        type: CourseMaterialType.video,
+        title: "Intro",
+        content: { youtube_video_id: "abc" },
+        orderIndex: 0,
+      });
+
+      await service.create(courseId, moduleId, {
+        type: CourseMaterialType.video,
+        title: "Intro",
+        content: { youtube_video_id: "abc" },
+        order_index: 0,
+      });
+
+      expect(questionSync.syncMaterial).toHaveBeenCalledWith(materialId, null);
     });
   });
 
