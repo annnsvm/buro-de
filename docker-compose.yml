@@ -1,0 +1,33 @@
+# Local PostgreSQL for development and tests.
+#
+# Everything here runs on your own machine. It never touches the database on Render,
+# which is the point: migrations, seeds and end-to-end tests can be run freely without
+# putting real accounts, payments or course progress at risk.
+#
+#   docker compose up -d      start the database
+#   docker compose down       stop it (data is kept)
+#   docker compose down -v    stop it and erase the data
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: buero-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: buero
+      POSTGRES_PASSWORD: buero
+      POSTGRES_DB: buero_dev
+    ports:
+      # 5433 on the host, so an existing local Postgres on 5432 is left alone.
+      - '5433:5432'
+    volumes:
+      - buero-pgdata:/var/lib/postgresql/data
+      # Runs once, the first time the volume is created.
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U buero -d buero_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  buero-pgdata:

@@ -3,6 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:migrate": "npm --prefix buero-backend-api run prisma:migrate:deploy",
+    "db:studio": "npm --prefix buero-backend-api exec prisma studio",
     "dev": "concurrently -n backend,frontend -c blue,green \"npm --prefix buero-backend-api run start:dev\" \"npm --prefix buero-frontend run dev\"",
     "dev:backend": "npm --prefix buero-backend-api run start:dev",
     "dev:frontend": "npm --prefix buero-frontend run dev",

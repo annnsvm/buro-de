@@ -1,0 +1,135 @@
+# Runs on every pull request into main, and on main itself.
+#
+# The point is to catch, before a merge, the two kinds of breakage that tests alone
+# miss: code that no longer compiles, and an application that compiles but refuses to
+# start (a missing module dependency, for example, which only shows up at boot).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A new push to the same branch cancels the previous, still-running check.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: buero
+          POSTGRES_PASSWORD: buero
+          POSTGRES_DB: buero_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U buero -d buero_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # Throwaway database and secrets: this job never sees production values.
+      DATABASE_URL: postgresql://buero:buero@localhost:5432/buero_ci?schema=public
+      NODE_ENV: development
+      PORT: '3000'
+      JWT_ACCESS_SECRET: ci-access-secret-value-at-least-32-chars
+      JWT_REFRESH_SECRET: ci-refresh-secret-value-at-least-32-chars
+      CORS_ORIGIN: http://localhost:5173
+      WAYFORPAY_MERCHANT_ACCOUNT: ci_merchant
+      WAYFORPAY_MERCHANT_SECRET: ci_secret
+      WAYFORPAY_MERCHANT_DOMAIN: example.com
+      WAYFORPAY_SERVICE_URL: http://localhost:3000/api/webhooks/wayforpay
+
+    defaults:
+      run:
+        working-directory: buero-backend-api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: buero-backend-api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx jest --ci
+
+      # Compiles and boots the real application against the real schema. This is what
+      # catches a controller whose guards need a provider its module does not import:
+      # the code typechecks and the unit tests pass, but the server never comes up.
+      - name: Build
+        run: npm run build
+
+      - name: Start the server and check it answers
+        run: |
+          node dist/src/main.js > /tmp/boot.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "Server is up and /api/health answered."
+              kill $SERVER_PID
+              exit 0
+            fi
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "::error::The server exited before it finished starting."
+              cat /tmp/boot.log
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "::error::The server did not answer /api/health within 60 seconds."
+          cat /tmp/boot.log
+          kill $SERVER_PID 2>/dev/null || true
+          exit 1
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: buero-frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: buero-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Tests
+        run: npm run test
+
+      # `npm run build` is the gate here. A full `tsc --noEmit` is deliberately not run
+      # yet: the project already has around fifty pre-existing type errors on main, so
+      # adding it now would fail every pull request for reasons unrelated to the change.
+      # Turn it on once those are cleared.
+      - name: Build
+        run: npm run build
