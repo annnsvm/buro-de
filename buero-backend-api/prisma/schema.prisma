@@ -46,6 +46,14 @@ enum AttachmentKind {
   link
 }
 
+enum VocabularyCategory {
+  vocabulary
+  idiom
+  phrase
+  grammar
+  other
+}
+
 enum UserCourseAccessType {
   trial
   purchase
@@ -93,6 +101,7 @@ model User {
   lessonRequestsAsStudent LessonRequest[]    @relation("LessonRequestStudent")
   lessonRequestsAsTeacher LessonRequest[]    @relation("LessonRequestTeacher")
   placementResults        PlacementResult[]
+  vocabularyEntries       UserVocabularyEntry[]
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -183,6 +192,7 @@ model Course {
   subscriptions      Subscription[]
   payments           Payment[]
   courseProgress     CourseProgress[]
+  vocabularyEntries  UserVocabularyEntry[]
 
   @@index([teacherId])
   @@index([level])
@@ -392,16 +402,27 @@ model LessonRequest {
 
 // ─── Vocabulary (global dictionary) ─────────────────────────────────────────
 
-model Vocabulary {
-  id              String   @id @default(uuid())
-  word            String   @unique
-  translation     String
-  pronunciation   String?
-  exampleSentence String?  @map("example_sentence")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+/// A student's own word list. Entries belong to exactly one user and are never
+/// shared: the word is unique per user, not globally, so two students can both
+/// save "Termin". Replaces the former global `Vocabulary` table, which had no
+/// owner and was readable by every account.
+model UserVocabularyEntry {
+  id          String             @id @default(uuid())
+  userId      String             @map("user_id")
+  courseId    String?            @map("course_id")
+  word        String
+  translation String
+  category    VocabularyCategory @default(vocabulary)
+  notes       String?
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
 
-  @@map("vocabulary")
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, word])
+  @@index([userId, createdAt])
+  @@map("user_vocabulary_entries")
 }
 
 // ─── Placement Test ────────────────────────────────────────────────────────

@@ -8,7 +8,17 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
   courseId,
   previewModule = null,
   moduleNumber = 2,
+  price = null,
 }) => {
+  /**
+   * A trial no longer expires, so the only thing that moves someone to buy is knowing
+   * what the rest of the course costs. Without this the price is visible in the
+   * catalog only, and is forgotten within days of starting the trial.
+   */
+  const priceLabel =
+    typeof price === 'number' && Number.isFinite(price)
+      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(price)
+      : null;
   const moduleTitle = previewModule?.title ?? 'More in this course';
   const completedTotal = previewModule != null ? String(previewModule.materialCount) : '?';
 
@@ -89,11 +99,18 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
         </div>
 
         <div className="absolute top-30 right-[50%] z-10 flex shrink-0 translate-x-[50%] justify-center px-2 pt-10 pb-6">
-          <CheckoutButton
-            courseId={courseId}
-            label="Unlock full course"
-            className="pointer-events-auto w-full max-w-[260px] min-w-[180px] rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-on-accent)] shadow-md hover:bg-[var(--color-primary-hover)] sm:text-base"
-          />
+          <div className="flex w-full flex-col items-center gap-1.5">
+            <CheckoutButton
+              courseId={courseId}
+              label="Unlock full course"
+              className="pointer-events-auto w-full max-w-[260px] min-w-[180px] rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-on-accent)] shadow-md hover:bg-[var(--color-primary-hover)] sm:text-base"
+            />
+            {priceLabel ? (
+              <span className="text-sm font-semibold text-[var(--color-neutral-darkest)]">
+                {priceLabel}
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

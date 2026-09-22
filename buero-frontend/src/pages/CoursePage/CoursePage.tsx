@@ -315,6 +315,7 @@ const CoursePage: React.FC = () => {
         completedMaterialIds={completedMaterialIds}
         lockedModuleIds={lockedModuleIds}
         checkoutCourseId={lockedModuleIds.size > 0 ? courseId : undefined}
+        coursePrice={course.price ?? null}
         courseStructureMobileOpen={courseStructureMobileOpen}
         onCourseStructureMobileChange={setCourseStructureMobileOpen}
         hideMobileFloatingStructureButton

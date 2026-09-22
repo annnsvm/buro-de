@@ -17,6 +17,7 @@ export type CourseLearningSidebarProps = {
   completedMaterialIds?: ReadonlySet<string>;
   lockedModuleIds?: ReadonlySet<string>;
   checkoutCourseId?: string;
+  coursePrice?: number | null;
   courseStructureMobileOpen?: boolean;
   onCourseStructureMobileChange?: (open: boolean) => void;
   hideMobileFloatingStructureButton?: boolean;
@@ -29,6 +30,7 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
   completedMaterialIds,
   lockedModuleIds,
   checkoutCourseId,
+  coursePrice = null,
   courseStructureMobileOpen,
   onCourseStructureMobileChange,
   hideMobileFloatingStructureButton = false,
@@ -101,6 +103,7 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
             courseId={checkoutCourseId}
             previewModule={nextLockedModulePreview}
             moduleNumber={nextLockedModulePreview?.number}
+            price={coursePrice}
           />
         ) : null}
       </>

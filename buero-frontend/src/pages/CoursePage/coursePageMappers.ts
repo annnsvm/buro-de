@@ -48,6 +48,8 @@ export type ApiCourseWithTree = {
   id: string;
   title: string;
   description?: string | null;
+  /** Full course price; shown to trial students on the unlock call to action. */
+  price?: number | null;
   modules?: ApiCourseModule[];
   my_access?: ApiCourseMyAccess;
 };

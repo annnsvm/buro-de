@@ -9,11 +9,11 @@ import { FormField, Input, Icon } from '@/components/ui';
 import { ICON_NAMES } from '@/helpers/iconNames';
 import { ROUTES } from '@/helpers/routes';
 import { useAppDispatch } from '@/redux/hooks';
-import { addWord } from '@/redux/slices/vocabulary/vocabularySlice';
+import { addWordThunk } from '@/redux/slices/vocabulary/vocabularySlice';
 import { translateVocabularyCategory } from '@/features/vocabulary/translateVocabularyCategory';
 import type { VocabularyCategory } from '@/types/features/vocabulary/Vocabulary.types';
 
-const CATEGORIES: VocabularyCategory[] = ['Vocabulary', 'Idiom', 'Phrase', 'Grammar', 'Other'];
+const CATEGORIES: VocabularyCategory[] = ['vocabulary', 'idiom', 'phrase', 'grammar', 'other'];
 
 const addVocabularySchema = z.object({
   word: z
@@ -24,7 +24,7 @@ const addVocabularySchema = z.object({
     .string()
     .min(1, { message: 'Translation is required' })
     .max(200, { message: 'Translation is too long' }),
-  category: z.enum(['Vocabulary', 'Idiom', 'Phrase', 'Grammar', 'Other']),
+  category: z.enum(['vocabulary', 'idiom', 'phrase', 'grammar', 'other']),
   notes: z.string().max(80, { message: 'Notes must be 80 characters or fewer' }).optional(),
 });
 
@@ -47,13 +47,14 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
   const { courseId } = useParams<{ courseId: string }>();
   const [view, setView] = useState<'form' | 'success'>('form');
   const [addedWord, setAddedWord] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     control,
     watch,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isSubmitting },
     reset,
   } = useForm<AddVocabularyFormValues>({
     resolver: zodResolver(addVocabularySchema),
@@ -61,7 +62,7 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
     defaultValues: {
       word: '',
       translation: '',
-      category: 'Vocabulary',
+      category: 'vocabulary',
       notes: '',
     },
   });
@@ -73,17 +74,25 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
     handleOpenChange(false);
   };
 
-  const onSubmit = handleSubmit((values) => {
-    dispatch(
-      addWord({
-        id: crypto.randomUUID(),
+  const onSubmit = handleSubmit(async (values) => {
+    /**
+     * The word is saved on the server before the success screen is shown, so a
+     * failure (for example a duplicate) surfaces instead of looking like a success.
+     */
+    const result = await dispatch(
+      addWordThunk({
         word: values.word,
         translation: values.translation,
         category: values.category,
         notes: values.notes || undefined,
-        createdAt: new Date().toISOString(),
+        courseId: courseId || undefined,
       }),
     );
+    if (addWordThunk.rejected.match(result)) {
+      setSubmitError(result.payload ?? t('vocabulary.addFailed'));
+      return;
+    }
+    setSubmitError(null);
     setAddedWord(values.word);
     setView('success');
   });
@@ -204,11 +213,16 @@ const AddVocabularyModal: React.FC<AddVocabularyModalProps> = ({
 
             <button
               type="submit"
-              disabled={!isValid}
+              disabled={!isValid || isSubmitting}
               className="mt-2 w-full rounded-full bg-[var(--color-cod-gray-base)] px-6 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t('vocabulary.addToVocabulary')}
             </button>
+            {submitError ? (
+              <p className="mt-2 text-center text-sm text-[var(--color-error)]" role="alert">
+                {submitError}
+              </p>
+            ) : null}
           </form>
         </div>
       ) : (

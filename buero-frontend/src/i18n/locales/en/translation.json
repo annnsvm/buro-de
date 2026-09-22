@@ -404,7 +404,9 @@
       "phrase": "Phrase",
       "grammar": "Grammar",
       "other": "Other"
-    }
+    },
+    "addFailed": "Could not add the word",
+    "loading": "Loading your vocabulary…"
   },
   "notFound": {
     "badge": "Error 404",

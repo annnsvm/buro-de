@@ -8,40 +8,41 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateVocabularyDto } from './dto/create-vocabulary.dto';
 import { UpdateVocabularyDto } from './dto/update-vocabulary.dto';
 
+/**
+ * A student's own word list. Every query is scoped by userId, so one account can
+ * never read or change another's words — the former global table had no owner and
+ * was visible to everybody.
+ */
 @Injectable()
 export class VocabularyService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(search?: string) {
-    const where: Prisma.VocabularyWhereInput = search
-      ? {
+  async findAllForUser(userId: string, search?: string) {
+    const trimmed = search?.trim();
+    return this.prisma.userVocabularyEntry.findMany({
+      where: {
+        userId,
+        ...(trimmed && {
           OR: [
-            { word: { contains: search, mode: 'insensitive' } },
-            { translation: { contains: search, mode: 'insensitive' } },
+            { word: { contains: trimmed, mode: 'insensitive' } },
+            { translation: { contains: trimmed, mode: 'insensitive' } },
           ],
-        }
-      : {};
-
-    return this.prisma.vocabulary.findMany({
-      where,
-      orderBy: { word: 'asc' },
+        }),
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findById(id: string) {
-    const entry = await this.prisma.vocabulary.findUnique({ where: { id } });
-    if (!entry) throw new NotFoundException('Vocabulary entry not found');
-    return entry;
-  }
-
-  async create(dto: CreateVocabularyDto) {
+  async create(userId: string, dto: CreateVocabularyDto) {
     try {
-      return await this.prisma.vocabulary.create({
+      return await this.prisma.userVocabularyEntry.create({
         data: {
-          word: dto.word,
-          translation: dto.translation,
-          pronunciation: dto.pronunciation,
-          exampleSentence: dto.example_sentence,
+          userId,
+          word: dto.word.trim(),
+          translation: dto.translation.trim(),
+          ...(dto.category !== undefined && { category: dto.category }),
+          ...(dto.notes !== undefined && { notes: dto.notes }),
+          ...(dto.course_id !== undefined && { courseId: dto.course_id }),
         },
       });
     } catch (error) {
@@ -50,28 +51,25 @@ export class VocabularyService {
         error.code === 'P2002'
       ) {
         throw new ConflictException(
-          `Word "${dto.word}" already exists in the vocabulary`,
+          `Слово "${dto.word}" вже є у вашому словнику`,
         );
       }
       throw error;
     }
   }
 
-  async update(id: string, dto: UpdateVocabularyDto) {
-    await this.findById(id);
-
+  async update(userId: string, id: string, dto: UpdateVocabularyDto) {
+    await this.findOwnedEntry(userId, id);
     try {
-      return await this.prisma.vocabulary.update({
+      return await this.prisma.userVocabularyEntry.update({
         where: { id },
         data: {
-          ...(dto.word !== undefined && { word: dto.word }),
-          ...(dto.translation !== undefined && { translation: dto.translation }),
-          ...(dto.pronunciation !== undefined && {
-            pronunciation: dto.pronunciation,
+          ...(dto.word !== undefined && { word: dto.word.trim() }),
+          ...(dto.translation !== undefined && {
+            translation: dto.translation.trim(),
           }),
-          ...(dto.example_sentence !== undefined && {
-            exampleSentence: dto.example_sentence,
-          }),
+          ...(dto.category !== undefined && { category: dto.category }),
+          ...(dto.notes !== undefined && { notes: dto.notes }),
         },
       });
     } catch (error) {
@@ -80,15 +78,30 @@ export class VocabularyService {
         error.code === 'P2002'
       ) {
         throw new ConflictException(
-          `Word "${dto.word}" already exists in the vocabulary`,
+          `Слово "${dto.word}" вже є у вашому словнику`,
         );
       }
       throw error;
     }
   }
 
-  async delete(id: string) {
-    await this.findById(id);
-    return this.prisma.vocabulary.delete({ where: { id } });
+  async delete(userId: string, id: string) {
+    await this.findOwnedEntry(userId, id);
+    await this.prisma.userVocabularyEntry.delete({ where: { id } });
+    return { deleted: true, id };
+  }
+
+  /**
+   * Looks the entry up by id *and* owner. Someone else's id therefore reads as
+   * "not found" rather than being edited or revealed.
+   */
+  private async findOwnedEntry(userId: string, id: string) {
+    const entry = await this.prisma.userVocabularyEntry.findFirst({
+      where: { id, userId },
+    });
+    if (!entry) {
+      throw new NotFoundException('Слово не знайдено у вашому словнику');
+    }
+    return entry;
   }
 }

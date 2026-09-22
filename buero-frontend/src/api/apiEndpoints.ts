@@ -76,6 +76,12 @@ export const API_ENDPOINTS = {
     complete: (courseId: string, moduleId: string, materialId: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/complete`,
   },
+  vocabulary: {
+    list: '/vocabulary',
+    create: '/vocabulary',
+    update: (id: string) => `/vocabulary/${id}`,
+    delete: (id: string) => `/vocabulary/${id}`,
+  },
   contact: {
     submit: '/contact',
   },

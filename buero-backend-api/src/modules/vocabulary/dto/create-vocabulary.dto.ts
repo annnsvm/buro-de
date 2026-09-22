@@ -1,8 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
+import { VocabularyCategory } from '../../../generated/prisma/enums';
 
 export class CreateVocabularyDto {
-  @ApiProperty({ example: 'Arbeit', description: 'Слово (унікальне)' })
+  @ApiProperty({ example: 'Arbeit', description: 'Слово (унікальне у вашому словнику)' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
@@ -14,18 +22,23 @@ export class CreateVocabularyDto {
   @MaxLength(500)
   translation!: string;
 
-  @ApiPropertyOptional({ example: 'ˈaʁbaɪ̯t', description: 'Вимова (транскрипція)' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  pronunciation?: string;
-
   @ApiPropertyOptional({
-    example: 'Ich gehe zur Arbeit.',
-    description: 'Приклад речення',
+    enum: VocabularyCategory,
+    default: VocabularyCategory.vocabulary,
+    description: 'Категорія для фільтра у словнику',
   })
+  @IsOptional()
+  @IsEnum(VocabularyCategory)
+  category?: VocabularyCategory;
+
+  @ApiPropertyOptional({ example: 'Zur Arbeit gehen', description: 'Нотатка' })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
-  example_sentence?: string;
+  notes?: string;
+
+  @ApiPropertyOptional({ description: 'Курс, під час якого слово було додане' })
+  @IsOptional()
+  @IsUUID()
+  course_id?: string;
 }
