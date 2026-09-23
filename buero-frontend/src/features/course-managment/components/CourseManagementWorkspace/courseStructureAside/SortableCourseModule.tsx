@@ -15,6 +15,7 @@ import SortableModuleMaterial from './SortableModuleMaterial';
 type SortableCourseModuleProps = {
   module: Modules;
   displayPosition: number;
+  onImportQuestions?: (moduleId: string, moduleTitle: string) => void;
   dragEnabled: boolean;
   forceExpanded: boolean;
   onCreateMaterial: (moduleId: string) => void;
@@ -27,6 +28,7 @@ type SortableCourseModuleProps = {
 const SortableCourseModule = ({
   module,
   displayPosition,
+  onImportQuestions,
   dragEnabled,
   forceExpanded,
   onCreateMaterial,
@@ -68,6 +70,7 @@ const SortableCourseModule = ({
     <CourseModule
       module={module}
       displayPosition={displayPosition}
+      onImportQuestions={onImportQuestions}
       sortableRef={setNodeRef}
       sortableStyle={{
         transform: CSS.Transform.toString(transform),

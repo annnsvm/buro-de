@@ -29,6 +29,12 @@ export const API_ENDPOINTS = {
     byId: (courseId: string, moduleId: string, id: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${id}`,
     create: (courseId: string, moduleId: string) => `/courses/${courseId}/modules/${moduleId}/materials`,
+    import: (courseId: string, moduleId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/materials/import`,
+    questions: (courseId: string, moduleId: string, materialId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/questions`,
+    question: (courseId: string, moduleId: string, materialId: string, questionId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/questions/${questionId}`,
     update: (courseId: string, moduleId: string, id: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${id}`,
     delete: (courseId: string, moduleId: string, id: string) =>

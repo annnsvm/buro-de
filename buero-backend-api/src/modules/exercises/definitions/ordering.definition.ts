@@ -33,6 +33,32 @@ export const orderingDefinition: ExerciseDefinition = {
     if (!acceptedAnswers.some((answer) => answer.trim().length > 0)) {
       problems.push('an ordering question needs at least one accepted order');
     }
+
+    /**
+     * The words have to be able to form one of the accepted sentences. Otherwise the
+     * exercise cannot be completed however the student arranges them — which is the
+     * kind of mistake that is invisible until a learner is stuck on it.
+     */
+    if (tokens.length > 0 && acceptedAnswers.length > 0) {
+      const bag = (value: string) =>
+        value
+          .toLowerCase()
+          .replace(/[.,!?;]/g, ' ')
+          .split(/\s+/)
+          .filter(Boolean)
+          .sort()
+          .join(' ');
+      const fromTokens = bag(tokens.join(' '));
+      const reachable = acceptedAnswers.some(
+        (answer) => bag(answer) === fromTokens,
+      );
+      if (!reachable) {
+        problems.push(
+          'the words given cannot be arranged into any of the accepted answers',
+        );
+      }
+    }
+
     return problems;
   },
 
@@ -40,7 +66,13 @@ export const orderingDefinition: ExerciseDefinition = {
     // The browser may send the arranged tokens as a list or as a finished sentence.
     const given = asStringArray(answer).join(' ');
     const match = matchGermanAnswer(given, question.acceptedAnswers);
-    return { correct: match.correct, quality: match.quality };
+    /**
+     * Capitalisation is not the student's to get wrong here: they only rearrange the
+     * words they were handed, so if those start lower case the sentence does too.
+     * Telling them to mind the capital letter would be a complaint about the author.
+     */
+    const quality = match.quality === 'case' ? 'exact' : match.quality;
+    return { correct: match.correct, quality };
   },
 
   describeAcceptedAnswers: (question) => question.acceptedAnswers,

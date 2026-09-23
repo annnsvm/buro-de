@@ -67,7 +67,7 @@ export const startQuizAttempt = async (courseMaterialId: string): Promise<QuizAt
 export type SubmitQuizAnswerItem = { question_id: string; answer: string | string[] };
 
 /** Why an answer counted, so near misses can be explained rather than just marked. */
-export type AnswerQuality = 'exact' | 'case' | 'typo' | 'none';
+export type AnswerQuality = 'exact' | 'punctuation' | 'case' | 'none';
 
 export type QuizQuestionResult = {
   question_id: string;
@@ -129,14 +129,22 @@ export type LastQuizAttempt = {
   }>;
 };
 
+/** Returned instead of an attempt when the quiz changed since the student took it. */
+export type OutdatedQuizAttempt = { outdated: true };
+
 export const fetchLastQuizAttempt = async (
   materialId: string,
-): Promise<LastQuizAttempt | null> => {
-  const { data } = await apiInstance.get<LastQuizAttempt | null>(
-    API_ENDPOINTS.quiz.lastAttempt(materialId),
-  );
+): Promise<LastQuizAttempt | OutdatedQuizAttempt | null> => {
+  const { data } = await apiInstance.get<
+    LastQuizAttempt | OutdatedQuizAttempt | null
+  >(API_ENDPOINTS.quiz.lastAttempt(materialId));
   return data ?? null;
 };
+
+export const isOutdatedAttempt = (
+  value: LastQuizAttempt | OutdatedQuizAttempt | null,
+): value is OutdatedQuizAttempt =>
+  value !== null && 'outdated' in value && value.outdated === true;
 
 export type SubmitQuizResponse = {
   score: number;

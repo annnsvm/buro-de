@@ -11,7 +11,6 @@ import type {
 import { extractYouTubeVideoId } from '@/features/course-managment/helpers/extractYouTubeVideoId';
 import { MATERIAL_TYPE_OPTIONS } from '@/features/course-managment/helpers/courseMaterials.consts';
 import CourseMaterialCreateSection from './CourseMaterialCreateSection';
-import CourseMaterialQuizEditor from './CourseMaterialQuizEditor';
 import CourseMaterialVideoFields from './CourseMaterialVideoFields';
 import CourseMaterialAttachmentsSection from './CourseMaterialAttachmentsSection';
 import { getInitialMaterialState } from './helpers/courseMaterialInitialState';
@@ -109,18 +108,6 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
     }
     if (materialType === 'video' && !youtubeVideoDuration.trim())
       return setError('Video duration is required');
-    if (materialType === 'quiz') {
-      if (quizQuestions.length === 0) return setError('Add at least one quiz question');
-      for (const questionItem of quizQuestions) {
-        if (!questionItem.question.trim()) return setError('Each quiz question must have text');
-        const filledAnswers = questionItem.answers.filter((answerItem) => answerItem.text.trim());
-        if (filledAnswers.length < 2)
-          return setError('Each quiz question must have at least 2 answers');
-        const hasCorrect = filledAnswers.some((answerItem) => answerItem.isCorrect);
-        if (!hasCorrect) return setError('Mark at least one correct answer for each quiz question');
-      }
-    }
-
     setError(null);
     const payload = buildPayload();
 
@@ -218,15 +205,7 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
             onYoutubeVideoIdChange={setYoutubeVideoId}
             onYoutubeVideoDurationChange={setYoutubeVideoDuration}
           />
-        ) : (
-          <CourseMaterialQuizEditor
-            quizQuestions={quizQuestions}
-            isSubmitting={isBusy}
-            onQuizQuestionsChange={setQuizQuestions}
-            onRemoveQuestion={handleRemoveQuestion}
-            onRemoveAnswer={handleRemoveAnswer}
-          />
-        )}
+        ) : null}
       </div>
 
       {createdMaterialId && courseId && activeModuleId ? (

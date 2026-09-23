@@ -4,6 +4,7 @@ import {
   answerQuizQuestion,
   fetchLastQuizAttempt,
   fetchQuizQuestions,
+  isOutdatedAttempt,
   startQuizAttempt,
   submitQuizAttempt,
   type AnswerQuestionResponse,
@@ -68,6 +69,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   const [startError, setStartError] = useState<string | null>(null);
   const [answerError, setAnswerError] = useState<string | null>(null);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  const [outdated, setOutdated] = useState(false);
   const [mode, setMode] = useState<QuizMode>('practice');
   const [passingScore, setPassingScore] = useState<number | null>(null);
   const [passed, setPassed] = useState<boolean | null>(null);
@@ -97,7 +99,9 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       setMode(loaded.mode);
       setPassingScore(loaded.passing_score);
 
-      if (previous) {
+      if (isOutdatedAttempt(previous)) {
+        setOutdated(true);
+      } else if (previous) {
         setPassed(previous.passed);
         setAttemptId(previous.attempt_id);
         setDrafts(
@@ -214,6 +218,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     setAnswerError(null);
     setAttemptId(null);
     setPassed(null);
+    setOutdated(false);
     onQuizResult?.(null);
   }, [onQuizResult]);
 
@@ -298,6 +303,12 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       <h2 className="pt-6 text-xl font-bold text-[var(--color-text-primary)] sm:text-2xl">
         {quizMaterialTitle || t('quiz.title')}
       </h2>
+
+      {outdated ? (
+        <p className="mt-3 rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
+          {t('quiz.outdatedResult')}
+        </p>
+      ) : null}
 
       <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
         {mode === 'test'
@@ -496,8 +507,8 @@ const QuestionFeedback: React.FC<{ given: AnswerQuestionResponse }> = ({ given }
   const nearMiss =
     given.correct && given.quality === 'case'
       ? t('quiz.nearMissCase')
-      : given.correct && given.quality === 'typo'
-        ? t('quiz.nearMissTypo')
+      : given.correct && given.quality === 'punctuation'
+        ? t('quiz.nearMissPunctuation')
         : null;
 
   return (

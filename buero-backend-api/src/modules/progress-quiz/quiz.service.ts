@@ -126,11 +126,18 @@ export class QuizService {
      * what they see when they come back is the best they have managed. A later, worse
      * attempt must not replace it.
      */
-    const attempt = await this.prisma.quizAttempt.findFirst({
-      where: { userId, courseMaterialId: materialId, completedAt: { not: null } },
-      orderBy: [{ score: "desc" }, { completedAt: "desc" }],
-    });
-    if (!attempt) return null;
+    const { best: attempt, hasOutdated } = await this.bestCurrentAttempt(
+      materialId,
+      userId,
+    );
+    if (!attempt) {
+      /**
+       * Nothing to replay, but say whether that is because the quiz changed — the
+       * student should know their earlier result no longer applies rather than find
+       * an empty quiz where a score used to be.
+       */
+      return hasOutdated ? { outdated: true } : null;
+    }
 
     const [answers, questions] = await Promise.all([
       this.prisma.questionAttempt.findMany({
@@ -180,6 +187,46 @@ export class QuizService {
           },
         ];
       }),
+    };
+  }
+
+  /**
+   * The student's best attempt at the quiz **as it stands today**.
+   *
+   * A score only means something against the set of questions it was earned on. When
+   * the author adds or removes a question, an older attempt answered a different quiz:
+   * showing 100% from before a ninth question was added would overstate what the
+   * student has actually done. Such attempts are passed over, and the next attempt
+   * sets the result again.
+   */
+  private async bestCurrentAttempt(materialId: string, userId: string) {
+    const questions = await this.prisma.question.findMany({
+      where: { materialId },
+      select: { id: true },
+    });
+    const currentIds = new Set(questions.map((question) => question.id));
+
+    const attempts = await this.prisma.quizAttempt.findMany({
+      where: { userId, courseMaterialId: materialId, completedAt: { not: null } },
+      include: { questionAttempts: { select: { questionId: true } } },
+      orderBy: [{ score: "desc" }, { completedAt: "desc" }],
+    });
+
+    const current = attempts.filter((attempt) => {
+      const answered = new Set(
+        attempt.questionAttempts.map((answer) => answer.questionId),
+      );
+      return (
+        answered.size === currentIds.size &&
+        [...answered].every((id) => currentIds.has(id))
+      );
+    });
+
+    return {
+      best: current[0] ?? null,
+      questionCount: currentIds.size,
+      /** True when the student has a finished attempt, but at an older set. */
+      hasOutdated: current.length === 0 && attempts.length > 0,
     };
   }
 
@@ -398,13 +445,8 @@ export class QuizService {
      * and does worse should not lose the result they already earned. `completedAt` is
      * always refreshed, so the material still reads as recently worked on.
      */
-    const existing = await this.prisma.courseProgress.findUnique({
-      where: {
-        userId_courseId_courseMaterialId: { userId, courseId, courseMaterialId },
-      },
-      select: { score: true },
-    });
-    const previousBest = existing?.score != null ? Number(existing.score) : null;
+    const { best } = await this.bestCurrentAttempt(courseMaterialId, userId);
+    const previousBest = best?.score != null ? Number(best.score) : null;
     const bestScore =
       previousBest != null ? Math.max(previousBest, score) : score;
 

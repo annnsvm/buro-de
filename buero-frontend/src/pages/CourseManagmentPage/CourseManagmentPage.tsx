@@ -8,10 +8,16 @@ import CourseEditorHeader from '@/features/course-managment/course-editor/compon
 import CourseEditorCourseFormTab from '@/features/course-managment/course-editor/components/CourseEditorCourseFormTab';
 import CourseEditorMaterialPanel from '@/features/course-managment/course-editor/components/CourseEditorMaterialPanel';
 import CourseEditorModals from '@/features/course-managment/course-editor/components/CourseEditorModals';
+import ImportQuestionsModal from '@/features/course-managment/components/ImportQuestionsModal/ImportQuestionsModal';
 
 const CourseManagmentPage: React.FC = () => {
   const editor = useCourseEditor();
   const [courseStructureMobileOpen, setCourseStructureMobileOpen] = useState(false);
+  /** Which module the CSV import was opened for, if any. */
+  const [importTarget, setImportTarget] = useState<{
+    moduleId: string;
+    moduleTitle: string;
+  } | null>(null);
 
   if (editor.showBootstrapLoading) {
     return <CourseEditorLoadingScreen />;
@@ -24,6 +30,9 @@ const CourseManagmentPage: React.FC = () => {
         aside={
           <CourseStructureAside
             {...editor.asideProps}
+            onImportQuestions={(moduleId, moduleTitle) =>
+              setImportTarget({ moduleId, moduleTitle })
+            }
             courseStructureMobileOpen={courseStructureMobileOpen}
             onCourseStructureMobileChange={setCourseStructureMobileOpen}
             hideMobileFloatingStructureButton
@@ -45,6 +54,22 @@ const CourseManagmentPage: React.FC = () => {
         unpublishModalProps={editor.unpublishModalProps}
         createModuleModalKey={editor.createModuleModalKey}
       />
+
+      {importTarget && editor.asideProps.courseId ? (
+        <ImportQuestionsModal
+          isOpen
+          handleOpenChange={(open) => {
+            if (!open) setImportTarget(null);
+          }}
+          courseId={editor.asideProps.courseId}
+          moduleId={importTarget.moduleId}
+          moduleTitle={importTarget.moduleTitle}
+          onImported={() => {
+            // Reload the tree so the new quizzes appear in the structure at once.
+            editor.refreshStructure();
+          }}
+        />
+      ) : null}
     </div>
   );
 };

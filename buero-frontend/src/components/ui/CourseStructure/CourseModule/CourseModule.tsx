@@ -9,6 +9,7 @@ import CourseStructureAsideActionButton from '@/features/course-managment/compon
 const CourseModule: React.FC<ModulesProps> = ({
   module,
   onCreateMaterial,
+  onImportQuestions,
   onSelectMaterial,
   onEditModule,
   onRequestDeleteModule,
@@ -122,6 +123,14 @@ const CourseModule: React.FC<ModulesProps> = ({
               onClick={() => onCreateMaterial(id)}
               className="mt-3"
             />
+            {onImportQuestions ? (
+              <CourseStructureAsideActionButton
+                label="Import questions from CSV"
+                ariaLabel="Import questions from CSV"
+                onClick={() => onImportQuestions(id, title)}
+                className="mt-2"
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

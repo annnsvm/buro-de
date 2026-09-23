@@ -151,6 +151,10 @@ export const useCourseEditor = () => {
 
   return {
     showBootstrapLoading,
+    /** Re-reads the course after something outside the editor changed it. */
+    refreshStructure: () => {
+      if (courseId) void tree.fetchCourseTree(courseId);
+    },
     asideProps: {
       modules,
       courseId,
