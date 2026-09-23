@@ -1,7 +1,6 @@
 import type {
   CreateCourseMaterialModalValues,
-  QuizAnswerFormItem,
-  QuizQuestionFormItem,
+  QuizMaterialMode,
 } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
 import type { CourseMaterialInitialState } from '@/types/features/courseManagment/CourseMaterialInitialState.types';
 import type { ModuleMaterialType } from '@/types/components/ui/ModuleMaterial.types';
@@ -9,14 +8,11 @@ import type { ModuleMaterialType } from '@/types/components/ui/ModuleMaterial.ty
 export const createLocalId = (prefix: string) =>
   `${prefix}_${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
 
-export const createDefaultQuizQuestion = (): QuizQuestionFormItem => ({
-  id: createLocalId('q'),
-  question: '',
-  answers: [
-    { id: createLocalId('opt'), text: '', isCorrect: false },
-    { id: createLocalId('opt'), text: '', isCorrect: false },
-  ],
-});
+/**
+ * What a module test needs by default: 60% is the threshold the A2.1 tests are written
+ * to — 15 points of 25. It is only a starting value; the author sets it per test.
+ */
+export const DEFAULT_PASSING_SCORE = 60;
 
 export const getInitialMaterialState = (
   selectedMaterial: ModuleMaterialType | null,
@@ -27,7 +23,8 @@ export const getInitialMaterialState = (
       title: '',
       youtubeVideoId: '',
       youtubeVideoDuration: '',
-      quizQuestions: [createDefaultQuizQuestion()],
+      quizMode: 'practice',
+      passingScore: DEFAULT_PASSING_SCORE,
       createdMaterialId: null,
       savedSnapshot: null,
     };
@@ -52,55 +49,30 @@ export const getInitialMaterialState = (
       title: selectedMaterial.title ?? '',
       youtubeVideoId: youtubeId,
       youtubeVideoDuration: duration,
-      quizQuestions: [createDefaultQuizQuestion()],
+      quizMode: 'practice',
+      passingScore: DEFAULT_PASSING_SCORE,
       createdMaterialId: selectedMaterial.id,
       savedSnapshot: JSON.stringify(payload),
     };
   }
 
-  const quizQuestionsRaw = Array.isArray(selectedMaterial.content?.questions)
-    ? (selectedMaterial.content.questions as Array<Record<string, unknown>>)
-    : [];
-
-  const parsedQuestions: QuizQuestionFormItem[] = quizQuestionsRaw.map((questionRaw, qIndex) => {
-    const questionId =
-      typeof questionRaw.id === 'string' && questionRaw.id.trim() ? questionRaw.id : `q${qIndex + 1}`;
-    const questionText = typeof questionRaw.text === 'string' ? questionRaw.text : '';
-    const correctRaw = questionRaw.correct;
-    const correctIds = Array.isArray(correctRaw)
-      ? correctRaw.map((v) => String(v))
-      : typeof correctRaw === 'string'
-        ? [correctRaw]
-        : [];
-    const optionsRaw = Array.isArray(questionRaw.options)
-      ? (questionRaw.options as Array<Record<string, unknown>>)
-      : [];
-    const answers: QuizAnswerFormItem[] = optionsRaw.map((optRaw, optIndex) => {
-      const optionId =
-        typeof optRaw.id === 'string' && optRaw.id.trim()
-          ? optRaw.id
-          : `${questionId}_opt_${optIndex + 1}`;
-      const optionText = typeof optRaw.text === 'string' ? optRaw.text : '';
-      return {
-        id: optionId,
-        text: optionText,
-        isCorrect: correctIds.includes(optionId),
-      };
-    });
-
-    return {
-      id: questionId,
-      question: questionText,
-      answers: answers.length >= 2 ? answers : createDefaultQuizQuestion().answers,
-    };
-  });
-  const normalizedQuestions =
-    parsedQuestions.length > 0 ? parsedQuestions : [createDefaultQuizQuestion()];
+  /**
+   * A quiz's questions are not read here any more. They live in their own table and are
+   * edited by the question editor; this form only carries what belongs to the material
+   * itself. Rebuilding questions from the material's JSON is what once wiped an
+   * imported quiz on a rename, because that JSON was empty.
+   */
+  const quizMode: QuizMaterialMode = selectedMaterial.quizMode === 'test' ? 'test' : 'practice';
+  const passingScore =
+    typeof selectedMaterial.passingScore === 'number'
+      ? selectedMaterial.passingScore
+      : DEFAULT_PASSING_SCORE;
 
   const payload: CreateCourseMaterialModalValues = {
     type: 'quiz',
     title: selectedMaterial.title ?? '',
-    quizQuestions: normalizedQuestions,
+    quizMode,
+    passingScore: quizMode === 'test' ? passingScore : null,
   };
 
   return {
@@ -108,7 +80,8 @@ export const getInitialMaterialState = (
     title: selectedMaterial.title ?? '',
     youtubeVideoId: '',
     youtubeVideoDuration: '',
-    quizQuestions: normalizedQuestions,
+    quizMode,
+    passingScore,
     createdMaterialId: selectedMaterial.id,
     savedSnapshot: JSON.stringify(payload),
   };

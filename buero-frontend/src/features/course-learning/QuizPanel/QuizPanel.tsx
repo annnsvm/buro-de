@@ -9,6 +9,7 @@ import {
   submitQuizAttempt,
   type AnswerQuestionResponse,
   type QuizMode,
+  type QuizPartResult,
   type QuizQuestion,
 } from '@/api/quizApi';
 import BaseDialog from '@/components/modal/BaseDialog/BaseDialog';
@@ -74,6 +75,21 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   const [passingScore, setPassingScore] = useState<number | null>(null);
   const [passed, setPassed] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  /**
+   * A test carries a scale of its own: it is worth a set number of points, some tasks
+   * count double, and the threshold is written in points. A practice quiz has none of
+   * that, so all three stay null there and the interface says nothing about points.
+   */
+  const [totalPoints, setTotalPoints] = useState<number | null>(null);
+  const [passingPoints, setPassingPoints] = useState<number | null>(null);
+  const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
+  /**
+   * How the test went part by part. This is the answer to "what now" after a failed
+   * test — without it a student is told only a number and left to guess where to go
+   * back to. Empty for a practice quiz, which is one lesson already.
+   */
+  const [parts, setParts] = useState<QuizPartResult[]>([]);
+  const showPoints = mode === 'test' && totalPoints != null;
 
   const total = questions.length;
   const answeredCount = Object.keys(feedback).length;
@@ -98,11 +114,15 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       setQuestions(loaded.questions);
       setMode(loaded.mode);
       setPassingScore(loaded.passing_score);
+      setTotalPoints(loaded.total_points);
+      setPassingPoints(loaded.passing_points);
 
       if (isOutdatedAttempt(previous)) {
         setOutdated(true);
       } else if (previous) {
         setPassed(previous.passed);
+        setEarnedPoints(previous.earned_points);
+        setParts(previous.parts ?? []);
         setAttemptId(previous.attempt_id);
         setDrafts(
           Object.fromEntries(
@@ -218,6 +238,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     setAnswerError(null);
     setAttemptId(null);
     setPassed(null);
+    setEarnedPoints(null);
+    setParts([]);
     setOutdated(false);
     onQuizResult?.(null);
   }, [onQuizResult]);
@@ -257,6 +279,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         ),
       );
       setPassed(data.passed);
+      setEarnedPoints(data.earned_points);
+      setParts(data.parts ?? []);
       const summary: QuizResultSummary = {
         correct: data.correct,
         total: data.total,
@@ -311,9 +335,15 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       ) : null}
 
       <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-        {mode === 'test'
-          ? t('quiz.testIntro', { passing: passingScore ?? 0 })
-          : t('quiz.answeredCount', { answered: answeredCount, total })}
+        {mode !== 'test'
+          ? t('quiz.answeredCount', { answered: answeredCount, total })
+          : showPoints && passingPoints != null
+            ? /* The test states its own scale before the first answer, not after. */
+              t('quiz.testIntroPoints', {
+                total: totalPoints,
+                passing: passingPoints,
+              })
+            : t('quiz.testIntro', { passing: passingScore ?? 0 })}
       </p>
 
       {total === 0 ? (
@@ -347,6 +377,14 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
               >
                 <p className="text-xs font-bold tracking-wider text-[var(--color-text-secondary)] uppercase">
                   {t('quiz.questionPosition', { current: index + 1, total })}
+                  {/**
+                   * Only where a weight actually differs from the rest. A task worth
+                   * double should say so before it is answered, not once the points
+                   * are already lost.
+                   */}
+                  {showPoints && question.points > 1
+                    ? ` · ${t('quiz.questionPoints', { count: question.points })}`
+                    : ''}
                 </p>
                 <p className="mt-2 text-base font-bold text-[var(--color-text-primary)]">
                   {question.prompt}
@@ -425,10 +463,15 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
             {result.bestPercent}%
           </p>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            {t('quiz.scoreSummary', {
-              correct: result.correct,
-              total: result.total,
-            })}
+            {showPoints && earnedPoints != null
+              ? t('quiz.pointsSummary', {
+                  earned: earnedPoints,
+                  total: totalPoints,
+                })
+              : t('quiz.scoreSummary', {
+                  correct: result.correct,
+                  total: result.total,
+                })}
           </p>
           {/**
            * Only worth saying when the two differ: otherwise the student is told the
@@ -441,7 +484,12 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           ) : null}
           {passed === false ? (
             <p className="mt-3 text-sm text-[var(--color-text-primary)]">
-              {t('quiz.testFailedHint', { passing: passingScore ?? 0 })}
+              {showPoints && passingPoints != null
+                ? t('quiz.testFailedHintPoints', {
+                    passing: passingPoints,
+                    total: totalPoints,
+                  })
+                : t('quiz.testFailedHint', { passing: passingScore ?? 0 })}
             </p>
           ) : null}
           {passed === true ? (
@@ -449,6 +497,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
               {t('quiz.testPassed')}
             </p>
           ) : null}
+
+          {parts.length > 0 ? <PartBreakdown parts={parts} /> : null}
           <button
             type="button"
             onClick={handleRetry}
@@ -478,10 +528,15 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
             {result.percent}%
           </p>
           <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-            {t('quiz.scoreSummary', {
-              correct: result.correct,
-              total: result.total,
-            })}
+            {showPoints && earnedPoints != null
+              ? t('quiz.pointsSummary', {
+                  earned: earnedPoints,
+                  total: totalPoints,
+                })
+              : t('quiz.scoreSummary', {
+                  correct: result.correct,
+                  total: result.total,
+                })}
           </p>
           {result.percent !== result.bestPercent ? (
             <p className="mt-3 text-sm text-[var(--color-text-primary)]">
@@ -497,6 +552,55 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           </button>
         </BaseDialog>
       ) : null}
+    </div>
+  );
+};
+
+/**
+ * How the test went part by part, with the weak ones named.
+ *
+ * A student who did not pass otherwise sees a number and a wall of red marks. The
+ * author already divides a test into parts and writes, at the foot of it, which lesson
+ * to revisit when a part goes badly; this is that table, filled in from the attempt.
+ */
+const PartBreakdown: React.FC<{ parts: QuizPartResult[] }> = ({ parts }) => {
+  const { t } = useTranslation();
+  const weak = parts.filter((part) => part.weak);
+
+  return (
+    <div className="mt-6 text-left">
+      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+        {weak.length > 0 ? t('quiz.partsToRevisit') : t('quiz.partsBreakdown')}
+      </p>
+      <ul className="mt-3 space-y-2">
+        {parts.map((part) => (
+          <li
+            key={part.title}
+            className={[
+              'rounded-xl px-3 py-2 text-sm',
+              part.weak
+                ? 'bg-[var(--color-error-soft)] text-[var(--color-text-primary)]'
+                : 'text-[var(--color-text-secondary)]',
+            ].join(' ')}
+          >
+            <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span className={part.weak ? 'font-semibold' : ''}>{part.title}</span>
+              <span className="tabular-nums whitespace-nowrap">
+                {t('quiz.pointsSummary', {
+                  earned: part.earned_points,
+                  total: part.total_points,
+                })}
+              </span>
+            </span>
+            {/* Only where the author filled in the column; silence beats a guess. */}
+            {part.weak && part.review_lesson ? (
+              <span className="mt-1 block text-xs">
+                {t('quiz.reviewLesson', { lesson: part.review_lesson })}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

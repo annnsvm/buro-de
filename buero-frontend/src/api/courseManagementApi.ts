@@ -52,6 +52,10 @@ export const createMaterial = async (
     title: string;
     content: Record<string, unknown>;
     order_index: number;
+    /** Quiz materials only: practice after a lesson, or test after a module. */
+    quiz_mode?: 'practice' | 'test';
+    /** Percentage needed to pass a test. */
+    passing_score?: number | null;
   },
 ) => apiInstance.post<{ id: string }>(API_ENDPOINTS.courseMaterials.create(courseId, moduleId), body);
 
@@ -59,7 +63,13 @@ export const updateMaterial = async (
   courseId: string,
   moduleId: string,
   materialId: string,
-  body: { type: string; title: string; content: Record<string, unknown> },
+  body: {
+    type: string;
+    title: string;
+    content: Record<string, unknown>;
+    quiz_mode?: 'practice' | 'test';
+    passing_score?: number | null;
+  },
 ) =>
   apiInstance.patch(
     API_ENDPOINTS.courseMaterials.update(courseId, moduleId, materialId),

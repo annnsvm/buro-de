@@ -32,9 +32,19 @@ export type QuizQuestion = {
   tokens?: string[];
 };
 
+/**
+ * Points are a test's scale, not a quiz's. A practice quiz is scored on how many
+ * questions went right, so the server sends null here and nothing shows a total the
+ * author never wrote.
+ */
 export type QuizQuestionsResponse = {
   mode: QuizMode;
+  /** The percentage needed to pass. */
   passing_score: number | null;
+  /** What the whole test is worth, e.g. 25. Null for a practice quiz. */
+  total_points: number | null;
+  /** The same threshold in points, e.g. 15 — the way the test is written. */
+  passing_points: number | null;
   questions: QuizQuestion[];
 };
 
@@ -114,11 +124,16 @@ export type LastQuizAttempt = {
   score: number;
   total: number;
   correct: number;
+  /** Points scored and available; both null on a practice quiz. */
+  earned_points: number | null;
+  total_points: number | null;
   attempts: number;
   mode: QuizMode;
   passing_score: number | null;
+  passing_points: number | null;
   passed: boolean | null;
   reveal_answers: boolean;
+  parts: QuizPartResult[];
   answers: Array<{
     question_id: string;
     correct: boolean;
@@ -129,33 +144,66 @@ export type LastQuizAttempt = {
   }>;
 };
 
+/**
+ * One section of a test, as the author divided it up.
+ *
+ * A percentage says a student failed; this says what to do about it. Empty for a
+ * practice quiz, and for a test whose questions were imported before parts were kept.
+ */
+export type QuizPartResult = {
+  title: string;
+  /** Which lesson to go back over; null until the author fills in that column. */
+  review_lesson: string | null;
+  earned_points: number;
+  total_points: number;
+  correct: number;
+  total: number;
+  /** True when more than half the part's points were lost — the author's own rule. */
+  weak: boolean;
+};
+
 /** Returned instead of an attempt when the quiz changed since the student took it. */
 export type OutdatedQuizAttempt = { outdated: true };
 
+/**
+ * A student who has never taken this quiz has no attempt, and the server says so by
+ * returning nothing at all. An empty HTTP body does not arrive as `null` — axios hands
+ * over an empty string — so "no attempt yet" has to be recognised by shape rather than
+ * trusted to be nullish. Missing that turned the very first visit to a newly added quiz
+ * into an error message instead of a blank quiz.
+ */
 export const fetchLastQuizAttempt = async (
   materialId: string,
 ): Promise<LastQuizAttempt | OutdatedQuizAttempt | null> => {
   const { data } = await apiInstance.get<
-    LastQuizAttempt | OutdatedQuizAttempt | null
+    LastQuizAttempt | OutdatedQuizAttempt | null | ''
   >(API_ENDPOINTS.quiz.lastAttempt(materialId));
-  return data ?? null;
+  return data && typeof data === 'object' ? data : null;
 };
 
 export const isOutdatedAttempt = (
   value: LastQuizAttempt | OutdatedQuizAttempt | null,
 ): value is OutdatedQuizAttempt =>
-  value !== null && 'outdated' in value && value.outdated === true;
+  typeof value === 'object' &&
+  value !== null &&
+  'outdated' in value &&
+  value.outdated === true;
 
 export type SubmitQuizResponse = {
   score: number;
   best_score: number;
   total: number;
   correct: number;
+  /** Points scored and available; both null on a practice quiz. */
+  earned_points: number | null;
+  total_points: number | null;
   mode: QuizMode;
   passing_score: number | null;
+  passing_points: number | null;
   passed: boolean | null;
   /** False after a failed test: the answer key stays back so a retake is not copying. */
   reveal_answers: boolean;
+  parts: QuizPartResult[];
   results: Array<QuizQuestionResult & { accepted_answers: string[] }>;
   attempt: QuizAttemptResponse;
 };

@@ -181,6 +181,14 @@ export class QuestionImportService {
             acceptedAnswers,
             explanation: question.explanation,
             points: question.points,
+            /**
+             * The "Урок" column: for a lesson quiz it is the lesson, which already
+             * names the material, and for a test it is the part — "ЧАСТИНА 2 · dass і
+             * das". Keeping it on the question is what lets a finished test be
+             * reported part by part instead of as a single number.
+             */
+            partTitle: question.group,
+            reviewLesson: question.reviewLesson,
             orderIndex: index,
           };
 

@@ -171,41 +171,6 @@ export const findNextVideoMaterialId = (
   return null;
 };
 
-export type ParsedQuizAnswer = { id: string; text: string };
-export type ParsedQuizQuestion = { id: string; question: string; answers: ParsedQuizAnswer[] };
-
-export const parseQuizMaterialContent = (material: ApiCourseMaterial): ParsedQuizQuestion[] => {
-  if (String(material.type).toLowerCase() !== 'quiz' || !material.content || typeof material.content !== 'object') {
-    return [];
-  }
-  const quizQuestionsRaw = Array.isArray((material.content as { questions?: unknown }).questions)
-    ? ((material.content as { questions: Array<Record<string, unknown>> }).questions)
-    : [];
-
-  return quizQuestionsRaw.map((questionRaw, qIndex) => {
-    const questionId =
-      typeof questionRaw.id === 'string' && questionRaw.id.trim()
-        ? questionRaw.id
-        : `q${qIndex + 1}`;
-    const questionText = typeof questionRaw.text === 'string' ? questionRaw.text : '';
-    const optionsRaw = Array.isArray(questionRaw.options)
-      ? (questionRaw.options as Array<Record<string, unknown>>)
-      : [];
-    const answers: ParsedQuizAnswer[] = optionsRaw.map((optRaw, optIndex) => {
-      const optionId =
-        typeof optRaw.id === 'string' && optRaw.id.trim()
-          ? optRaw.id
-          : `${questionId}_opt_${optIndex + 1}`;
-      const optionText = typeof optRaw.text === 'string' ? optRaw.text : '';
-      return {
-        id: optionId,
-        text: optionText,
-      };
-    });
-    return { id: questionId, question: questionText, answers };
-  });
-};
-
 export const mapApiAttachments = (
   raw: ApiMaterialAttachment[] | undefined,
 ): MaterialAttachment[] => {

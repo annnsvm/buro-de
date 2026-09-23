@@ -23,6 +23,8 @@ export type ParsedQuestion = {
   options: ParsedOption[];
   acceptedAnswers: string[];
   explanation: string | null;
+  /** Which lesson to revisit when this part goes badly; from an optional column. */
+  reviewLesson: string | null;
   points: number;
   /**
    * Wordings the explanation mentions as also acceptable. They are prose, so they are
@@ -210,6 +212,14 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
   const optionIdx = ['A', 'B', 'C', 'D'].map(columnIndex);
   const correctIdx = columnIndex('Правильна відповідь');
   const explanationIdx = columnIndex('Пояснення');
+  /**
+   * Optional, and absent from the files written so far. When the author adds it, a
+   * student who was weak on a part is told which lesson to go back over — the mapping
+   * they already write by hand at the foot of a test.
+   */
+  const reviewIdx = ['Урок для повторення', 'Повторити', 'Урок для повторення:']
+    .map(columnIndex)
+    .find((at) => at >= 0);
 
   const questions: ParsedQuestion[] = [];
   const problems: ParseProblem[] = [];
@@ -315,6 +325,7 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
       options,
       acceptedAnswers,
       explanation: explanation || null,
+      reviewLesson: (reviewIdx !== undefined && cell(reviewIdx)) || null,
       points: withPoints.points,
       suggestedAlternatives: explanation
         ? takeSuggestedAlternatives(explanation)

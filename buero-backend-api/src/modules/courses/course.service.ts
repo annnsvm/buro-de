@@ -595,6 +595,14 @@ export class CourseService {
           type: true,
           title: true,
           content: true,
+          /**
+           * Whether a quiz is the practice after a lesson or the test after a module,
+           * and the percentage its test needs. Both are properties of the material, so
+           * the editor has to be able to read back what it set; without them it would
+           * open every quiz on its defaults and quietly reset the mode on save.
+           */
+          quizMode: true,
+          passingScore: true,
           orderIndex: true,
           createdAt: true,
           updatedAt: true,
