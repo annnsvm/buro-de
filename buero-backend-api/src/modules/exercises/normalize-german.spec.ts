@@ -1,15 +1,43 @@
-import { boundedEditDistance, matchGermanAnswer } from "./normalize-german";
+import { matchGermanAnswer } from "./normalize-german";
 
 /**
- * The expected answers below are taken from the authored module 4 content, because the
- * point of this module is that a student who knows the rule is not failed by their
- * keyboard, their punctuation or a single slip.
+ * The expected answers are taken from the authored module 4 content. The rule being
+ * protected here is that a near-miss is a wrong answer: in a grammar drill the one
+ * character that differs is almost always the thing the drill is teaching.
  */
 describe("matchGermanAnswer", () => {
   const match = (answer: string, accepted: string[]) =>
     matchGermanAnswer(answer, accepted);
 
-  describe("umlauts", () => {
+  describe("a wrong verb form is never forgiven", () => {
+    /**
+     * The gap `weil sie noch ___ (arbeiten)` expects `arbeitet`. Typing the infinitive
+     * is the commonest mistake there is, and counting it as a typo teaches the mistake.
+     */
+    it("rejects the infinitive where the conjugated form was asked for", () => {
+      expect(match("arbeiten", ["arbeitet"])).toMatchObject({
+        correct: false,
+        quality: "none",
+      });
+    });
+
+    it.each([
+      ["wohnen", "wohne"],
+      ["kommen", "kommst"],
+      ["anfangen", "anfängt"],
+      ["konnte", "konnten"],
+      ["muss", "musste"],
+    ])("rejects %s where %s was asked for", (typed, expected) => {
+      expect(match(typed, [expected]).correct).toBe(false);
+    });
+
+    it("rejects another real word that is one letter away", () => {
+      expect(match("kann", ["Mann"]).correct).toBe(false);
+      expect(match("Bescheld", ["Bescheid"]).correct).toBe(false);
+    });
+  });
+
+  describe("what a keyboard forces is forgiven silently", () => {
     it.each([
       ["anfaengt", "anfängt"],
       ["muede", "müde"],
@@ -23,70 +51,44 @@ describe("matchGermanAnswer", () => {
       });
     });
 
-    it("accepts the umlaut spelling itself", () => {
-      expect(match("anfängt", ["anfängt"]).quality).toBe("exact");
-    });
-  });
-
-  describe("spacing and final punctuation", () => {
     it("ignores surrounding and repeated whitespace", () => {
       expect(
         match("  Ich  mache eine Pause  ", ["Ich mache eine Pause"]).quality,
       ).toBe("exact");
     });
+  });
 
-    it("ignores a missing full stop", () => {
+  describe("what the course teaches is accepted but reported", () => {
+    it("reports a missing comma before weil", () => {
+      expect(
+        match("Ich mache eine Pause weil ich müde bin.", [
+          "Ich mache eine Pause, weil ich müde bin.",
+        ]),
+      ).toMatchObject({ correct: true, quality: "punctuation" });
+    });
+
+    it("reports a missing full stop", () => {
       expect(
         match("Ich bin müde, weil ich schlecht geschlafen habe", [
           "Ich bin müde, weil ich schlecht geschlafen habe.",
         ]).quality,
-      ).toBe("exact");
+      ).toBe("punctuation");
     });
-  });
 
-  describe("capitalisation", () => {
-    /** German capitalises nouns, so this is a real mistake — but a reportable one. */
-    it("accepts a lowercase noun but marks it", () => {
+    it("reports a noun written in lower case", () => {
       expect(match("termin", ["Termin"])).toMatchObject({
         correct: true,
         quality: "case",
       });
+      expect(match("bescheid", ["Bescheid"]).quality).toBe("case");
     });
-  });
 
-  describe("one character out", () => {
-    it("accepts a missing comma", () => {
+    it("reports capitalisation ahead of punctuation when both slipped", () => {
       expect(
-        match("Ich mache eine Pause weil ich müde bin", [
-          "Ich mache eine Pause, weil ich müde bin",
+        match("ich mache eine pause weil ich müde bin", [
+          "Ich mache eine Pause, weil ich müde bin.",
         ]).quality,
-      ).toBe("typo");
-    });
-
-    it("accepts a single transposition", () => {
-      expect(match("Bescheid", ["Bescheid"]).quality).toBe("exact");
-      expect(match("Bescheid".replace("ei", "ie"), ["Bescheid"]).quality).toBe(
-        "typo",
-      );
-    });
-
-    /**
-     * Case-folded, `kann` is a single edit from `Mann` and both are real words, so a
-     * short answer gets no tolerance at all.
-     */
-    it("does not forgive a slip in a short answer", () => {
-      expect(match("kann", ["Mann"])).toMatchObject({
-        correct: false,
-        quality: "none",
-      });
-    });
-
-    it.each(["bim", "bon"])("requires short gap answers to be exact (%s)", (typed) => {
-      expect(match(typed, ["bin"]).correct).toBe(false);
-    });
-
-    it("still forgives one character in a long answer", () => {
-      expect(match("Bescheld", ["Bescheid"]).quality).toBe("typo");
+      ).toBe("case");
     });
   });
 
@@ -102,44 +104,25 @@ describe("matchGermanAnswer", () => {
       ).toMatchObject({ correct: true, quality: "exact" });
     });
 
-    it("reports which wording matched", () => {
-      expect(match("Ich mache eine Pause, weil ich müde bin.", accepted).matched)
-        .toBe(accepted[0]);
-    });
-
-    it("prefers an exact match over a near one", () => {
-      expect(match("Termin", ["Termln", "Termin"])).toMatchObject({
+    it("prefers an exact match over one that only differs in punctuation", () => {
+      expect(match("Termin", ["Termin,", "Termin"])).toMatchObject({
         quality: "exact",
         matched: "Termin",
       });
     });
   });
 
-  describe("empty and unknown answers", () => {
-    it.each(["", "   ", "."])("rejects %p", (value) => {
+  describe("empty and unrelated answers", () => {
+    it.each(["", "   "])("rejects %p", (value) => {
       expect(match(value, ["bin"]).correct).toBe(false);
     });
 
-    it("rejects an unrelated answer", () => {
+    it("rejects an unrelated word", () => {
       expect(match("Hund", ["Termin"]).correct).toBe(false);
     });
-  });
-});
 
-describe("boundedEditDistance", () => {
-  it("returns zero for identical strings", () => {
-    expect(boundedEditDistance("habe", "habe", 1)).toBe(0);
-  });
-
-  it("counts a transposition as one edit", () => {
-    expect(boundedEditDistance("haeb", "habe", 1)).toBe(1);
-  });
-
-  it("stops counting once the limit is passed", () => {
-    expect(boundedEditDistance("Hund", "Termin", 1)).toBeGreaterThan(1);
-  });
-
-  it("gives up early on a large length difference", () => {
-    expect(boundedEditDistance("a", "abcdefgh", 1)).toBeGreaterThan(1);
+    it("does not let stripped punctuation turn an empty answer into a match", () => {
+      expect(match(".", ["bin"]).correct).toBe(false);
+    });
   });
 });

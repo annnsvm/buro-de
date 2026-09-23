@@ -1,20 +1,28 @@
 /**
  * Comparing a written German answer against the expected one.
  *
- * A student who knows the rule can still fail a naive string comparison: they type
- * `anfaengt` because their keyboard has no umlauts, or drop the comma before `weil`,
- * or forget that nouns are capitalised. Rejecting those outright teaches nothing and
- * is the fastest way to make a learner distrust the exercise, so each is recognised
- * and reported separately instead.
+ * The guiding rule is that in a language exercise the small difference is usually the
+ * lesson. `arbeiten` for `arbeitet` is one character out, but it is the infinitive
+ * instead of the conjugated form — exactly the mistake a gap-fill about verb endings
+ * exists to catch. Accepting it quietly teaches the error, so there is deliberately no
+ * tolerance for a near-miss spelling.
+ *
+ * Two things are forgiven, because neither is a gap in knowledge:
+ *   - umlauts written as ae/oe/ue/ss, which is a keyboard limitation;
+ *   - stray whitespace.
+ *
+ * Two more are accepted but reported, because the course teaches them and the student
+ * should know they slipped: capitalisation, and the commas German puts around a
+ * subordinate clause.
  */
 
 export type AnswerMatchQuality =
-  /** Right, allowing for umlaut spelling, spacing and the final full stop. */
+  /** Right, allowing only for umlaut spelling and spacing. */
   | 'exact'
+  /** Right apart from a comma or the final full stop. */
+  | 'punctuation'
   /** Right apart from capitalisation, which in German carries meaning. */
   | 'case'
-  /** One character out: a typo, or a single missing comma or letter. */
-  | 'typo'
   | 'none';
 
 export type AnswerMatch = {
@@ -38,72 +46,15 @@ const foldUmlauts = (value: string): string =>
     .replace(/Ö/g, 'Oe')
     .replace(/Ü/g, 'Ue');
 
-/** Trims, collapses runs of whitespace and drops a single sentence-final mark. */
-const tidy = (value: string): string =>
-  value.trim().replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim();
+/** Trims and collapses runs of whitespace. */
+const tidy = (value: string): string => value.trim().replace(/\s+/g, ' ');
 
 const canonical = (value: string): string => foldUmlauts(tidy(value));
 
-/**
- * Damerau-Levenshtein distance, stopped as soon as it exceeds `limit`.
- *
- * Counts a transposition as one edit, so `haeb` for `habe` is a single slip rather
- * than two. The caller decides when the tolerance may be applied at all.
- */
-export const boundedEditDistance = (
-  a: string,
-  b: string,
-  limit: number,
-): number => {
-  if (a === b) return 0;
-  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+/** Drops commas and sentence-final marks, then tidies the spacing they leave behind. */
+const withoutPunctuation = (value: string): string =>
+  tidy(value.replace(/[,;]/g, ' ').replace(/[.!?]+$/, ''));
 
-  const rows: number[][] = Array.from({ length: a.length + 1 }, () =>
-    new Array<number>(b.length + 1).fill(0),
-  );
-  for (let i = 0; i <= a.length; i += 1) rows[i][0] = i;
-  for (let j = 0; j <= b.length; j += 1) rows[0][j] = j;
-
-  for (let i = 1; i <= a.length; i += 1) {
-    let rowBest = Number.POSITIVE_INFINITY;
-    for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      let value = Math.min(
-        rows[i - 1][j] + 1,
-        rows[i][j - 1] + 1,
-        rows[i - 1][j - 1] + cost,
-      );
-      // Transposition: "haeb" for "habe".
-      if (
-        i > 1 &&
-        j > 1 &&
-        a[i - 1] === b[j - 2] &&
-        a[i - 2] === b[j - 1]
-      ) {
-        value = Math.min(value, rows[i - 2][j - 2] + 1);
-      }
-      rows[i][j] = value;
-      rowBest = Math.min(rowBest, value);
-    }
-    // No cell in this row is within the limit, so no later row can be either.
-    if (rowBest > limit) return limit + 1;
-  }
-
-  return rows[a.length][b.length];
-};
-
-const TYPO_LIMIT = 1;
-
-/**
- * Below this length a single edit stops meaning "a slip" and starts meaning "a
- * different word": `kann` is one edit from `Mann` once case is set aside, and both are
- * ordinary German. Short answers — the function words that gap-fill exercises ask for,
- * such as `bin`, `weil`, `dass` — therefore have to be spelled correctly. Long answers,
- * where one character out really is a typo or a missing comma, keep the tolerance.
- */
-const MIN_LENGTH_FOR_TYPO_TOLERANCE = 6;
-
-/** Compares one written answer against every wording the author accepts. */
 export const matchGermanAnswer = (
   answer: string,
   acceptedAnswers: readonly string[],
@@ -111,8 +62,9 @@ export const matchGermanAnswer = (
   const given = canonical(answer);
   if (!given) return { correct: false, quality: 'none', matched: null };
 
+  const givenPlain = withoutPunctuation(given);
+  let punctuationMatch: string | null = null;
   let caseMatch: string | null = null;
-  let typoMatch: string | null = null;
 
   for (const accepted of acceptedAnswers) {
     const expected = canonical(accepted);
@@ -121,23 +73,22 @@ export const matchGermanAnswer = (
     if (given === expected) {
       return { correct: true, quality: 'exact', matched: accepted };
     }
-    if (given.toLowerCase() === expected.toLowerCase()) {
-      caseMatch ??= accepted;
+
+    const expectedPlain = withoutPunctuation(expected);
+
+    if (givenPlain === expectedPlain) {
+      punctuationMatch ??= accepted;
       continue;
     }
-    if (
-      expected.length >= MIN_LENGTH_FOR_TYPO_TOLERANCE &&
-      boundedEditDistance(
-        given.toLowerCase(),
-        expected.toLowerCase(),
-        TYPO_LIMIT,
-      ) <= TYPO_LIMIT
-    ) {
-      typoMatch ??= accepted;
+    if (givenPlain.toLowerCase() === expectedPlain.toLowerCase()) {
+      caseMatch ??= accepted;
     }
   }
 
+  /** Capitalisation is reported ahead of punctuation: in German it changes meaning. */
   if (caseMatch) return { correct: true, quality: 'case', matched: caseMatch };
-  if (typoMatch) return { correct: true, quality: 'typo', matched: typoMatch };
+  if (punctuationMatch) {
+    return { correct: true, quality: 'punctuation', matched: punctuationMatch };
+  }
   return { correct: false, quality: 'none', matched: null };
 };

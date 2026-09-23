@@ -12,16 +12,12 @@ import {
 import { getTrialModuleIds } from '../../common/access/trial-scope';
 import { stripQuizAnswers } from '../../common/content/strip-quiz-answers';
 import { PrismaService } from '../../prisma/prisma.service';
-import { QuestionSyncService } from '../exercises/question-sync.service';
 import { CreateCourseMaterialDto } from './dto/create-course-material.dto';
 import { UpdateCourseMaterialDto } from './dto/update-course-material.dto';
 
 @Injectable()
 export class CourseMaterialService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly questionSync: QuestionSyncService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async assertCanAccessCourse(
     userId: string,
@@ -65,21 +61,6 @@ export class CourseMaterialService {
     }
   }
 
-  /**
-   * Grading reads the questions table, while the course editor still writes questions
-   * as JSON inside the material. Rebuilding the rows on every save keeps the two from
-   * drifting, which would otherwise mark students against questions they never saw.
-   * A material that stops being a quiz has its rows removed by the same call.
-   */
-  private async syncQuestionsIfQuiz(material: {
-    id: string;
-    type: CourseMaterialType;
-    content: unknown;
-  }): Promise<void> {
-    const content =
-      material.type === CourseMaterialType.quiz ? material.content : null;
-    await this.questionSync.syncMaterial(material.id, content);
-  }
 
   private async ensureCourseExists(courseId: string): Promise<void> {
     const course = await this.prisma.course.findUnique({
@@ -172,7 +153,6 @@ export class CourseMaterialService {
           }),
         },
       });
-      await this.syncQuestionsIfQuiz(created);
       return created;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -201,7 +181,6 @@ export class CourseMaterialService {
           }),
         },
       });
-      await this.syncQuestionsIfQuiz(updated);
       return updated;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;

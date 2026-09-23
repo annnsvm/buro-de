@@ -40,6 +40,8 @@ type Modules = {
 type ModulesProps = {
   module: Modules;
   onCreateMaterial: (moduleId: string) => void;
+  /** Opens the CSV import for this module; absent when importing is not offered. */
+  onImportQuestions?: (moduleId: string, moduleTitle: string) => void;
   onSelectMaterial: (moduleId: string, materialId: string) => void;
   onEditModule: (moduleId: string, moduleTitle: string) => void;
   onRequestDeleteModule?: (moduleId: string, moduleTitle: string) => void;

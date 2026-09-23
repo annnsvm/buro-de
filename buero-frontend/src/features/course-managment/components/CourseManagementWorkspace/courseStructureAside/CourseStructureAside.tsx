@@ -46,6 +46,7 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
   onCreateModule,
   onEditModule,
   onCreateMaterial,
+  onImportQuestions,
   onSelectMaterial,
   onRequestDeleteCourse,
   onRequestDeleteModule,
@@ -219,6 +220,7 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
               key={mod.id}
               module={mod}
               displayPosition={index}
+              onImportQuestions={onImportQuestions}
               dragEnabled={dragEnabled}
               forceExpanded={forceExpandedModuleId === mod.id}
               onCreateMaterial={onCreateMaterial}

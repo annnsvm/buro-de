@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { QuestionSyncService } from './question-sync.service';
+import { QuestionImportService } from './import/question-import.service';
+import { QuestionEditorService } from './question-editor.service';
 
 /**
  * Everything that knows what a question is: the exercise definitions, the German
@@ -9,7 +10,7 @@ import { QuestionSyncService } from './question-sync.service';
  */
 @Module({
   imports: [PrismaModule],
-  providers: [QuestionSyncService],
-  exports: [QuestionSyncService],
+  providers: [QuestionImportService, QuestionEditorService],
+  exports: [QuestionImportService, QuestionEditorService],
 })
 export class ExercisesModule {}

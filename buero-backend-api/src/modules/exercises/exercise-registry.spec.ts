@@ -134,7 +134,14 @@ describe("written answers", () => {
   it("reports a missing comma as a near miss rather than a failure", () => {
     expect(
       gradeAnswer(text, "Ich mache eine Pause weil ich müde bin."),
-    ).toEqual({ correct: true, quality: "typo" });
+    ).toEqual({ correct: true, quality: "punctuation" });
+  });
+
+  /** The ending is what a gap-fill tests, so a wrong one is simply wrong. */
+  it("rejects the infinitive where the conjugated form was asked for", () => {
+    expect(
+      gradeAnswer(question({ type: QuestionType.fill_blank, acceptedAnswers: ["arbeitet"] }), "arbeiten"),
+    ).toEqual({ correct: false, quality: "none" });
   });
 
   it("describes written answers as they were authored", () => {
@@ -171,6 +178,43 @@ describe("ordering", () => {
     expect(gradeAnswer(q, ["Ich", "heute", "lerne", "Deutsch"]).correct).toBe(
       false,
     );
+  });
+
+  /** The student only rearranges the words they were handed. */
+  it("does not blame the student for the case of the words given", () => {
+    const lowercase = question({
+      type: QuestionType.ordering,
+      payload: { tokens: ["ich", "heiße", "Anna"] },
+      acceptedAnswers: ["Ich heiße Anna"],
+    });
+    expect(gradeAnswer(lowercase, ["ich", "heiße", "Anna"])).toEqual({
+      correct: true,
+      quality: "exact",
+    });
+  });
+
+  it("complains when the words cannot form any accepted answer", () => {
+    expect(
+      validateQuestion(
+        question({
+          type: QuestionType.ordering,
+          payload: { tokens: ["ich", "heiße"] },
+          acceptedAnswers: ["Ich heiße Anna"],
+        }),
+      ),
+    ).toContainEqual(expect.stringContaining("cannot be arranged"));
+  });
+
+  it("accepts words that differ only in case or punctuation from the answer", () => {
+    expect(
+      validateQuestion(
+        question({
+          type: QuestionType.ordering,
+          payload: { tokens: ["ich", "heiße", "Anna"] },
+          acceptedAnswers: ["Ich heiße Anna."],
+        }),
+      ),
+    ).toEqual([]);
   });
 
   it("complains when there is nothing to arrange", () => {

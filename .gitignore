@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 *.sw?
 .env
 buero-backend-api/docker-compose.yml
+
+# Author content used for checking the importer; not part of the product.
+content-samples/

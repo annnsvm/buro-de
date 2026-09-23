@@ -8,6 +8,7 @@ export type CourseStructureAsideProps = {
   onCreateModule: () => void;
   onEditModule: (moduleId: string, moduleTitle: string) => void;
   onCreateMaterial: (moduleId: string) => void;
+  onImportQuestions?: (moduleId: string, moduleTitle: string) => void;
   onSelectMaterial: (moduleId: string, materialId: string) => void;
   onRequestDeleteCourse?: () => void;
   onRequestDeleteModule?: (moduleId: string, moduleTitle: string) => void;
