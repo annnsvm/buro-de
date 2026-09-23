@@ -45,13 +45,21 @@ const CourseEditorMaterialPanel: React.FC<CourseEditorMaterialPanelProps> = ({
         {showQuestionEditor && courseId && editedMaterial && activeMaterialIdForEdit ? (
           <div className="mt-10">
             <h3 className="text-lg font-bold text-[var(--color-text-primary)]">
-              Питання квізу
+              {editedMaterial.material.quizMode === 'test'
+                ? 'Завдання тесту'
+                : 'Питання квізу'}
             </h3>
             <div className="mt-4">
               <QuestionEditor
                 courseId={courseId}
                 moduleId={editedMaterial.moduleId}
                 materialId={activeMaterialIdForEdit}
+                /**
+                 * A lesson quiz is scored on questions, so a weight typed there would
+                 * change nothing. Saying so is better than offering a field that
+                 * silently does not apply.
+                 */
+                scoredByPoints={editedMaterial.material.quizMode === 'test'}
               />
             </div>
           </div>

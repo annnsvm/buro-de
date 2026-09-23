@@ -13,6 +13,7 @@ import { deleteMaterialCopy } from '@/features/course-managment/domain/deleteMat
 import { deleteModuleCopy } from '@/features/course-managment/domain/deleteModuleCopy';
 import { materialContentPayload } from '@/features/course-managment/domain/materialContentPayload';
 import { materialKindCounts } from '@/features/course-managment/domain/materialKindCounts';
+import { quizMaterialSettings } from '@/features/course-managment/domain/quizMaterialSettings';
 import { parseApiErrorMessage } from '@/helpers/parseApiErrorMessage';
 import type { UseCourseEditorHandlersParams } from '@/types/features/courseManagment/CourseEditorHooksReturn.types';
 
@@ -278,12 +279,14 @@ export const useCourseEditorHandlers = ({
       const targetModule = modules.find((m) => m.id === activeModuleIdForMaterial);
       const nextOrderIndex = targetModule?.materials?.length ?? 0;
       const content = materialContentPayload(payload);
+      const quizSettings = quizMaterialSettings(payload);
 
       const created = await courseApi.createMaterial(courseId, activeModuleIdForMaterial, {
         type: payload.type,
         title: payload.title,
         content,
         order_index: nextOrderIndex,
+        ...quizSettings,
       });
 
       const nextModulesAfterCreate = modules.map((m) => {
@@ -297,6 +300,8 @@ export const useCourseEditorHandlers = ({
               type: payload.type,
               title: payload.title,
               content,
+              quizMode: quizSettings.quiz_mode ?? null,
+              passingScore: quizSettings.passing_score ?? null,
               orderIndex: nextOrderIndex,
             },
           ],
@@ -319,11 +324,13 @@ export const useCourseEditorHandlers = ({
     setIsCreatingMaterial(true);
     try {
       const content = materialContentPayload(payload);
+      const quizSettings = quizMaterialSettings(payload);
 
       await courseApi.updateMaterial(courseId, activeModuleIdForMaterial, materialId, {
         type: payload.type,
         title: payload.title,
         content,
+        ...quizSettings,
       });
 
       const nextModulesAfterUpdate = modules.map((m) => {
@@ -337,6 +344,8 @@ export const useCourseEditorHandlers = ({
               type: payload.type,
               title: payload.title,
               content,
+              quizMode: quizSettings.quiz_mode ?? null,
+              passingScore: quizSettings.passing_score ?? null,
             };
           }),
         };

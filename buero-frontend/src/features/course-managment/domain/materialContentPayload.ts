@@ -1,5 +1,13 @@
 import type { CreateCourseMaterialModalValues } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
 
+/**
+ * The material's `content` blob.
+ *
+ * Only a video still keeps anything here. A quiz's questions moved to their own table,
+ * so writing `{ questions: [] }` for one would not be merely empty — it would overwrite
+ * whatever the material had, which is exactly how renaming an imported quiz used to
+ * destroy its questions.
+ */
 export const materialContentPayload = (
   payload: CreateCourseMaterialModalValues,
 ): Record<string, unknown> => {
@@ -10,24 +18,5 @@ export const materialContentPayload = (
     };
   }
 
-  return {
-    questions: payload.quizQuestions.map((questionItem, qIdx) => {
-      const normalizedQuestionId = questionItem.id || `q${qIdx + 1}`;
-      const options = questionItem.answers.map((answerItem, aIdx) => ({
-        id: answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`,
-        text: answerItem.text,
-      }));
-      const correctIds = questionItem.answers
-        .filter((answerItem) => answerItem.isCorrect)
-        .map(
-          (answerItem, aIdx) => answerItem.id || `${normalizedQuestionId}_opt_${aIdx + 1}`,
-        );
-      return {
-        id: normalizedQuestionId,
-        text: questionItem.question,
-        options,
-        correct: correctIds.length > 1 ? correctIds : (correctIds[0] ?? ''),
-      };
-    }),
-  };
+  return {};
 };

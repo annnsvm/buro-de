@@ -14,6 +14,12 @@ import {
 import type { AnswerMatchQuality } from "../exercises/normalize-german";
 import type { AnswerQuestionDto } from "./dto/answer-question.dto";
 import type { SubmitQuizDto } from "./dto/submit-quiz.dto";
+import {
+  passingPoints,
+  scoreAttempt,
+  summariseParts,
+  type PartResult,
+} from "./score-attempt";
 
 @Injectable()
 export class QuizService {
@@ -80,9 +86,21 @@ export class QuizService {
      * first answer, whether to mark answers one at a time or hold everything back
      * until the whole test is submitted.
      */
+    const mode = material.quizMode ?? QuizMode.practice;
+    /**
+     * A test says up front what it is worth and what it takes to pass — that is part of
+     * the task, not a result. A practice quiz has no such scale, so it reports none.
+     */
+    const totalPoints =
+      mode === QuizMode.test
+        ? questions.reduce((sum, q) => sum + Math.max(1, q.points), 0)
+        : null;
+
     return {
-      mode: material.quizMode ?? QuizMode.practice,
+      mode,
       passing_score: material.passingScore,
+      total_points: totalPoints,
+      passing_points: passingPoints(material.passingScore, totalPoints),
       questions: questions.map((question) => {
       const payload = (question.payload ?? {}) as {
         options?: Array<{ id: string; text: string }>;
@@ -154,17 +172,39 @@ export class QuizService {
       where: { userId, courseMaterialId: materialId, completedAt: { not: null } },
     });
 
+    /**
+     * Points are recomputed from the answers rather than stored on the attempt. The
+     * stored percentage is what decides pass or fail; the points are how that number
+     * is shown back to the student, and deriving them keeps the two from drifting
+     * apart when a question's weight is later corrected.
+     */
+    const mode = material.quizMode ?? QuizMode.practice;
+    const correctById = new Map(
+      answers.map((answer) => [answer.questionId, answer.isCorrect]),
+    );
+    const gradedQuestions = questions.map((question) => ({
+      points: question.points,
+      correct: correctById.get(question.id) ?? false,
+      partTitle: question.partTitle,
+      reviewLesson: question.reviewLesson,
+    }));
+    const scored = scoreAttempt(mode, gradedQuestions);
+
     return {
       attempt_id: attempt.id,
       completed_at: attempt.completedAt?.toISOString() ?? null,
       score,
       total: questions.length,
       correct: answers.filter((answer) => answer.isCorrect).length,
+      earned_points: scored.earnedPoints,
+      total_points: scored.totalPoints,
       attempts: attemptCount,
-      mode: material.quizMode ?? QuizMode.practice,
+      mode,
       passing_score: material.passingScore,
+      passing_points: passingPoints(material.passingScore, scored.totalPoints),
       passed: material.passingScore == null ? null : score >= material.passingScore,
       reveal_answers: reveal,
+      parts: toPartsResponse(summariseParts(mode, gradedQuestions)),
       answers: answers.flatMap((answer) => {
         const question = questionsById.get(answer.questionId);
         if (!question) return [];
@@ -181,7 +221,8 @@ export class QuizService {
             question_id: answer.questionId,
             correct: answer.isCorrect,
             quality: graded.quality,
-            explanation: reveal ? question.explanation : null,
+            /** Shown whatever the result; only the answer key waits for a pass. */
+            explanation: question.explanation,
             accepted_answers: reveal ? describeAcceptedAnswers(question) : [],
             raw_answer: answer.rawAnswer as string | string[],
           },
@@ -366,18 +407,31 @@ export class QuizService {
     };
   }
 
-  /** Scores the attempt, marks it complete and records progress on the material. */
+  /**
+   * Scores the attempt, marks it complete and records progress on the material.
+   *
+   * Only ever reached from `answerQuestion`, which a test is not allowed to use, so
+   * this is the practice path: scored on questions, with the authored point weights
+   * deliberately left out of it.
+   */
   private async finishAttempt(
     attempt: { id: string; courseMaterialId: string },
     userId: string,
     answers: Array<{ isCorrect: boolean }>,
     questionCount: number,
   ) {
-    const correctCount = answers.filter((answer) => answer.isCorrect).length;
-    const score =
-      questionCount > 0
-        ? Math.round((correctCount / questionCount) * 10000) / 100
-        : 0;
+    /** Padded to the full quiz, so a question left unanswered counts as a wrong one. */
+    const graded = answers.map((answer) => ({
+      points: 1,
+      correct: answer.isCorrect,
+    }));
+    while (graded.length < questionCount) {
+      graded.push({ points: 1, correct: false });
+    }
+    const { score, correct: correctCount } = scoreAttempt(
+      QuizMode.practice,
+      graded,
+    );
     const completedAt = new Date();
 
     await this.prisma.quizAttempt.update({
@@ -411,14 +465,37 @@ export class QuizService {
   }
 
   /**
-   * Whether this attempt may see the answer key.
+   * Whether this attempt may see the answer key — the wording that would have counted.
    *
-   * Practice always may — that is the whole point of it. A test only after it has been
-   * passed: the questions are a fixed set rather than drawn from a pool, so revealing
-   * them after a failure would turn the retake into copying. A failed test still shows
-   * which questions were wrong, which is what tells the student where to go back to.
+   * Practice always may; that is the whole point of it. A test only after it has been
+   * passed: its questions are a fixed set rather than drawn from a pool, so handing
+   * over the key after a failure would turn the retake into copying it out.
+   *
+   * This gates the key alone. The explanation is shown either way, because it teaches
+   * the rule rather than giving the answer — "після weil дієслово стоїть у самому
+   * кінці" is the lesson, not the solution. Withholding it left a student who failed
+   * with nothing at all but red marks, which is the one moment they most need telling
+   * where to go back to.
    */
   private mayRevealAnswers(
+    material: { quizMode: QuizMode | null; passingScore: number | null },
+    score: number,
+  ): boolean {
+    return this.hasPassed(material, score);
+  }
+
+  /**
+   * Whether this score counts as having got through the material.
+   *
+   * A practice quiz has nothing to fail — it is taken as many times as it takes — so any
+   * score is a pass. A test passes at its threshold, and a test with no threshold set
+   * cannot be failed either.
+   *
+   * Kept apart from `mayRevealAnswers` although the two agree today: one decides what a
+   * student is shown, the other whether the material is done. Changing when the answer
+   * key appears must not quietly change what counts as finished.
+   */
+  private hasPassed(
     material: { quizMode: QuizMode | null; passingScore: number | null },
     score: number,
   ): boolean {
@@ -450,11 +527,24 @@ export class QuizService {
     const bestScore =
       previousBest != null ? Math.max(previousBest, score) : score;
 
+    /**
+     * A test below its threshold is not finished, so nothing is written: no tick in the
+     * lesson list and no share of the course counted. Marking it done anyway told the
+     * student two opposite things at once — "не зараховано" beside a tick — and let a
+     * course reach 100% on tests that were never passed.
+     *
+     * The judgement is on the best attempt rather than this one, which is the same rule
+     * the score itself follows: having passed once, a worse retry cannot take it away.
+     */
+    if (!this.hasPassed(material, bestScore)) {
+      return bestScore;
+    }
+
     await this.prisma.courseProgress.upsert({
       where: {
         userId_courseId_courseMaterialId: { userId, courseId, courseMaterialId },
       },
-      create: { userId, courseId, courseMaterialId, completedAt, score },
+      create: { userId, courseId, courseMaterialId, completedAt, score: bestScore },
       update: { completedAt, score: bestScore },
     });
 
@@ -556,9 +646,24 @@ export class QuizService {
         (orderById.get(a.question_id) ?? 0) - (orderById.get(b.question_id) ?? 0),
     );
 
-    const total = questions.length;
-    const score =
-      total > 0 ? Math.round((correctCount / total) * 10000) / 100 : 0;
+    /**
+     * A test is scored on its points, a practice quiz on its questions. Which one this
+     * is has to be settled here rather than in the interface: the number that decides
+     * whether the student passed is the one the server stores.
+     */
+    const mode = attempt.courseMaterial.quizMode ?? QuizMode.practice;
+    const correctById = new Map(
+      results.map((result) => [result.question_id, result.correct]),
+    );
+    const graded = questions.map((question) => ({
+      points: question.points,
+      correct: correctById.get(question.id) ?? false,
+      partTitle: question.partTitle,
+      reviewLesson: question.reviewLesson,
+    }));
+    const scored = scoreAttempt(mode, graded);
+    const parts = summariseParts(mode, graded);
+    const { score, total } = scored;
     const completedAt = new Date();
 
     const updated = await this.prisma.quizAttempt.update({
@@ -593,11 +698,8 @@ export class QuizService {
       completedAt,
     );
 
-    const material = await this.prisma.courseMaterial.findUniqueOrThrow({
-      where: { id: attempt.courseMaterialId },
-      select: { quizMode: true, passingScore: true },
-    });
-    const reveal = this.mayRevealAnswers(material, score);
+    const { passingScore } = attempt.courseMaterial;
+    const reveal = this.mayRevealAnswers(attempt.courseMaterial, score);
 
     return {
       attempt: this.toAttemptResponse(updated),
@@ -605,26 +707,25 @@ export class QuizService {
       best_score: bestScore,
       total,
       correct: correctCount,
-      mode: material.quizMode ?? QuizMode.practice,
-      passing_score: material.passingScore,
-      passed: material.passingScore == null ? null : score >= material.passingScore,
+      /**
+       * Null on a practice quiz: showing "8 of 8 points" where the author never set a
+       * weight would invent a scale the lesson does not have.
+       */
+      earned_points: scored.earnedPoints,
+      total_points: scored.totalPoints,
+      mode,
+      passing_score: passingScore,
+      passing_points: passingPoints(passingScore, scored.totalPoints),
+      passed: passingScore == null ? null : score >= passingScore,
       reveal_answers: reveal,
-      results: results.map((result) =>
-        reveal
-          ? {
-              ...result,
-              accepted_answers: describeAcceptedAnswers(
-                questionsById.get(result.question_id)!,
-              ),
-            }
-          : {
-              question_id: result.question_id,
-              correct: result.correct,
-              quality: result.quality,
-              explanation: null,
-              accepted_answers: [],
-            },
-      ),
+      parts: toPartsResponse(parts),
+      /** The explanation travels either way; only the answer key waits for a pass. */
+      results: results.map((result) => ({
+        ...result,
+        accepted_answers: reveal
+          ? describeAcceptedAnswers(questionsById.get(result.question_id)!)
+          : [],
+      })),
     };
   }
 
@@ -653,3 +754,18 @@ export class QuizService {
   }
 
 }
+
+/**
+ * The part breakdown in the shape the API speaks. Empty for a practice quiz, and for a
+ * test whose questions were imported before parts were recorded.
+ */
+const toPartsResponse = (parts: readonly PartResult[]) =>
+  parts.map((part) => ({
+    title: part.title,
+    review_lesson: part.reviewLesson,
+    earned_points: part.earnedPoints,
+    total_points: part.totalPoints,
+    correct: part.correct,
+    total: part.total,
+    weak: part.weak,
+  }));

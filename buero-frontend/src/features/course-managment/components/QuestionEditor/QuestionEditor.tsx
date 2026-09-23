@@ -15,6 +15,11 @@ export type QuestionEditorProps = {
   courseId: string;
   moduleId: string;
   materialId: string;
+  /**
+   * True for a module test, where each task carries a weight. A lesson quiz counts
+   * questions rather than points, so the weight is not offered there.
+   */
+  scoredByPoints: boolean;
 };
 
 const TYPE_LABELS: Record<QuizQuestionType, string> = {
@@ -57,6 +62,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   courseId,
   moduleId,
   materialId,
+  scoredByPoints,
 }) => {
   const [questions, setQuestions] = useState<EditorQuestion[]>([]);
   const [draft, setDraft] = useState<EditorQuestion | null>(null);
@@ -156,6 +162,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         <QuestionForm
           draft={draft}
           saving={saving}
+          scoredByPoints={scoredByPoints}
           onChange={setDraft}
           onCancel={() => setDraft(null)}
           onSave={() => void save()}
@@ -176,7 +183,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               >
                 <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase">
                   {index + 1} · {TYPE_LABELS[question.type]}
-                  {question.points > 1 ? ` · ${question.points} бали` : ''}
+                  {scoredByPoints && question.points > 1
+                    ? ` · ${question.points} бали`
+                    : ''}
                 </span>
                 <p className="mt-1 text-sm text-[var(--color-text-primary)]">
                   {question.prompt || '—'}
@@ -226,10 +235,11 @@ const answerLabel = (question: EditorQuestion): string => {
 const QuestionForm: React.FC<{
   draft: EditorQuestion;
   saving: boolean;
+  scoredByPoints: boolean;
   onChange: (draft: EditorQuestion) => void;
   onCancel: () => void;
   onSave: () => void;
-}> = ({ draft, saving, onChange, onCancel, onSave }) => {
+}> = ({ draft, saving, scoredByPoints, onChange, onCancel, onSave }) => {
   const isChoice = draft.type === 'single_choice' || draft.type === 'multi_choice';
 
   return (
@@ -369,18 +379,21 @@ const QuestionForm: React.FC<{
         />
       </label>
 
-      <label className="block text-sm">
-        Бали
-        <input
-          type="number"
-          min={1}
-          value={draft.points}
-          onChange={(event) =>
-            onChange({ ...draft, points: Math.max(1, Number(event.target.value)) })
-          }
-          className="mt-1 block w-24 rounded-lg border border-[var(--color-border-default)] px-3 py-2"
-        />
-      </label>
+      {/* Only a test is counted in points; in a lesson quiz the field would do nothing. */}
+      {scoredByPoints ? (
+        <label className="block text-sm">
+          Бали за завдання
+          <input
+            type="number"
+            min={1}
+            value={draft.points}
+            onChange={(event) =>
+              onChange({ ...draft, points: Math.max(1, Number(event.target.value)) })
+            }
+            className="mt-1 block w-24 rounded-lg border border-[var(--color-border-default)] px-3 py-2"
+          />
+        </label>
+      ) : null}
 
       <div className="flex gap-2">
         <button

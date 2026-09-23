@@ -505,6 +505,13 @@ model Question {
   points          Int          @default(1)
   /// Topic tags such as "weil" or "praeteritum", for per-topic reporting later.
   skills          String[]     @default([])
+  /// The section of the test this task belongs to, verbatim from the author's file —
+  /// e.g. "ЧАСТИНА 2 · dass і das". A failed test is reported part by part, so the
+  /// student is told which topic let them down rather than only a number.
+  partTitle       String?      @map("part_title")
+  /// Which lesson to go back over when this part is weak, e.g. "4.1, 4.2 і 4.3".
+  /// Authored in an optional CSV column; absent until the author adds it.
+  reviewLesson    String?      @map("review_lesson")
   orderIndex      Int          @default(0) @map("order_index")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")

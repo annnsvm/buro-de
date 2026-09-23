@@ -1,4 +1,4 @@
-import type { QuizQuestionFormItem } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
+import type { QuizMaterialMode } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
 import type { CourseMaterialType } from '@/types/features/courseManagment/CourseMaterialCreateTab.types';
 
 export type CourseMaterialInitialState = {
@@ -6,7 +6,8 @@ export type CourseMaterialInitialState = {
   title: string;
   youtubeVideoId: string;
   youtubeVideoDuration: string;
-  quizQuestions: QuizQuestionFormItem[];
+  quizMode: QuizMaterialMode;
+  passingScore: number;
   createdMaterialId: string | null;
   savedSnapshot: string | null;
 };

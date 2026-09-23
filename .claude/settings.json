@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git --no-pager diff --stat main -- buero-frontend/src/features/course-managment/components/CourseManagementWorkspace/courseStructureAside/)",
+      "Bash(ls /Users/annasamoilova/Desktop/projects/buero.de/*.csv /tmp/*.csv 2>/dev/null; find /Users/annasamoilova -maxdepth 4 -name \"Buro_de-A2.1-Modul-4-Test.csv\" 2>/dev/null | head -3)",
+      "Read(//Users/annasamoilova/**)",
+      "Bash(python3 -)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npx jest *)",
+      "Bash(curl -s -i \"http://localhost:3000/api/quiz/materials/00000000-0000-0000-0000-000000000000/last-attempt\")",
+      "Bash(cp src/api/quizApi.ts /tmp/quizApi.fixed.ts)",
+      "Bash(npx prisma *)",
+      "Bash(cp src/modules/progress-quiz/quiz.service.ts /tmp/qs.fixed.ts)",
+      "Bash(docker compose *)",
+      "Bash(cd /Users/annasamoilova/Desktop/projects/buero.de/buero-backend-api && grep -n \"migrate\" package.json; ls ../render.yaml ../buero-backend-api/render.yaml 2>/dev/null)",
+      "Read(//Users/annasamoilova/Desktop/projects/**)",
+      "Bash(node -e \"console.log\\(Object.keys\\(require\\('./buero-backend-api/package.json'\\).scripts\\).join\\('\\\\n'\\)\\)\")"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}

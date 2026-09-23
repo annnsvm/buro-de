@@ -17,6 +17,10 @@ type ModuleMaterialType = {
     | 'text';
   title?: string;
   content?: Record<string, unknown>;
+  /** Set on quiz materials: the practice after a lesson, or the test after a module. */
+  quizMode?: 'practice' | 'test' | null;
+  /** Percentage needed to pass, on a test. */
+  passingScore?: number | null;
   orderIndex?: number;
 };
 

@@ -1,14 +1,13 @@
-export type QuizAnswerFormItem = {
-  id: string;
-  text: string;
-  isCorrect: boolean;
-};
-
-export type QuizQuestionFormItem = {
-  id: string;
-  question: string;
-  answers: QuizAnswerFormItem[];
-};
+/**
+ * How a quiz material behaves, and the only place the choice is made.
+ *
+ * `practice` is the check after a lesson: each answer is marked the moment it is given,
+ * along with the explanation, and the result is the share of questions answered right.
+ * `test` is the check after a module: nothing is marked until everything has been
+ * answered, the result is counted in the points the author gave each task, and the
+ * answer key stays back unless the student reached the threshold.
+ */
+export type QuizMaterialMode = 'practice' | 'test';
 
 export type CreateCourseMaterialModalValues =
   | {
@@ -20,7 +19,9 @@ export type CreateCourseMaterialModalValues =
   | {
       type: 'quiz';
       title: string;
-      quizQuestions: QuizQuestionFormItem[];
+      quizMode: QuizMaterialMode;
+      /** Percentage needed to pass; only meaningful for a test. */
+      passingScore: number | null;
     };
 
 export type CreateCourseMaterialModalProps = {
@@ -28,4 +29,3 @@ export type CreateCourseMaterialModalProps = {
   handleOpenChange: (open: boolean) => void;
   onCreateMaterial: (values: CreateCourseMaterialModalValues) => Promise<void>;
 };
-

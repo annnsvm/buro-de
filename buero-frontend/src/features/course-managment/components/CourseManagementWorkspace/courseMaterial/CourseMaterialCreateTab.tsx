@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, FormField, Input, Select, Spinner } from '@/components/ui';
 import type {
   CreateCourseMaterialModalValues,
-  QuizQuestionFormItem,
+  QuizMaterialMode,
 } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
 import type {
   CourseMaterialCreateTabProps,
@@ -12,6 +12,7 @@ import { extractYouTubeVideoId } from '@/features/course-managment/helpers/extra
 import { MATERIAL_TYPE_OPTIONS } from '@/features/course-managment/helpers/courseMaterials.consts';
 import CourseMaterialCreateSection from './CourseMaterialCreateSection';
 import CourseMaterialVideoFields from './CourseMaterialVideoFields';
+import QuizModeFields from './QuizModeFields';
 import CourseMaterialAttachmentsSection from './CourseMaterialAttachmentsSection';
 import { getInitialMaterialState } from './helpers/courseMaterialInitialState';
 
@@ -41,9 +42,8 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
   const [youtubeVideoDuration, setYoutubeVideoDuration] = useState(
     initialState.youtubeVideoDuration,
   );
-  const [quizQuestions, setQuizQuestions] = useState<QuizQuestionFormItem[]>(
-    initialState.quizQuestions,
-  );
+  const [quizMode, setQuizMode] = useState<QuizMaterialMode>(initialState.quizMode);
+  const [passingScore, setPassingScore] = useState(initialState.passingScore);
   const [error, setError] = useState<string | null>(null);
   const [createdMaterialId, setCreatedMaterialId] = useState<string | null>(
     initialState.createdMaterialId,
@@ -68,14 +68,8 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
       : {
           type: 'quiz',
           title: title.trim(),
-          quizQuestions: quizQuestions.map((questionItem) => ({
-            ...questionItem,
-            question: questionItem.question.trim(),
-            answers: questionItem.answers.map((answer) => ({
-              ...answer,
-              text: answer.text.trim(),
-            })),
-          })),
+          quizMode,
+          passingScore: quizMode === 'test' ? passingScore : null,
         };
 
   const currentSnapshot = JSON.stringify(buildPayload());
@@ -145,29 +139,6 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
     }
   };
 
-  const handleRemoveQuestion = (questionId: string) => {
-    if (quizQuestions.length <= 1) {
-      setError('At least one question is required');
-      return;
-    }
-    setError(null);
-    setQuizQuestions((prev) => prev.filter((q) => q.id !== questionId));
-  };
-
-  const handleRemoveAnswer = (questionId: string, answerId: string) => {
-    const target = quizQuestions.find((q) => q.id === questionId);
-    if (!target || target.answers.length <= 2) {
-      setError('Each question must have at least 2 answers');
-      return;
-    }
-    setError(null);
-    setQuizQuestions((prev) =>
-      prev.map((q) =>
-        q.id === questionId ? { ...q, answers: q.answers.filter((a) => a.id !== answerId) } : q,
-      ),
-    );
-  };
-
   return (
     <CourseMaterialCreateSection>
       <p className="text-sm font-semibold text-[var(--color-text-primary)]">Create material</p>
@@ -205,7 +176,15 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
             onYoutubeVideoIdChange={setYoutubeVideoId}
             onYoutubeVideoDurationChange={setYoutubeVideoDuration}
           />
-        ) : null}
+        ) : (
+          <QuizModeFields
+            quizMode={quizMode}
+            passingScore={passingScore}
+            isSubmitting={isBusy}
+            onQuizModeChange={setQuizMode}
+            onPassingScoreChange={setPassingScore}
+          />
+        )}
       </div>
 
       {createdMaterialId && courseId && activeModuleId ? (
