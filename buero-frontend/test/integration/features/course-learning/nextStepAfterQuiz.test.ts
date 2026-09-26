@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 import {
   findNextMaterialId,
   findNextModuleFirstMaterialId,
-  findNextVideoMaterialId,
 } from '@/pages/CoursePage/coursePageMappers';
 
 /**
  * Where a finished quiz leads.
  *
- * Until these existed, a quiz led nowhere: the only way on was the sidebar. The one
- * helper that did exist looks for the next *video*, which steps straight over a quiz.
+ * Until these existed, a quiz led nowhere: the only way on was the sidebar. The helper
+ * that did exist looked for the next *video*, so "next lesson" also stepped over the
+ * quiz belonging to the lesson just watched.
  */
 const flat = [
   { moduleId: 'm4', material: { id: '4.1', type: 'video' } },
@@ -22,10 +22,8 @@ const flat = [
 ] as Parameters<typeof findNextMaterialId>[0];
 
 describe('the next lesson after a practice quiz', () => {
-  it('is whatever comes next, not the next video', () => {
+  it('is the quiz that belongs to the lesson, not the lesson after it', () => {
     expect(findNextMaterialId(flat, '4.1')).toBe('4.1-quiz');
-    // The old helper jumps the quiz, which is why it could not be reused here.
-    expect(findNextVideoMaterialId(flat, '4.1')).toBe('4.2');
   });
 
   it('leads out of a quiz rather than stopping at it', () => {

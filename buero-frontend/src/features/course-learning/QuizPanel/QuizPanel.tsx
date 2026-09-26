@@ -580,6 +580,11 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
               {t('quiz.bestStays', { percent: result.bestPercent })}
             </p>
           ) : null}
+          {/**
+           * Reviewing the answers is the primary action, whatever the score. Reading back
+           * what went wrong is the part that teaches; moving on is available but never
+           * urged ahead of it.
+           */}
           <div className="mt-6 flex flex-col gap-2">
             <button
               type="button"
@@ -588,7 +593,6 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
             >
               {t('quiz.seeMistakes')}
             </button>
-            {/* Straight on, for a student who has no wish to read the answers back. */}
             {onMoveOn ? (
               <button
                 type="button"

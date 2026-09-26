@@ -225,18 +225,6 @@ export const findNextModuleFirstMaterialId = (
   return null;
 };
 
-export const findNextVideoMaterialId = (
-  flat: FlatMaterialRef[],
-  currentMaterialId: string | null,
-): string | null => {
-  if (!flat.length || !currentMaterialId) return null;
-  const idx = flat.findIndex((r) => r.material.id === currentMaterialId);
-  if (idx < 0) return null;
-  for (let i = idx + 1; i < flat.length; i++) {
-    if (String(flat[i].material.type).toLowerCase() === 'video') return flat[i].material.id;
-  }
-  return null;
-};
 
 export const mapApiAttachments = (
   raw: ApiMaterialAttachment[] | undefined,
