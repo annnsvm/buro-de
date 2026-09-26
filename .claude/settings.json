@@ -15,7 +15,11 @@
       "Bash(docker compose *)",
       "Bash(cd /Users/annasamoilova/Desktop/projects/buero.de/buero-backend-api && grep -n \"migrate\" package.json; ls ../render.yaml ../buero-backend-api/render.yaml 2>/dev/null)",
       "Read(//Users/annasamoilova/Desktop/projects/**)",
-      "Bash(node -e \"console.log\\(Object.keys\\(require\\('./buero-backend-api/package.json'\\).scripts\\).join\\('\\\\n'\\)\\)\")"
+      "Bash(node -e \"console.log\\(Object.keys\\(require\\('./buero-backend-api/package.json'\\).scripts\\).join\\('\\\\n'\\)\\)\")",
+      "Bash(git stash *)",
+      "Bash(npm run *)",
+      "Bash(cp src/features/courses-catalog/CourseCard.tsx *)",
+      "Bash(git checkout *)"
     ],
     "additionalDirectories": [
       "/tmp"

@@ -158,6 +158,31 @@ export const flattenMaterialsInOrder = (course: ApiCourseWithTree): FlatMaterial
   return out;
 };
 
+/**
+ * Which lesson the course should open at.
+ *
+ * The address bar decides, so a refresh, the back button and a bookmark all land where
+ * the student was. When it names nothing — a first visit — or names a lesson that is
+ * not part of this course for this student, whether because the link is stale or the
+ * module is not unlocked, the course resumes at the first lesson not yet finished
+ * instead. Opening at lesson one every time made a returning student scroll back to
+ * where they had got to, and an unusable link is better answered by somewhere sensible
+ * than by an error.
+ */
+export const resolveSelectedMaterialId = (
+  /** Only the ids matter here, so anything carrying them will do. */
+  flat: ReadonlyArray<{ material: { id: string } }>,
+  lessonParam: string | null,
+  completedMaterialIds: ReadonlySet<string>,
+): string | null => {
+  const named = flat.find((row) => row.material.id === lessonParam);
+  if (named) return named.material.id;
+
+  const unfinished = flat.find((row) => !completedMaterialIds.has(row.material.id));
+  /** Everything done: the last lesson is the one they were most recently on. */
+  return (unfinished ?? flat[flat.length - 1])?.material.id ?? null;
+};
+
 export const findNextVideoMaterialId = (
   flat: FlatMaterialRef[],
   currentMaterialId: string | null,

@@ -16,6 +16,7 @@ import type {
   MyLearningLoadStatus,
 } from '@/types/pages/MyLearningPage/MyLearningPage.types';
 import { Input } from '@/components/ui';
+import { fetchMyProgress } from '@/api/progressApi';
 
 const filterTabs: MyLearningCatalogFilterTab[] = [
   { id: 'all', label: 'All Courses' },
@@ -35,6 +36,14 @@ const MyLearningPage: React.FC = () => {
   const [loadStatus, setLoadStatus] = useState<MyLearningLoadStatus>(() =>
     peekMyLearningCourses() ? 'idle' : 'loading',
   );
+  /**
+   * Progress is fetched beside the courses rather than with them: it is the student's
+   * own record, not part of the catalogue, and a failure to read it should leave the
+   * list working without the bars rather than empty.
+   */
+  const [progressByCourseId, setProgressByCourseId] = useState<
+    ReadonlyMap<string, { percent: number; completed: number; total: number }>
+  >(() => new Map());
 
   const activeFilterId =
     filters.category === 'language'
@@ -48,6 +57,34 @@ const MyLearningPage: React.FC = () => {
   useEffect(() => {
     filtersRef.current = filters;
   }, [filters]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadProgress = async () => {
+      try {
+        const { courses } = await fetchMyProgress();
+        if (cancelled) return;
+        setProgressByCourseId(
+          new Map(
+            courses.map((row) => [
+              row.course_id,
+              {
+                percent: row.completion_percent,
+                completed: row.completed_materials_count,
+                total: row.total_materials_count,
+              },
+            ]),
+          ),
+        );
+      } catch {
+        // The list is still usable without the bars.
+      }
+    };
+    void loadProgress();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,7 +166,7 @@ const MyLearningPage: React.FC = () => {
       ) : loadStatus === 'error' ? (
         <p className="py-12 text-center text-[var(--color-error)]">Could not load your courses.</p>
       ) : (
-        <MyCoursesList courses={visibleCourses} />
+        <MyCoursesList courses={visibleCourses} progressByCourseId={progressByCourseId} />
       )}
     </div>
   );

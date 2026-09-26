@@ -37,6 +37,7 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
     tags,
     rating,
     isAdded,
+    progress,
     hasTrial = true,
     isPublished,
     variant = '',
@@ -249,13 +250,48 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
 
     case 'my-learning': {
       buttonsComponent = (
-        <LinkBtn
-          to={`${ROUTES.COURSES}/${id}`}
-          variant="dark"
-          onMouseEnter={() => prefetchCourseWorkspace(id)}
-        >
-          {t('courses.continueLearning')}
-        </LinkBtn>
+        <>
+          {/**
+           * Where the student got to, on the card they choose from. Without it the list
+           * of started courses says nothing about any of them, and the only way to find
+           * out was to open each one.
+           */}
+          {progress ? (
+            <div className="w-full">
+              <div className="flex items-baseline justify-between gap-2 text-xs text-[var(--color-text-secondary)]">
+                <span>
+                  {t('courses.progressOf', {
+                    completed: progress.completed,
+                    total: progress.total,
+                  })}
+                </span>
+                <span className="font-semibold tabular-nums text-[var(--color-text-primary)]">
+                  {progress.percent}%
+                </span>
+              </div>
+              <div
+                className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-section)]"
+                role="progressbar"
+                aria-valuenow={progress.percent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={t('courses.courseProgress')}
+              >
+                <div
+                  className="h-full rounded-full bg-[var(--color-primary)] transition-[width]"
+                  style={{ width: `${progress.percent}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+          <LinkBtn
+            to={`${ROUTES.COURSES}/${id}`}
+            variant="dark"
+            onMouseEnter={() => prefetchCourseWorkspace(id)}
+          >
+            {t('courses.continueLearning')}
+          </LinkBtn>
+        </>
       );
       break;
     }
