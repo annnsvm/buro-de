@@ -2,8 +2,10 @@ import { Container, Section } from '@/components/layout';
 import { CourseCard } from '@/features/courses-catalog';
 import type { MyCoursesListProps } from '@/types/features/my-courses-catalog/MyCoursesList.types';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const MyCoursesList: React.FC<MyCoursesListProps> = ({ courses, progressByCourseId }) => {
+  const { t } = useTranslation();
   return (
     <Section className="bg-white pb-28">
       <Container className="md:px-20">
@@ -24,7 +26,7 @@ const MyCoursesList: React.FC<MyCoursesListProps> = ({ courses, progressByCourse
             ))}
           </ul>
         ) : (
-          <p className="text-center text-2xl font-bold">Not found courses</p>
+          <p className="text-center text-2xl font-bold">{t('courses.emptyState')}</p>
         )}
       </Container>
     </Section>

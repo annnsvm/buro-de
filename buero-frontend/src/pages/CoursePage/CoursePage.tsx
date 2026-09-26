@@ -26,7 +26,8 @@ import {
   type ApiCourseWithTree,
   buildLearningLessonFromMaterial,
   findLockedModuleIds,
-  findNextVideoMaterialId,
+  findNextMaterialId,
+  findNextModuleFirstMaterialId,
   flattenMaterialsInOrder,
   formatMaterialDuration,
   hasAnyUnlockedMaterial,
@@ -208,11 +209,6 @@ const CoursePage: React.FC = () => {
   );
 
 
-  const nextVideoMaterialId = useMemo(
-    () => findNextVideoMaterialId(flatMaterials, selectedMaterialId),
-    [flatMaterials, selectedMaterialId],
-  );
-
   const currentLesson: LearningLesson | undefined = useMemo(() => {
     if (!course?.title) return undefined;
     const idx = flatMaterials.findIndex((r) => r.material.id === selectedMaterialId);
@@ -275,10 +271,38 @@ const CoursePage: React.FC = () => {
     [goToMaterial, lockedModuleIds],
   );
 
-  const handleNextVideoLesson = useCallback(() => {
-    if (!nextVideoMaterialId) return;
-    goToMaterial(nextVideoMaterialId);
-  }, [nextVideoMaterialId, goToMaterial]);
+  /**
+   * The next step through the course, whatever kind of material it is.
+   *
+   * This used to look for the next *video*, so "next lesson" stepped straight over the
+   * quiz that belongs to the lesson just watched — the student was carried past the
+   * practice without being shown it.
+   */
+  const nextMaterialId = useMemo(
+    () => findNextMaterialId(flatMaterials, selectedMaterialId),
+    [flatMaterials, selectedMaterialId],
+  );
+
+  const handleNextLesson = useCallback(() => {
+    if (!nextMaterialId) return;
+    goToMaterial(nextMaterialId);
+  }, [nextMaterialId, goToMaterial]);
+
+  /**
+   * Where a finished quiz leads. A lesson quiz goes to the next lesson of any kind; a
+   * module test goes to the first lesson of the next module, because finishing a test
+   * means the module is behind you even when material still follows it in order.
+   *
+   * Undefined at the end of the course, which hides the button rather than offering a
+   * step that goes nowhere.
+   */
+  const quizMoveOnTarget = useMemo(() => {
+    if (!isQuizSelected || !selectedMaterialId) return null;
+    const isTest = selectedMaterial?.quizMode === 'test';
+    return isTest
+      ? findNextModuleFirstMaterialId(flatMaterials, selectedMaterialId)
+      : findNextMaterialId(flatMaterials, selectedMaterialId);
+  }, [isQuizSelected, selectedMaterial, selectedMaterialId, flatMaterials]);
 
   const isFirstScrollRef = useRef(true);
   useEffect(() => {
@@ -446,8 +470,8 @@ const CoursePage: React.FC = () => {
               lesson={currentLesson}
               courseId={courseId}
               moduleId={selectedModuleId ?? undefined}
-              hasNextVideoLesson={Boolean(nextVideoMaterialId)}
-              onNextVideoLesson={handleNextVideoLesson}
+              hasNextLesson={Boolean(nextMaterialId)}
+              onNextLesson={handleNextLesson}
               isVideoLessonCompleted={
                 isStudentVideoProgress && selectedMaterialId
                   ? completedMaterialIds.has(selectedMaterialId)
@@ -471,6 +495,9 @@ const CoursePage: React.FC = () => {
               quizMaterialTitle={selectedMaterial.title || t('coursePage.quiz')}
               attachments={mapApiAttachments(selectedMaterial.attachments)}
               onQuizResult={setQuizResult}
+              onMoveOn={
+                quizMoveOnTarget ? () => goToMaterial(quizMoveOnTarget) : undefined
+              }
             />
           ) : null}
         </section>

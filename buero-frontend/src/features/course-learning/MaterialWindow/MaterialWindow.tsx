@@ -224,8 +224,8 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
   lesson = lessonContent,
   courseId,
   moduleId,
-  hasNextVideoLesson = false,
-  onNextVideoLesson,
+  hasNextLesson = false,
+  onNextLesson,
   isVideoLessonCompleted = false,
   onMarkVideoComplete,
   isVideoCompletionSaving = false,
@@ -247,9 +247,9 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
     setVideoEnded(true);
   }, []);
 
-  const handleNextVideoLessonClick = () => {
-    if (!hasNextVideoLesson || !onNextVideoLesson) return;
-    onNextVideoLesson();
+  const handleNextLessonClick = () => {
+    if (!hasNextLesson || !onNextLesson) return;
+    onNextLesson();
   };
 
   const handleMarkCompleteClick = () => {
@@ -355,12 +355,12 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
               ) : null}
               <button
                 type="button"
-                onClick={handleNextVideoLessonClick}
-                disabled={!hasNextVideoLesson}
+                onClick={handleNextLessonClick}
+                disabled={!hasNextLesson}
                 aria-label={
-                  hasNextVideoLesson
+                  hasNextLesson
                     ? t('coursePage.nextLesson')
-                    : t('coursePage.noMoreVideoLessons')
+                    : t('coursePage.noMoreLessons')
                 }
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d7cbc5] bg-transparent px-5 py-3 text-sm font-medium text-[#5f5854] transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
               >

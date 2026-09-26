@@ -19,8 +19,8 @@ export type LearningPageProps = {
   lesson?: LearningLesson;
   courseId?: string;
   moduleId?: string;
-  hasNextVideoLesson?: boolean;
-  onNextVideoLesson?: () => void;
+  hasNextLesson?: boolean;
+  onNextLesson?: () => void;
   isVideoLessonCompleted?: boolean;
   onMarkVideoComplete?: () => void | Promise<void>;
   isVideoCompletionSaving?: boolean;
