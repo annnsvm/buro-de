@@ -3,7 +3,7 @@ import { CourseCard } from '@/features/courses-catalog';
 import type { MyCoursesListProps } from '@/types/features/my-courses-catalog/MyCoursesList.types';
 import React from 'react';
 
-const MyCoursesList: React.FC<MyCoursesListProps> = ({ courses }) => {
+const MyCoursesList: React.FC<MyCoursesListProps> = ({ courses, progressByCourseId }) => {
   return (
     <Section className="bg-white pb-28">
       <Container className="md:px-20">
@@ -14,7 +14,12 @@ const MyCoursesList: React.FC<MyCoursesListProps> = ({ courses }) => {
           >
             {courses.map((course, index) => (
               <li key={course.id} className="w-[min(100%,405px)] shrink-0">
-                <CourseCard {...course} variant="my-learning" imagePriority={index < 3} />
+                <CourseCard
+                  {...course}
+                  variant="my-learning"
+                  progress={progressByCourseId?.get(course.id) ?? null}
+                  imagePriority={index < 3}
+                />
               </li>
             ))}
           </ul>

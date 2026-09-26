@@ -16,6 +16,12 @@ export type CourseCardProps = {
   avgVideoLessonMinutes?: number | null;
   tags: string[];
   rating?: number;
+  /**
+   * How far through the course the student is. Shown on the "my-learning" variant only,
+   * where the question the card has to answer is "where did I get to", not "what is
+   * this course". Absent for a course not started.
+   */
+  progress?: { percent: number; completed: number; total: number } | null;
   isAdded?: boolean;
   hasTrial?: boolean;
   isPublished?: boolean;

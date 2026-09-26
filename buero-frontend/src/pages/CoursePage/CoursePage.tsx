@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import type SimpleBarCore from 'simplebar-core';
 import { useSelector } from 'react-redux';
-import { NavLink, useParams } from 'react-router-dom';
+import { NavLink, useParams, useSearchParams } from 'react-router-dom';
 
 import { getCachedCourseProgress, getCachedCourseTree } from '@/api/courseWorkspaceCache';
 import { completeCourseMaterial } from '@/api/progressApi';
@@ -34,17 +34,26 @@ import {
   scopeToUnlockedModules,
   parseDurationLabelToSeconds,
   mapApiAttachments,
+  resolveSelectedMaterialId,
 } from './coursePageMappers';
+
+/**
+ * The lesson is carried as a query parameter rather than a path segment. It gives the
+ * same refresh, back button and bookmark behaviour without touching the route table,
+ * and the module need not appear in the address at all — a lesson already knows which
+ * module it belongs to.
+ */
+const LESSON_PARAM = 'lesson';
 
 const CoursePage: React.FC = () => {
   const { t } = useTranslation();
   const { courseId } = useParams<{ courseId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { pushUiModal } = useModal();
 
   const [course, setCourse] = useState<ApiCourseWithTree | null>(null);
   const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'error'>('loading');
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [quizResult, setQuizResult] = useState<QuizResultSummary | null>(
     null,
   );
@@ -95,11 +104,7 @@ const CoursePage: React.FC = () => {
         setCourseOutline(mapApiModulesToCourseStructure(data.modules ?? []));
         setLockedModuleIds(findLockedModuleIds(data));
 
-        const flat = flattenMaterialsInOrder(courseForUi);
-        const firstId = flat[0]?.material.id ?? null;
-        const firstMat = flat[0]?.material;
         setQuizResult(null);
-        setSelectedMaterialId(firstId);
         setCompletedMaterialIds(
           new Set(progress?.completed_materials.map((row) => row.course_material_id) ?? []),
         );
@@ -143,6 +148,50 @@ const CoursePage: React.FC = () => {
   }, [courseOutline, course?.modules]);
 
   const flatMaterials = useMemo(() => (course ? flattenMaterialsInOrder(course) : []), [course]);
+
+  /**
+   * The lesson being read lives in the address bar, not in component state. Keeping it
+   * in state meant a refresh threw the student back to the start of the course, the
+   * back button left the page entirely, and a lesson could not be bookmarked.
+   */
+  const lessonParam = searchParams.get(LESSON_PARAM);
+  const selectedMaterialId = useMemo(
+    () => resolveSelectedMaterialId(flatMaterials, lessonParam, completedMaterialIds),
+    [flatMaterials, lessonParam, completedMaterialIds],
+  );
+
+  /**
+   * Writes that fallback into the address as soon as the course is known, replacing the
+   * entry rather than adding one — arriving at a course should not put a step in the
+   * history that the back button has to walk through.
+   *
+   * It also pins the lesson down. Left unpinned, finishing a video would change where
+   * "no lesson named" points to, and the student would be moved on mid-lesson.
+   */
+  useEffect(() => {
+    if (!selectedMaterialId || selectedMaterialId === lessonParam) return;
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.set(LESSON_PARAM, selectedMaterialId);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedMaterialId, lessonParam, setSearchParams]);
+
+  /** Moving to another lesson is a step the back button can undo. */
+  const goToMaterial = useCallback(
+    (materialId: string) => {
+      setQuizResult(null);
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.set(LESSON_PARAM, materialId);
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
   const selectedMaterial = useMemo(
     () => flatMaterials.find((r) => r.material.id === selectedMaterialId)?.material,
@@ -221,21 +270,15 @@ const CoursePage: React.FC = () => {
   const handleSelectLesson = useCallback(
     (payload: { moduleId: string; materialId: string }) => {
       if (lockedModuleIds.has(payload.moduleId)) return;
-      setQuizResult(null);
-      setSelectedMaterialId(payload.materialId);
-      const mat = flatMaterials.find((r) => r.material.id === payload.materialId)?.material;
-      const isQuiz = Boolean(mat && String(mat.type).toLowerCase() === 'quiz');
+      goToMaterial(payload.materialId);
     },
-    [flatMaterials, lockedModuleIds],
+    [goToMaterial, lockedModuleIds],
   );
 
   const handleNextVideoLesson = useCallback(() => {
     if (!nextVideoMaterialId) return;
-    setQuizResult(null);
-    const mat = flatMaterials.find((r) => r.material.id === nextVideoMaterialId)?.material;
-    const isQuiz = Boolean(mat && String(mat.type).toLowerCase() === 'quiz');
-    setSelectedMaterialId(nextVideoMaterialId);
-  }, [nextVideoMaterialId, flatMaterials]);
+    goToMaterial(nextVideoMaterialId);
+  }, [nextVideoMaterialId, goToMaterial]);
 
   const isFirstScrollRef = useRef(true);
   useEffect(() => {

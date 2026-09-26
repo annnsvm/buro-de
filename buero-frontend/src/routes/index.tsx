@@ -19,9 +19,14 @@ const TeacherDirectoryPage = lazy(
   () => import('../pages/TeacherDirectoryPage/TeacherDirectoryPage'),
 );
 const AccountSettingsPage = lazy(() => import('../pages/AccountSettingsPage/AccountSettingsPage'));
-import CoursesCatalogPage from '../pages/CoursesCatalogPage/CoursesCatalogPage';
-import MyLearningPage from '../pages/MyLearningPage/MyLearningPage';
-import CoursePage from '../pages/CoursePage/CoursePage';
+/**
+ * These three were the only pages imported eagerly, which put the whole course player —
+ * the YouTube helpers, the exercise renderers, the quiz panel — into the bundle that an
+ * anonymous visitor downloads to read the landing page.
+ */
+const CoursesCatalogPage = lazy(() => import('../pages/CoursesCatalogPage/CoursesCatalogPage'));
+const MyLearningPage = lazy(() => import('../pages/MyLearningPage/MyLearningPage'));
+const CoursePage = lazy(() => import('../pages/CoursePage/CoursePage'));
 const CourseManagmentPage = lazy(() => import('../pages/CourseManagmentPage/CourseManagmentPage'));
 const UserProfilePage = lazy(() => import('../pages/UserProfilePage/UserProfilePage'));
 const VocabularyPage = lazy(() => import('../pages/VocabularyPage/VocabularyPage'));

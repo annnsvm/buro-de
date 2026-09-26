@@ -81,6 +81,7 @@ export const API_ENDPOINTS = {
     lastAttempt: (materialId: string) => `/quiz/materials/${materialId}/last-attempt`,
   },
   progress: {
+    me: '/progress/me',
     course: (courseId: string) => `/courses/${courseId}/progress`,
     complete: (courseId: string, moduleId: string, materialId: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/complete`,
