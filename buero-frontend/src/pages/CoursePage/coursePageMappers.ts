@@ -27,6 +27,11 @@ export type ApiCourseMaterial = {
   /** True when the server withheld `content` because the viewer has no access. */
   locked?: boolean;
   content?: Record<string, unknown> | null;
+  /**
+   * On a quiz material: the practice after a lesson, or the test after a module. The
+   * player needs it to know where finishing leads — the next lesson, or the next module.
+   */
+  quizMode?: 'practice' | 'test' | null;
   attachments?: ApiMaterialAttachment[];
 };
 
@@ -181,6 +186,43 @@ export const resolveSelectedMaterialId = (
   const unfinished = flat.find((row) => !completedMaterialIds.has(row.material.id));
   /** Everything done: the last lesson is the one they were most recently on. */
   return (unfinished ?? flat[flat.length - 1])?.material.id ?? null;
+};
+
+/**
+ * The lesson that follows this one, whatever its type.
+ *
+ * `findNextVideoMaterialId` skips everything that is not a video, which is right for the
+ * "next video" button under a player but wrong as a way through the course: it steps
+ * over quizzes and every other kind of material. A quiz needs to lead somewhere too.
+ */
+export const findNextMaterialId = (
+  flat: FlatMaterialRef[],
+  currentMaterialId: string | null,
+): string | null => {
+  if (!flat.length || !currentMaterialId) return null;
+  const idx = flat.findIndex((row) => row.material.id === currentMaterialId);
+  if (idx < 0) return null;
+  return flat[idx + 1]?.material.id ?? null;
+};
+
+/**
+ * The first lesson of the module after this one.
+ *
+ * Where a module test leads. Moving on from a test is a bigger step than moving to the
+ * next lesson, and the next thing in order may still be inside the module just finished
+ * — so the module boundary is what this follows, not position alone.
+ */
+export const findNextModuleFirstMaterialId = (
+  flat: FlatMaterialRef[],
+  currentMaterialId: string | null,
+): string | null => {
+  const idx = flat.findIndex((row) => row.material.id === currentMaterialId);
+  if (idx < 0) return null;
+  const currentModuleId = flat[idx].moduleId;
+  for (let i = idx + 1; i < flat.length; i++) {
+    if (flat[i].moduleId !== currentModuleId) return flat[i].material.id;
+  }
+  return null;
 };
 
 export const findNextVideoMaterialId = (

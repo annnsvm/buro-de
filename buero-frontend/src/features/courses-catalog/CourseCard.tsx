@@ -12,7 +12,6 @@ import { apiInstance } from '@/api/apiInstance';
 import { API_ENDPOINTS } from '@/api/apiEndpoints';
 import ConfirmDeleteEntityModal from '@/features/course-managment/components/CourseManagementWorkspace/ConfirmDeleteEntityModal';
 import { deleteCourseCopy } from '@/features/course-managment/domain/deleteCourseCopy';
-import { translateCourseTag } from '@/features/courses-catalog/translateCourseTag';
 import { isCourseComingSoon } from '@/features/courses-catalog/isCourseComingSoon';
 import { prefetchCourseWorkspace } from '@/api/courseWorkspaceCache';
 import { requestCourseTrial } from '@/features/courses-catalog/courseTrialFlow';
@@ -366,10 +365,12 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
             fetchPriority={imagePriority ? 'high' : undefined}
             decoding="async"
           />
+          {/**
+           * Nothing is drawn over the cover except the teacher's publication state. The
+           * level used to sit here as a pill; it now lives in the row of facts below,
+           * where it reads as information rather than as a sticker on the artwork.
+           */}
           <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
-            <span className="flex items-center justify-center rounded-full bg-[var(--color-neutral-white)] text-xs sm:text-base font-semibold text-[var(--color-text-primary)] px-2.5 py-1 border border-[var(--opacity-neutral-darkest-15)]">  
-              {levelLabel}
-            </span>
             {showPublicationBadge ? (
               <span
                 className={
@@ -391,27 +392,8 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
           <p className="mt-2 min-h-[81px] line-clamp-3 text-[18px] text-[var(--color-neutral-darkest)]">
             {description}
           </p>
-          <div className="mt-4 min-h-[60px] items-start content-start flex flex-wrap gap-2 sm:mt-6 sm:gap-4">
-            {tags?.slice(0, 5).map((tag) => {
-              if (!tag) return null;
-              const displayTag = translateCourseTag(t, tag);
-              return(
-               <span
-                key={tag}
-                className="rounded-full text-xs border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] px-2.5 py-1 font-semibold text-[var(--color-text-primary)] sm:text-base"
-              >
-                {displayTag}
-               </span>
-              )
-})}
-
-            {tags && tags.length > 5 && (
-              <span className="rounded-full text-xs border border-transparent bg-[var(--color-dawn-pink-light)] px-2.5 py-1 font-semibold text-[var(--color-text-secondary)] sm:text-base">
-                +{tags.length - 5}
-              </span>
-            )}
-          </div>
-            <div className="mt-auto pt-6 flex items-center gap-2 text-xs text-[var(--color-text-primary)]">
+            <div className="mt-auto pt-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--color-text-primary)]">
+             <span className="font-semibold">{levelLabel}</span>
              <span className="flex items-center gap-1.5 sm:gap-2">
                <Icon name="icon-book" size={24} className="text-[var(--color-text-primary)]" />
                  {t('courses.lessonsCount', { count: lessonsCount })}

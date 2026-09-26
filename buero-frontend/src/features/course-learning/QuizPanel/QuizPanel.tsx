@@ -40,6 +40,13 @@ export type QuizPanelProps = {
   quizMaterialTitle: string;
   attachments?: MaterialAttachment[];
   onQuizResult?: (result: QuizResultSummary | null) => void;
+  /**
+   * Where to go once this is finished. A practice quiz leads to the next lesson, a
+   * module test to the next module — and until now neither led anywhere: the only way
+   * on from a finished quiz was the sidebar, which is a dead end the student has to
+   * work out for themselves.
+   */
+  onMoveOn?: () => void;
 };
 
 /**
@@ -57,6 +64,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   quizMaterialTitle,
   attachments,
   onQuizResult,
+  onMoveOn,
 }) => {
   const { t } = useTranslation();
 
@@ -90,6 +98,12 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
    */
   const [parts, setParts] = useState<QuizPartResult[]>([]);
   const showPoints = mode === 'test' && totalPoints != null;
+  /**
+   * A lesson quiz leads to the next lesson; a module test to the next module. The wording
+   * has to say which, because the two are steps of a very different size.
+   */
+  const moveOnLabel =
+    mode === 'test' ? t('quiz.nextModule') : t('quiz.nextLesson');
 
   const total = questions.length;
   const answeredCount = Object.keys(feedback).length;
@@ -499,13 +513,36 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           ) : null}
 
           {parts.length > 0 ? <PartBreakdown parts={parts} /> : null}
-          <button
-            type="button"
-            onClick={handleRetry}
-            className="mt-5 inline-flex w-full items-center justify-center rounded-full border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-8 py-3 text-sm font-medium text-[var(--color-text-primary)] transition hover:bg-[var(--color-surface-section)] sm:w-auto sm:min-w-[220px]"
-          >
-            {t('quiz.oneMoreTime')}
-          </button>
+
+          <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="inline-flex w-full items-center justify-center rounded-full border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-8 py-3 text-sm font-medium text-[var(--color-text-primary)] transition hover:bg-[var(--color-surface-section)] sm:w-auto sm:min-w-[200px]"
+            >
+              {t('quiz.oneMoreTime')}
+            </button>
+            {/**
+             * Moving on is the primary action once a quiz is done, so it is the filled
+             * button and retrying is the outlined one. A failed test is the exception:
+             * there the work is to go back over the weak parts, not to press on, so it
+             * is offered but not urged.
+             */}
+            {onMoveOn ? (
+              <button
+                type="button"
+                onClick={onMoveOn}
+                className={[
+                  'inline-flex w-full items-center justify-center rounded-full px-8 py-3 text-sm font-medium transition sm:w-auto sm:min-w-[200px]',
+                  passed === false
+                    ? 'border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-section)]'
+                    : 'bg-[var(--color-primary)] text-white hover:opacity-90',
+                ].join(' ')}
+              >
+                {moveOnLabel}
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -543,13 +580,25 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
               {t('quiz.bestStays', { percent: result.bestPercent })}
             </p>
           ) : null}
-          <button
-            type="button"
-            onClick={() => setResultDialogOpen(false)}
-            className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
-          >
-            {t('quiz.seeMistakes')}
-          </button>
+          <div className="mt-6 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setResultDialogOpen(false)}
+              className="inline-flex w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
+            >
+              {t('quiz.seeMistakes')}
+            </button>
+            {/* Straight on, for a student who has no wish to read the answers back. */}
+            {onMoveOn ? (
+              <button
+                type="button"
+                onClick={onMoveOn}
+                className="inline-flex w-full items-center justify-center rounded-full px-8 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
+              >
+                {moveOnLabel}
+              </button>
+            ) : null}
+          </div>
         </BaseDialog>
       ) : null}
     </div>

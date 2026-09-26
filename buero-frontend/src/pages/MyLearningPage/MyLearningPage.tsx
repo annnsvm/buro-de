@@ -17,16 +17,22 @@ import type {
 } from '@/types/pages/MyLearningPage/MyLearningPage.types';
 import { Input } from '@/components/ui';
 import { fetchMyProgress } from '@/api/progressApi';
+import { useTranslation } from 'react-i18next';
 
-const filterTabs: MyLearningCatalogFilterTab[] = [
-  { id: 'all', label: 'All Courses' },
-  { id: 'language', label: 'Language' },
-  { id: 'integration', label: 'Integration' },
-  { id: 'sociocultural', label: 'Culture & Life' },
-];
+/**
+ * The same four categories the catalogue offers, by the same ids — so the two pages
+ * cannot drift apart, and so the labels come from the translations rather than being
+ * written out again in English on a Ukrainian page.
+ */
+const FILTER_IDS = ['all', 'language', 'integration', 'sociocultural'] as const;
 
 const MyLearningPage: React.FC = () => {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
+  const filterTabs: MyLearningCatalogFilterTab[] = useMemo(
+    () => FILTER_IDS.map((id) => ({ id, label: t(`courses.filters.${id}`) })),
+    [t],
+  );
   const filters = useSelector(selectCoursesCatalogFilters);
   const filtersRef = useRef(filters);
 
@@ -152,7 +158,7 @@ const MyLearningPage: React.FC = () => {
               name="search"
               value={filters.search ?? ''}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search"
+              placeholder={t('courses.searchPlaceholder')}
               className="w-full"
             />
           </div>
@@ -161,10 +167,10 @@ const MyLearningPage: React.FC = () => {
       {loadStatus === 'loading' ? (
         <CoursesCatalogGridSkeleton
           sectionClassName="bg-white"
-          loadingLabel="Loading your courses"
+          loadingLabel={t('myLearning.loading')}
         />
       ) : loadStatus === 'error' ? (
-        <p className="py-12 text-center text-[var(--color-error)]">Could not load your courses.</p>
+        <p className="py-12 text-center text-[var(--color-error)]">{t('myLearning.loadFailed')}</p>
       ) : (
         <MyCoursesList courses={visibleCourses} progressByCourseId={progressByCourseId} />
       )}

@@ -439,6 +439,8 @@
     "greeting": "Hi, {{name}}!",
     "nearMissCase": "Counted as correct, but mind the capital letter.",
     "nearMissPunctuation": "Counted as correct, but mind the comma.",
+    "nextLesson": "Next lesson",
+    "nextModule": "Next module",
     "nextQuestion": "Next question",
     "noQuestions": "This quiz has no questions yet.",
     "oneMoreTime": "Try again",
@@ -476,5 +478,9 @@
     "yourBestResult": "Your best result",
     "yourResult": "Your result",
     "yourSentence": "Your sentence"
+  },
+  "myLearning": {
+    "loadFailed": "Could not load your courses.",
+    "loading": "Loading your courses"
   }
 }

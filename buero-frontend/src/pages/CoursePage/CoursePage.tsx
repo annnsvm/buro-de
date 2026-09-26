@@ -26,6 +26,8 @@ import {
   type ApiCourseWithTree,
   buildLearningLessonFromMaterial,
   findLockedModuleIds,
+  findNextMaterialId,
+  findNextModuleFirstMaterialId,
   findNextVideoMaterialId,
   flattenMaterialsInOrder,
   formatMaterialDuration,
@@ -280,6 +282,22 @@ const CoursePage: React.FC = () => {
     goToMaterial(nextVideoMaterialId);
   }, [nextVideoMaterialId, goToMaterial]);
 
+  /**
+   * Where a finished quiz leads. A lesson quiz goes to the next lesson of any kind; a
+   * module test goes to the first lesson of the next module, because finishing a test
+   * means the module is behind you even when material still follows it in order.
+   *
+   * Undefined at the end of the course, which hides the button rather than offering a
+   * step that goes nowhere.
+   */
+  const quizMoveOnTarget = useMemo(() => {
+    if (!isQuizSelected || !selectedMaterialId) return null;
+    const isTest = selectedMaterial?.quizMode === 'test';
+    return isTest
+      ? findNextModuleFirstMaterialId(flatMaterials, selectedMaterialId)
+      : findNextMaterialId(flatMaterials, selectedMaterialId);
+  }, [isQuizSelected, selectedMaterial, selectedMaterialId, flatMaterials]);
+
   const isFirstScrollRef = useRef(true);
   useEffect(() => {
     const el = mainScrollRef.current?.getScrollElement();
@@ -471,6 +489,9 @@ const CoursePage: React.FC = () => {
               quizMaterialTitle={selectedMaterial.title || t('coursePage.quiz')}
               attachments={mapApiAttachments(selectedMaterial.attachments)}
               onQuizResult={setQuizResult}
+              onMoveOn={
+                quizMoveOnTarget ? () => goToMaterial(quizMoveOnTarget) : undefined
+              }
             />
           ) : null}
         </section>
