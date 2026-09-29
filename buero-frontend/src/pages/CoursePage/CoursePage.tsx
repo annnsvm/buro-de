@@ -14,6 +14,7 @@ import {
 } from '@/features/course-learning';
 import LessonAttachments from '@/features/course-learning/MaterialWindow/LessonAttachments';
 import QuizPanel, { type QuizResultSummary } from '@/features/course-learning/QuizPanel/QuizPanel';
+import WritingPanel from '@/features/course-learning/WritingPanel/WritingPanel';
 
 import type { LearningLesson } from '@/types/features/learning/LearningPage.types';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
@@ -207,6 +208,11 @@ const CoursePage: React.FC = () => {
   const isQuizSelected = Boolean(
     selectedMaterial && String(selectedMaterial.type).toLowerCase() === 'quiz',
   );
+  const isWritingSelected = Boolean(
+    selectedMaterial && String(selectedMaterial.type).toLowerCase() === 'writing',
+  );
+  /** The video player is for everything that is not a step of its own. */
+  const showsOwnPanel = isQuizSelected || isWritingSelected;
 
 
   const currentLesson: LearningLesson | undefined = useMemo(() => {
@@ -464,7 +470,7 @@ const CoursePage: React.FC = () => {
               {t('coursePage.noLessons')}
             </div>
           ) : null}
-          {flatMaterials.length > 0 && currentLesson && !isQuizSelected ? (
+          {flatMaterials.length > 0 && currentLesson && !showsOwnPanel ? (
             <MaterialWindow
               key={selectedMaterialId ?? currentLesson.materialId ?? currentLesson.videoUrl}
               lesson={currentLesson}
@@ -498,6 +504,16 @@ const CoursePage: React.FC = () => {
               onMoveOn={
                 quizMoveOnTarget ? () => goToMaterial(quizMoveOnTarget) : undefined
               }
+            />
+          ) : null}
+          {flatMaterials.length > 0 && isWritingSelected && selectedMaterial ? (
+            <WritingPanel
+              key={selectedMaterial.id}
+              courseMaterialId={selectedMaterial.id}
+              courseId={courseId}
+              moduleId={selectedModuleId ?? undefined}
+              materialTitle={selectedMaterial.title || t('writing.title')}
+              attachments={mapApiAttachments(selectedMaterial.attachments)}
             />
           ) : null}
         </section>

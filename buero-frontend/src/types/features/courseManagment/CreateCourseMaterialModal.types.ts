@@ -9,6 +9,18 @@
  */
 export type QuizMaterialMode = 'practice' | 'test';
 
+/**
+ * A writing task while it is being authored. The criteria are the teacher's own sentences,
+ * shown to the student, sent to the grader, and quoted beside the mark.
+ */
+export type WritingTaskDraft = {
+  task: string;
+  minSentences: number;
+  maxSentences: number;
+  criteria: string[];
+  modelAnswer: string;
+};
+
 export type CreateCourseMaterialModalValues =
   | {
       type: 'video';
@@ -22,6 +34,11 @@ export type CreateCourseMaterialModalValues =
       quizMode: QuizMaterialMode;
       /** Percentage needed to pass; only meaningful for a test. */
       passingScore: number | null;
+    }
+  | {
+      type: 'writing';
+      title: string;
+      writing: WritingTaskDraft;
     };
 
 export type CreateCourseMaterialModalProps = {

@@ -64,6 +64,17 @@ async function bootstrap() {
     ...(isProduction ? ([] as const) : (["CORS_ORIGIN"] as const)),
     "WAYFORPAY_CURRENCY",
     "WAYFORPAY_RETURN_URL",
+    /**
+     * Optional on purpose: without it everything except the writing check still works, and the
+     * check itself says plainly that it is not configured. Making it required would stop the
+     * whole application from starting over one feature.
+     */
+    "ANTHROPIC_API_KEY",
+    "LLM_WRITING_MODEL",
+    "LLM_WRITING_EFFORT",
+    "LLM_WRITING_ATTEMPTS_PER_TASK",
+    "LLM_WRITING_DAILY_LIMIT",
+    "LLM_WRITING_MONTHLY_BUDGET_CHECKS",
   ] as const;
 
   const missing = requiredEnv.filter((key) => !configService.get(key));
