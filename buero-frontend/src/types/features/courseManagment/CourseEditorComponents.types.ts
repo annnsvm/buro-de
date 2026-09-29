@@ -72,6 +72,7 @@ export type CourseEditorCourseFormTabProps = {
   watchedTitle: string;
   watchedDescription: string;
   watchedLevel: string;
+  watchedLevelTo: string;
   watchedTags: string[];
   watchedPrice: string;
   priceCurrencySymbol: CurrencySymbol;

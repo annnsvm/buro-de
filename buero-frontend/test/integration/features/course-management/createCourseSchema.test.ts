@@ -11,6 +11,7 @@ const base = {
   durationHours: '5',
   tags: ['Language'],
   level: 'A1' as const,
+  levelTo: '' as const,
 };
 
 describe('createCourseSchema', () => {

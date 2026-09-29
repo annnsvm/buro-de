@@ -15,6 +15,13 @@ export type CourseCardProps = {
   durationHours: number;
   avgVideoLessonMinutes?: number | null;
   tags: string[];
+  /**
+   * The CEFR range the course covers, and its place in the catalogue order. Used by the
+   * list to group courses and lay them out as a path; the card itself ignores them.
+   */
+  level?: string;
+  levelTo?: string | null;
+  orderIndex?: number;
   rating?: number;
   /**
    * How far through the course the student is. Shown on the "my-learning" variant only,

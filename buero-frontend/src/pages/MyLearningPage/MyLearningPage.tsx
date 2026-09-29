@@ -5,10 +5,10 @@ import {
   peekMyLearningCourses,
 } from '@/api/myLearningCourses';
 import { CoursesCatalogFilters, CoursesCatalogGridSkeleton } from '@/features/courses-catalog';
-import { MyCoursesList } from '@/features/my-courses-catalog';
+import { MyCoursesList, MyLearningHero } from '@/features/my-courses-catalog';
 import { useSelector } from 'react-redux';
 import { setFilters } from '@/redux/slices/coursesCatalog';
-import { useAppDispatch } from '@/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { selectCoursesCatalogFilters } from '@/redux/slices/coursesCatalog/coursesCatalogSelectors';
 import type { CourseInfoData } from '@/types/components/modal/UIModalType.types';
 import type {
@@ -16,7 +16,8 @@ import type {
   MyLearningLoadStatus,
 } from '@/types/pages/MyLearningPage/MyLearningPage.types';
 import { Input } from '@/components/ui';
-import { fetchMyProgress } from '@/api/progressApi';
+import { fetchMyProgress, type MyProgressCourse, type ResumeLesson } from '@/api/progressApi';
+import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -24,7 +25,7 @@ import { useTranslation } from 'react-i18next';
  * cannot drift apart, and so the labels come from the translations rather than being
  * written out again in English on a Ukrainian page.
  */
-const FILTER_IDS = ['all', 'language', 'integration', 'sociocultural'] as const;
+const FILTER_IDS = ['all', 'language', 'integration'] as const;
 
 const MyLearningPage: React.FC = () => {
   const { t } = useTranslation();
@@ -50,15 +51,16 @@ const MyLearningPage: React.FC = () => {
   const [progressByCourseId, setProgressByCourseId] = useState<
     ReadonlyMap<string, { percent: number; completed: number; total: number }>
   >(() => new Map());
+  const [progressCourses, setProgressCourses] = useState<MyProgressCourse[]>([]);
+  const [resume, setResume] = useState<ResumeLesson | null>(null);
+  const currentUser = useAppSelector(selectCurrentUser);
+  const greetingName = (currentUser?.displayName ?? currentUser?.name ?? '').trim().split(/\s+/)[0] ?? '';
 
-  const activeFilterId =
-    filters.category === 'language'
-      ? 'language'
-      : filters.category === 'integration'
-        ? 'integration'
-        : filters.category === 'sociocultural'
-          ? 'sociocultural'
-          : 'all';
+  const activeFilterId = FILTER_IDS.includes(
+    filters.category as (typeof FILTER_IDS)[number],
+  )
+    ? (filters.category as string)
+    : 'all';
 
   useEffect(() => {
     filtersRef.current = filters;
@@ -68,8 +70,10 @@ const MyLearningPage: React.FC = () => {
     let cancelled = false;
     const loadProgress = async () => {
       try {
-        const { courses } = await fetchMyProgress();
+        const { courses, resume: latestLesson } = await fetchMyProgress();
         if (cancelled) return;
+        setProgressCourses(courses);
+        setResume(latestLesson ?? null);
         setProgressByCourseId(
           new Map(
             courses.map((row) => [
@@ -121,15 +125,7 @@ const MyLearningPage: React.FC = () => {
   const totalCount = visibleCourses.length;
 
   const handleFilterChange = (id: string) => {
-    if (id === 'all') {
-      dispatch(setFilters({ ...filters, category: undefined }));
-    } else if (id === 'language') {
-      dispatch(setFilters({ ...filters, category: 'language' }));
-    } else if (id === 'integration') {
-      dispatch(setFilters({ ...filters, category: 'integration' }));
-    } else if (id === 'sociocultural') {
-      dispatch(setFilters({ ...filters, category: 'sociocultural' }));
-    }
+    dispatch(setFilters({ ...filters, category: id === 'all' ? undefined : id }));
   };
 
   const handleSearchChange = useCallback(
@@ -145,6 +141,7 @@ const MyLearningPage: React.FC = () => {
   );
   return (
     <div className="min-h-screen bg-[var(--color-soapstone-base)] pt-31">
+      <MyLearningHero name={greetingName} resume={resume} progressCourses={progressCourses} />
       <CoursesCatalogFilters
         filters={filterTabs}
         activeFilterId={activeFilterId}
@@ -166,7 +163,7 @@ const MyLearningPage: React.FC = () => {
       />
       {loadStatus === 'loading' ? (
         <CoursesCatalogGridSkeleton
-          sectionClassName="bg-white"
+          sectionClassName="bg-white pt-12"
           loadingLabel={t('myLearning.loading')}
         />
       ) : loadStatus === 'error' ? (

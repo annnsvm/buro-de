@@ -110,7 +110,7 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
   };
 
   const trialButtonClassName =
-    'flex max-w-[140px] items-center justify-center rounded-full border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-sm transition-all hover:border-[var(--color-border-strong)] hover:bg-[var(--opacity-neutral-darkest-5)] active:scale-95 sm:px-5 sm:py-2 sm:text-lg';
+    'inline-flex shrink-0 items-center justify-center rounded-full border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] px-6 py-3 text-base font-semibold text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)] hover:bg-[var(--opacity-neutral-darkest-5)]';
 
   /**
    * A trial is a standing free tier granted per course, not one trial per account,
@@ -128,43 +128,44 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
   const comingSoon = isCourseComingSoon({ isPublished, lessonsCount });
 
   const comingSoonLabel = (
-    <span className="inline-flex items-center justify-center rounded-full border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-dawn-pink-light)] px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] sm:px-5 sm:py-2 sm:text-lg">
+    <button
+      type="button"
+      disabled
+      className="inline-flex shrink-0 cursor-not-allowed items-center justify-center rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-section)] px-6 py-3 text-base font-semibold text-[var(--color-text-secondary)]"
+    >
       {t('courses.comingSoon')}
-    </span>
+    </button>
   );
 
-  const purchaseActions = comingSoon ? (
-    <>
-      <span className="text-xl font-semibold text-[var(--color-neutral-darkest)] sm:text-2xl">
+  const purchaseActions = (
+    <div className="flex w-full flex-wrap items-center gap-2">
+      <span className="mr-auto text-2xl font-semibold tracking-[-0.02em] text-[var(--color-neutral-darkest)]">
         {displayPrice}
       </span>
-      {comingSoonLabel}
-    </>
-  ) : (
-    <>
-      <span className="text-xl font-semibold text-[var(--color-neutral-darkest)] sm:text-2xl">
-        {displayPrice}
-      </span>
-      <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-        {canShowTrialButton ? (
+      {comingSoon ? (
+        comingSoonLabel
+      ) : (
+        <>
+          {canShowTrialButton ? (
+            <button
+              type="button"
+              onClick={handleTrialClick}
+              className={trialButtonClassName}
+              aria-label={t('courses.startTrialAria', { title })}
+            >
+              {t('courses.trial')}
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={handleTrialClick}
-            className={trialButtonClassName}
-            aria-label={t('courses.startTrialAria', { title })}
+            onClick={handleBuyClick}
+            className="inline-flex shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] px-6 py-3 text-base font-semibold text-[var(--color-text-on-accent)] transition-colors hover:bg-[var(--color-primary-hover)]"
           >
-            {t('courses.trial')}
+            {t('courses.buyCourse')}
           </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={handleBuyClick}
-          className="flex items-center justify-center rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-on-accent)] shadow-md transition-all hover:bg-[var(--color-primary-hover)] active:scale-95 sm:px-5 sm:py-2 sm:text-lg"
-        >
-          {t('courses.buyCourse')}
-        </button>
-      </div>
-    </>
+        </>
+      )}
+    </div>
   );
 
   const showPublicationBadge =
@@ -286,6 +287,7 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
           <LinkBtn
             to={`${ROUTES.COURSES}/${id}`}
             variant="dark"
+            className="!px-6 !py-3 !text-base"
             onMouseEnter={() => prefetchCourseWorkspace(id)}
           >
             {t('courses.continueLearning')}
@@ -301,6 +303,7 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
           <LinkBtn
             to={`${ROUTES.COURSES}/${id}`}
             variant="dark"
+            className="!px-6 !py-3 !text-base"
             onMouseEnter={() => prefetchCourseWorkspace(id)}
           >
             {t('courses.continueLearning')}
@@ -338,7 +341,7 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
       openCourseInfo();
     }
   }}
-        className={`group flex h-full w-full max-w-[405px] min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl ${isDragging ? 'ring-2 ring-[var(--color-primary)] shadow-xl' : ''}`}
+        className={`group flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--opacity-neutral-darkest-15)] bg-[var(--color-neutral-white)] shadow-sm transition-shadow hover:shadow-md ${isDragging ? 'ring-2 ring-[var(--color-primary)] shadow-xl' : ''}`}
       >
         <div className="relative aspect-[16/10] w-full overflow-hidden">
           {dragHandleProps ? (
@@ -384,32 +387,30 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
             ) : null}
           </div>
         </div>
-        <div className="flex flex-1 flex-col p-4 sm:p-6">
-          <h3 className="mt-4 text-22 text-[26px] leading-tight font-semibold leading-[1.4] tracking-[-0.01em] sm:text-[26px] text-[var(--color-neutral-darkest)]">
+        <div className="flex flex-1 flex-col p-5">
+          <h3 className="text-xl leading-snug font-semibold tracking-[-0.02em] text-[var(--color-neutral-darkest)]">
             {title}
           </h3>
 
-          <p className="mt-2 min-h-[81px] line-clamp-3 text-[18px] text-[var(--color-neutral-darkest)]">
+          <p className="mt-2 line-clamp-2 min-h-12 text-sm leading-relaxed text-[var(--color-text-secondary)]">
             {description}
           </p>
-            <div className="mt-auto pt-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--color-text-primary)]">
-             <span className="font-semibold">{levelLabel}</span>
-             <span className="flex items-center gap-1.5 sm:gap-2">
-               <Icon name="icon-book" size={24} className="text-[var(--color-text-primary)]" />
-                 {t('courses.lessonsCount', { count: lessonsCount })}
-             </span>
-  
-            <span className="flex items-center gap-1.5 sm:gap-2">
-              <Icon name="icon-schedule" size={24} className="text-[var(--color-text-primary)]" />
-               {durationHours}h
+          <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-5 text-xs text-[var(--color-text-secondary)]">
+            <span className="font-semibold text-[var(--color-text-primary)]">{levelLabel}</span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="icon-book" size={16} className="text-[var(--color-text-secondary)]" />
+              {t('courses.lessonsCount', { count: lessonsCount })}
             </span>
-            </div>
-
-            
-            <div className="mt-4 flex flex-row flex-wrap items-center justify-between gap-2 sm:mt-5">
-              {buttonsComponent}
-            </div>
+            <span className="flex items-center gap-1.5">
+              <Icon name="icon-schedule" size={16} className="text-[var(--color-text-secondary)]" />
+              {durationHours}h
+            </span>
           </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            {buttonsComponent}
+          </div>
+        </div>
         
       </article>
 

@@ -8,12 +8,13 @@ const isCategory = (v: string): v is CreateCourseFormValues['category'] =>
   v === 'language' || v === 'sociocultural';
 
 const isLevel = (v: string): v is Exclude<CreateCourseFormValues['level'], ''> =>
-  v === 'A1' || v === 'A2' || v === 'B1' || v === 'B2';
+  v === 'A1' || v === 'A2' || v === 'B1' || v === 'B2' || v === 'C1';
 
 export const mapCourseToForm = (data: ApiCourseTreeResponse): CreateCourseFormValues => {
   const langRaw = String(data.language ?? 'en');
   const catRaw = String(data.category ?? 'language');
   const levelRaw = data.level != null ? String(data.level) : '';
+  const levelToRaw = data.levelTo != null ? String(data.levelTo) : '';
 
   const durationRaw = data.durationHours ?? data.duration_hours;
   const priceNum = data.price;
@@ -33,5 +34,6 @@ export const mapCourseToForm = (data: ApiCourseTreeResponse): CreateCourseFormVa
         : '',
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     level: isLevel(levelRaw) ? levelRaw : '',
+    levelTo: isLevel(levelToRaw) ? levelToRaw : '',
   };
 };

@@ -13,7 +13,7 @@ const HeroActionBtn: React.FC = () => {
       <LinkBtn
         to={ROUTES.COURSES}
         variant="primary"
-        className="flex items-center justify-center gap-3 px-20 py-3 font-semibold"
+        className="flex min-w-[240px] items-center justify-center gap-3 px-14 py-3 text-base font-semibold"
       >
         <span>{t('landing.getStarted')}</span>
         <Icon

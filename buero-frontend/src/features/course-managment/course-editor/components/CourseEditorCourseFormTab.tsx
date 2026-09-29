@@ -29,6 +29,7 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
   watchedTitle,
   watchedDescription,
   watchedLevel,
+  watchedLevelTo,
   watchedTags,
   watchedPrice,
   priceCurrencySymbol,
@@ -61,6 +62,7 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
           courseName={watchedTitle}
           courseDescription={watchedDescription}
           level={watchedLevel as CourseLevel}
+          levelTo={watchedLevelTo as CourseLevel}
           nameError={errors.title?.message}
           descriptionError={errors.description?.message}
           levelError={errors.level?.message}
@@ -73,6 +75,9 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
           }
           onChangeLevel={(value: CourseLevel) =>
             setValue('level', value, { shouldDirty: true, shouldValidate: true })
+          }
+          onChangeLevelTo={(value: CourseLevel) =>
+            setValue('levelTo', value, { shouldDirty: true, shouldValidate: true })
           }
         />
 

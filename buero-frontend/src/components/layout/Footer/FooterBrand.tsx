@@ -28,7 +28,7 @@ const FooterBrand: React.FC = () => {
         className="inline-flex transition-opacity hover:opacity-80"
         aria-label={t('header.goHome')}
       >
-        <Logo width={70} height={28} isLight />
+        <Logo width={88} height={35} isLight />
       </Link>
       <div className="flex w-full flex-col items-center gap-3">
         <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center">

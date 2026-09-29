@@ -8,6 +8,7 @@ const CourseDetailsSection: React.FC<CourseDetailsSectionProps> = ({
   courseName,
   courseDescription,
   level,
+  levelTo,
   nameError,
   descriptionError,
   levelError,
@@ -15,6 +16,7 @@ const CourseDetailsSection: React.FC<CourseDetailsSectionProps> = ({
   onChangeName,
   onChangeDescription,
   onChangeLevel,
+  onChangeLevelTo,
 }) => {
   return (
     <section aria-label="Course card">
@@ -67,6 +69,27 @@ const CourseDetailsSection: React.FC<CourseDetailsSectionProps> = ({
             disabled={disabled}
             triggerClassName="w-full"
           />
+        </FormField>
+        <FormField
+          label="Up to level (optional)"
+          name="courseLevelTo"
+          className="space-y-4 rounded-2xl bg-[var(--color-surface-background)] p-6"
+        >
+          <Select
+            ariaLabel="Up to level"
+            value={levelTo}
+            options={COURSE_LEVEL_OPTIONS}
+            onChange={(nextValue) => onChangeLevelTo(nextValue)}
+            placeholderValue=""
+            disabled={disabled}
+            triggerClassName="w-full"
+          />
+          {/* Only set it for a course that really spans a range — leaving it empty is the
+              ordinary case, and filling it in with the same level says nothing. */}
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            Leave empty unless the course covers several levels. A course from A2 to B1 is
+            listed under both.
+          </p>
         </FormField>
       </div>
     </section>

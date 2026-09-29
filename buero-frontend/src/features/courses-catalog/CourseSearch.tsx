@@ -30,10 +30,10 @@ const CourseSearch: React.FC<CourseSearchProps> = ({ onSearch, initialSearch = '
     }
   };
   return (
-    <div className="w-full max-w-[560px]">
-      <div className="relative h-[43px]">
-        <span className="absolute inset-y-0 left-3 flex items-center text-[var(--opacity-white-60)] pointer-events-none">
-          <Icon name='icon-search' size={24} className="text-[var(--opacity-white-60)]"/>
+    <div className="w-full">
+      <div className="relative h-11">
+        <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-[var(--color-text-secondary)]">
+          <Icon name="icon-search" size={18} className="text-[var(--color-text-secondary)]" />
         </span>
         <input
           type="text"
@@ -41,7 +41,7 @@ const CourseSearch: React.FC<CourseSearchProps> = ({ onSearch, initialSearch = '
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={t('courses.searchPlaceholder')}
-          className="h-full w-full rounded-[12px] border border-[var(--opacity-white-60)] bg-[var(--opacity-neutral-darkest-15)] pl-10 pr-3 text-lg leading-[1.5] py-2 text-[var(--color-white)] placeholder:text-[var(--opacity-white-60)] shadow-2xl focus:border-white/40 focus:outline-none focus:ring-1 focus:ring-white/40 transition-all"
+          className="h-full w-full rounded-full border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] pr-4 pl-10 text-sm text-[var(--color-text-primary)] transition-colors placeholder:text-[var(--color-text-secondary)] focus:border-[var(--color-border-strong)] focus:outline-none"
         />
       </div>
     </div>

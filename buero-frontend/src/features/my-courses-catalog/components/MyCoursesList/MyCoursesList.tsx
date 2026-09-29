@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 const MyCoursesList: React.FC<MyCoursesListProps> = ({ courses, progressByCourseId }) => {
   const { t } = useTranslation();
   return (
-    <Section className="bg-white pb-28">
+    <Section className="bg-white pt-12 pb-12">
       <Container className="md:px-20">
         {courses?.length > 0 ? (
           <ul

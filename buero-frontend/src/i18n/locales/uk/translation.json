@@ -79,6 +79,8 @@
     "heroBenefitPace": "Навчайся у своєму темпі",
     "heroBenefitLifetime": "Доступ назавжди",
     "heroBenefitTrial": "Перший модуль безкоштовно",
+    "heroCardIntegration": "Integration · від A2",
+    "heroCardLanguage": "Sprachkurs · 80 уроків",
     "whySection": "ЧОМУ BÜRO.DE",
     "whyTitle": "Мова і життя в Німеччині - в одному місці",
     "whyDescription": "Büro.de поєднує курси німецької з курсами інтеграції. Ти вчиш мову і водночас розумієш, де й як її використовувати - від повсякдення до бюрократії.",
@@ -228,6 +230,7 @@
     "ctaAfterDemo": "До курсів",
     "ctaAfterBenefits": "Отримати доступ назавжди",
     "ctaAfterBenefitsHint": "Одна покупка. Мова і життя в Німеччині.",
+    "ctaCardLanguage": "Sprachkurs · 56 уроків",
     "ctaTitle": "Твоя німецька починається з одного кліку",
     "ctaDescription": "Відкрий перший модуль безкоштовно. Відчуй платформу. Потім вирішуй - мова, інтеграція чи обидва.",
     "startFreeTrial": "Почати зараз"
@@ -238,7 +241,7 @@
     "catalogDescription": "Мовні курси, інтеграційні гіди та культурні матеріали. Почни з безкоштовного trial або одразу занурюйся в навчання.",
     "catalogEyebrow": "Каталог курсів",
     "catalogTitle": "Обери свій шлях",
-    "comingSoon": "Незабаром...",
+    "comingSoon": "Незабаром",
     "contact": {
       "title": "Зв'язатися з нами",
       "bookSessionDescription": "Хочете забронювати індивідуальне заняття з викладачем? Заповніть форму - ми зв'яжемося з вами.",
@@ -275,6 +278,7 @@
     "dragToReorder": "Перетягніть курси за ручку, щоб змінити їх порядок у каталозі.",
     "editCourse": "Редагувати курс",
     "emptyState": "Курсів не знайдено. Спробуйте змінити фільтри.",
+    "filterByKind": "Тип курсу",
     "filters": {
       "all": "Усі курси",
       "language": "Мова",
@@ -290,6 +294,8 @@
     "lessonsCount_many": "{{count}} уроків",
     "lessonsCount_one": "{{count}} урок",
     "lessonsCount_other": "{{count}} уроків",
+    "level": "Рівень",
+    "levelHasNoCourses": "Курсів цього рівня ще немає",
     "loadingCourseDetails": "Завантаження деталей курсу…",
     "loadingCourses": "Завантаження курсів",
     "loadingResults": "Завантаження результатів…",
@@ -309,9 +315,21 @@
       "checkingAccess": "Перевірка доступу…",
       "tryForFree": "Спробувати безкоштовно",
       "tryForFreeAria": "Спробувати цей курс безкоштовно",
-      "supportSubject": "Питання про курс"
+      "supportSubject": "Питання про курс",
+      "readMore": "Читати далі",
+      "readLess": "Згорнути",
+      "priceNote": "разово · доступ назавжди",
+      "trialNote": "Перший модуль відкритий безкоштовно.",
+      "program": "Програма курсу",
+      "buyCourse": "Купити курс",
+      "hours_one": "{{count}} год",
+      "hours_few": "{{count}} год",
+      "hours_many": "{{count}} год",
+      "hours_other": "{{count}} год",
+      "coverMeta": "{{kind}} · {{lessons}}"
     },
     "pageLabel": "Каталог курсів",
+    "pathStep": "Крок {{step}} · {{level}}",
     "progressOf": "Пройдено {{completed}} з {{total}}",
     "published": "Опубліковано",
     "removeCourse": "Видалити курс",
@@ -319,6 +337,16 @@
     "reorderHintFiltered": "Очистіть пошук і оберіть «Усі курси», щоб змінити порядок.",
     "savingOrder": "Збереження порядку…",
     "searchPlaceholder": "Пошук курсів, тем…",
+    "sections": {
+      "language": {
+        "title": "Мовні курси",
+        "subtitle": "Крок за кроком від A1 до C1"
+      },
+      "integration": {
+        "title": "Інтеграція",
+        "subtitle": "Практичні теми для життя в Німеччині, з рекомендованим рівнем."
+      }
+    },
     "startTrialAria": "Почати trial для {{title}}",
     "structure": {
       "module": "МОДУЛЬ",
@@ -333,7 +361,21 @@
       "advanced": "Просунутий"
     },
     "trial": "Спробувати",
-    "unpublished": "Не опубліковано"
+    "unpublished": "Не опубліковано",
+    "whereToStart": {
+      "title": "З чого почати?",
+      "hint": "Оберіть варіант — підсвітимо курс, який підходить.",
+      "options": {
+        "zero": "Починаю з нуля",
+        "basics": "Знаю кілька фраз",
+        "speaking": "Вже трохи говорю"
+      },
+      "answers": {
+        "zero": "Почніть з рівня A1 — курс підсвічено нижче. Перші два модулі безкоштовні.",
+        "basics": "Вам підійде рівень A2 — курс підсвічено нижче. Перші два модулі безкоштовні.",
+        "speaking": "Дивіться рівень B1 — курс підсвічено нижче. Перші два модулі безкоштовні."
+      }
+    }
   },
   "coursePage": {
     "addUnknownWord": "Додати невідоме слово",
@@ -488,6 +530,13 @@
     "yourSentence": "Ваше речення"
   },
   "myLearning": {
+    "continueAfter": "{{done}} пройдено. Продовжуй {{course}} з наступного уроку.",
+    "continueHint": "Продовжуй {{course}} з наступного уроку.",
+    "continueLesson": "Продовжити урок",
+    "continueMeta": "{{course}} · урок {{current}} з {{total}}",
+    "eyebrow": "Каталог твоїх курсів",
+    "greeting": "Привіт, {{name}}",
+    "greetingPlain": "Привіт",
     "loadFailed": "Не вдалося завантажити ваші курси.",
     "loading": "Завантажуємо ваші курси"
   }

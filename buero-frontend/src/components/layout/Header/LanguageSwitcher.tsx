@@ -1,7 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Icon } from '@/components/ui';
-import { ICON_NAMES } from '@/helpers/iconNames';
+import { Button } from '@/components/ui';
 import {
   LOCALE_LABELS,
   LOCALE_STORAGE_KEY,
@@ -51,14 +50,13 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ isLight = false, cl
       title={t('header.switchLanguage')}
       onClick={handleToggle}
       className={[
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-2 transition-opacity hover:opacity-80',
+        'inline-flex items-center rounded-full px-2 py-2 transition-opacity hover:opacity-80',
         textClass,
         className,
       ]
         .filter(Boolean)
         .join(' ')}
     >
-      <Icon name={ICON_NAMES.GLOBE} size={22} className={textClass} ariaHidden />
       <span className="min-w-[1.75rem] text-sm font-semibold uppercase">{LOCALE_LABELS[current]}</span>
     </Button>
   );

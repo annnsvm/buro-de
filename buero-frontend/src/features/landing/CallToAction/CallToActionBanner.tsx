@@ -6,7 +6,7 @@ type CallToActionBannerProps = {
 };
 
 const CallToActionBanner: React.FC<CallToActionBannerProps> = ({ children }) => (
-  <div className="relative flex min-h-[331px] w-full items-center justify-center overflow-hidden bg-[var(--color-cod-gray-base)] py-20 sm:min-h-[400px] lg:min-h-[531px]">
+  <div className="relative min-h-[26rem] w-full overflow-hidden rounded-[28px] sm:min-h-[26rem] lg:min-h-[28rem]">
     <CallToActionBackground />
     {children}
   </div>

@@ -1,2 +1,2 @@
-export type CourseLevel = 'A1' | 'A2' | 'B1' | 'B2' | '';
+export type CourseLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | '';
 

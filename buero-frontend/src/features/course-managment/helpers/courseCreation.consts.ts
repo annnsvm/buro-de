@@ -7,6 +7,7 @@ export const COURSE_LEVEL_OPTIONS: Array<{ value: CourseLevel; label: string }> 
   { value: 'A2', label: 'A2' },
   { value: 'B1', label: 'B1' },
   { value: 'B2', label: 'B2' },
+  { value: 'C1', label: 'C1' },
 ];
 
 export const CURRENCY_OPTIONS: Array<{ value: CurrencySymbol; label: string }> = [
@@ -23,9 +24,5 @@ export const TAG_SUGGESTIONS = [
   'Speaking',
   'Reading',
   'Writing',
-  'A1',
-  'A2',
-  'B1',
-  'B2',
 ] as const;
 

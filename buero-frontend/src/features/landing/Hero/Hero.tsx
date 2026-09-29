@@ -1,41 +1,38 @@
-import { Container, Section, Text } from '@/components/layout';
+import { Container, Section } from '@/components/layout';
 import { useTranslation } from 'react-i18next';
 import Reveal from '../shared/Reveal';
 import HeroBackground from './HeroBackground';
 import HeroTitle from './HeroTitle';
 import HeroActionBtn from './HeroActionBtn';
 import HeroBenefits from './HeroBenefits';
+import HeroPreview from './HeroPreview';
 
 const Hero: React.FC = () => {
-  const { t, i18n } = useTranslation();
-  const isUk = i18n.language.toLowerCase().startsWith('uk');
+  const { t } = useTranslation();
 
   return (
-    <Section className="relative">
-      <div className="relative w-full overflow-hidden min-h-screen sm:min-h-[600px]">
+    <Section className="relative pb-0">
+      <div className="relative flex min-h-dvh w-full items-center overflow-hidden pt-[calc(6rem+3.125rem)]">
         <HeroBackground />
-        <Container className="relative z-10 flex justify-center pt-40 pb-32 text-[var(--color-white)] lg:pt-46 lg:pb-36">
-          <div
-            className={[
-              'flex w-full flex-col gap-12 sm:gap-18 lg:gap-20',
-              isUk ? 'max-w-[720px] items-center text-center' : 'max-w-[640px]',
-            ].join(' ')}
-            aria-label="Hero Content"
-          >
+        <Container className="relative z-10 grid w-full items-center gap-12 text-[var(--color-white)] lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:gap-8">
+          <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-8 text-center" aria-label="Hero Content">
             <Reveal>
               <HeroTitle>
-                <span className="block text-balance">{t('landing.heroTitle1')}</span>
-                <span className="block text-balance">{t('landing.heroTitle2')}</span>
+                <span className="block">{t('landing.heroTitle1')}</span>
+                <span className="block text-[var(--color-accent-primary)]">{t('landing.heroTitle2')}</span>
               </HeroTitle>
             </Reveal>
-            <Reveal delayMs={140} className={`flex w-full flex-col gap-12 sm:gap-8 ${isUk ? 'items-center' : ''}`}>
-              <Text label="Hero description" className="font-normal text-[var(--color-white)]">
+            <Reveal delayMs={140} className="flex w-full flex-col items-center gap-8">
+              <p className="max-w-[38rem] text-[1.25rem] leading-[1.5] font-normal text-balance text-[var(--color-white)]">
                 {t('landing.heroDescription')}
-              </Text>
+              </p>
               <HeroActionBtn />
             </Reveal>
             <HeroBenefits />
           </div>
+          <Reveal delayMs={180}>
+            <HeroPreview />
+          </Reveal>
         </Container>
       </div>
     </Section>

@@ -14,6 +14,7 @@ describe('courseCreatePayload / courseUpdatePayload', () => {
     durationHours: '2',
     tags: ['Culture & Life'],
     level: 'B1',
+    levelTo: '' as const,
   });
 
   it('create payload trims title/description and sets is_published false', () => {
@@ -47,5 +48,24 @@ describe('courseCreatePayload / courseUpdatePayload', () => {
       durationHours: '',
     });
     expect(courseCreatePayload(minimal)).not.toHaveProperty('duration_hours');
+  });
+
+  /**
+   * The server validates the top of the range as a level, so an empty string would be
+   * refused rather than read as "this course sits at one level". The ordinary course has no
+   * range, so leaving the field out is the common path, not the exception.
+   */
+  it('leaves the level range out when the course sits at one level', () => {
+    const payload = courseCreatePayload({ ...parsed, levelTo: '' as const });
+    expect(payload).not.toHaveProperty('level_to');
+  });
+
+  it('sends the level range for a course that spans one', () => {
+    const payload = courseCreatePayload({
+      ...parsed,
+      level: 'A2' as const,
+      levelTo: 'B1' as const,
+    });
+    expect(payload).toMatchObject({ level: 'A2', level_to: 'B1' });
   });
 });
