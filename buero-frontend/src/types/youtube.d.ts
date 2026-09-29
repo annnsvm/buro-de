@@ -12,7 +12,8 @@ declare global {
           playerVars?: Record<string, string | number>;
           events?: {
             onStateChange?: (event: { data: number; target: unknown }) => void;
-            onReady?: (event: { target: unknown }) => void;
+            /** `getDuration` is how long the video is; zero until it has loaded. */
+            onReady?: (event: { target: { getDuration?: () => number } }) => void;
           };
         },
       ) => { destroy: () => void };

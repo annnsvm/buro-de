@@ -80,6 +80,9 @@ export const API_ENDPOINTS = {
     questions: (materialId: string) => `/quiz/materials/${materialId}/questions`,
     lastAttempt: (materialId: string) => `/quiz/materials/${materialId}/last-attempt`,
   },
+  youtube: {
+    preview: (videoId: string) => `/youtube/preview/${videoId}`,
+  },
   practice: {
     overview: (materialId: string) => `/practice/materials/${materialId}`,
   },

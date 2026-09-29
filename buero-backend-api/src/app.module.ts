@@ -17,6 +17,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { ProgressQuizModule } from './modules/progress-quiz/progress-quiz.module';
 import { PracticeModule } from './modules/practice/practice.module';
 import { WritingModule } from './modules/writing/writing.module';
+import { YoutubeModule } from './modules/youtube/youtube.module';
 import { VocabularyModule } from './modules/vocabulary/vocabulary.module';
 import { LessonRequestsModule } from './modules/lesson-requests/lesson-requests.module';
 import { ContactModule } from './modules/contact/contact.module';
@@ -65,6 +66,7 @@ import { ContactModule } from './modules/contact/contact.module';
     ProgressQuizModule,
     PracticeModule,
     WritingModule,
+    YoutubeModule,
     VocabularyModule,
     LessonRequestsModule,
     ContactModule,
