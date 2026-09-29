@@ -392,6 +392,7 @@
     "clarificationDescription": "Забронюйте індивідуальне заняття з викладачем, якщо щось незрозуміло. Отримайте персональні поради та відповіді на ваші запитання.",
     "completed": "Пройдено",
     "defaultDescription": "Уважно перегляньте урок і робіть нотатки. Позначте як пройдений, коли будете готові продовжити.",
+    "exercises": "Übungen",
     "inProgress": "В процесі",
     "lessonContent": "Контент уроку",
     "lessonDescription": "Опис уроку",
@@ -402,6 +403,12 @@
     "missingId": "Відсутній id курсу.",
     "needClarification": "Потрібні пояснення?",
     "nextLesson": "Наступний урок",
+    "nextStep": {
+      "lesson": "Наступний урок",
+      "practice": "До практики",
+      "test": "До фінального тесту",
+      "writing": "До письмового завдання"
+    },
     "noAccess": "У вас немає доступу до цього курсу. Придбайте курс або почніть trial у каталозі, потім відкрийте його в «Моє навчання».",
     "noLessons": "У цьому курсі ще немає уроків.",
     "noMoreLessons": "Це останній матеріал курсу",
@@ -409,6 +416,7 @@
     "notesPlaceholder": "Запишіть нотатки тут…",
     "openQuiz": "Відкрити квіз",
     "openQuizHint": "Відкрийте квіз, щоб відповісти на питання цього уроку.",
+    "practice": "Практика уроку",
     "progressCompletedText": "{{current}} з {{total}} уроків пройдено",
     "progressText": "{{current}} з {{total}} уроків",
     "progressUpdateFailed": "Не вдалося оновити прогрес уроку.",
@@ -571,5 +579,76 @@
     "tryAgain": "Спробувати ще раз",
     "yourLetter": "Ваш лист",
     "yourResult": "Ваш результат"
+  },
+  "practice": {
+    "backToHub": "← До практики",
+    "blockDone": "✓ Пройдено · {{correct}}/{{total}}",
+    "blockStart": "Почати →",
+    "blocks": {
+      "grammatik": {
+        "description": "Вправи на граматику уроку",
+        "summary_few": "{{count}} питання за уроком",
+        "summary_many": "{{count}} питань за уроком",
+        "summary_one": "{{count}} питання за уроком",
+        "summary_other": "{{count}} питань за уроком",
+        "title": "Grammatik"
+      },
+      "lesen": {
+        "description": "Текст і питання до нього",
+        "summary_few": "текст і {{count}} питання",
+        "summary_many": "текст і {{count}} питань",
+        "summary_one": "текст і {{count}} питання",
+        "summary_other": "текст і {{count}} питань",
+        "title": "Lesen"
+      },
+      "horen": {
+        "description": "Аудіо і питання до нього",
+        "summary_few": "аудіо і {{count}} питання",
+        "summary_many": "аудіо і {{count}} питань",
+        "summary_one": "аудіо і {{count}} питання",
+        "summary_other": "аудіо і {{count}} питань",
+        "title": "Hören"
+      },
+      "sprechen": {
+        "description": "Завдання на запис голосу",
+        "summary_few": "{{count}} завдання на запис",
+        "summary_many": "{{count}} завдань на запис",
+        "summary_one": "{{count}} завдання на запис",
+        "summary_other": "{{count}} завдань на запис",
+        "title": "Sprechen"
+      }
+    },
+    "encouragement": {
+      "almost_few": "Майже! Лишилося {{count}} блоки до повної практики.",
+      "almost_many": "Майже! Лишилося {{count}} блоків до повної практики.",
+      "almost_one": "Майже! Лишився {{count}} блок до повної практики.",
+      "almost_other": "Майже! Лишилося {{count}} блоків до повної практики.",
+      "done_few": "Ви пройшли всю практику уроку. Ви молодець!",
+      "done_many": "Ви пройшли всю практику уроку. Ви молодець!",
+      "done_one": "Ви пройшли всю практику уроку. Ви молодець!",
+      "done_other": "Ви пройшли всю практику уроку. Ви молодець!",
+      "goodStart_few": "Добрий старт! Залишилося ще {{count}} блоки практики.",
+      "goodStart_many": "Добрий старт! Залишилося ще {{count}} блоків практики.",
+      "goodStart_one": "Добрий старт! Залишився ще {{count}} блок практики.",
+      "goodStart_other": "Добрий старт! Залишилося ще {{count}} блоків практики.",
+      "halfway_few": "Половина позаду. Ще {{count}} блоки — і урок закрито.",
+      "halfway_many": "Половина позаду. Ще {{count}} блоків — і урок закрито.",
+      "halfway_one": "Половина позаду. Ще {{count}} блок — і урок закрито.",
+      "halfway_other": "Половина позаду. Ще {{count}} блоків — і урок закрито.",
+      "start_few": "Почнімо! {{blocks}} короткі блоки — і тема уроку ваша.",
+      "start_many": "Почнімо! {{blocks}} коротких блоків — і тема уроку ваша.",
+      "start_one": "Почнімо! {{blocks}} короткий блок — і тема уроку ваша.",
+      "start_other": "Почнімо! {{blocks}} коротких блоків — і тема уроку ваша."
+    },
+    "loadFailed": "Не вдалося завантажити практику.",
+    "loading": "Завантажуємо практику…",
+    "nextLesson": "Наступний урок →",
+    "ofBlocks_few": "/ {{count}} блоки",
+    "ofBlocks_many": "/ {{count}} блоків",
+    "ofBlocks_one": "/ {{count}} блок",
+    "ofBlocks_other": "/ {{count}} блоків",
+    "subtitle": "Оберіть, з чого почати",
+    "title": "Практика уроку",
+    "tryAgain": "Спробувати ще раз"
   }
 }

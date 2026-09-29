@@ -48,11 +48,14 @@ export type QuizQuestionsResponse = {
   questions: QuizQuestion[];
 };
 
+/** `block` narrows a practice to one of its parts; a quiz has none and returns everything. */
 export const fetchQuizQuestions = async (
   materialId: string,
+  block?: string,
 ): Promise<QuizQuestionsResponse> => {
   const { data } = await apiInstance.get<QuizQuestionsResponse>(
     API_ENDPOINTS.quiz.questions(materialId),
+    { params: block ? { block } : undefined },
   );
   return data;
 };

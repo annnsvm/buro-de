@@ -384,6 +384,7 @@
     "clarificationDescription": "Book a 1-on-1 session with our instructors if something feels unclear. Get personalized guidance and answers to your specific questions.",
     "completed": "Completed",
     "defaultDescription": "Watch this lesson carefully and take notes. Mark as complete when you are ready to continue.",
+    "exercises": "Übungen",
     "inProgress": "In progress",
     "lessonContent": "Lesson content",
     "lessonDescription": "Lesson description",
@@ -394,6 +395,12 @@
     "missingId": "Course id is missing.",
     "needClarification": "Need clarification?",
     "nextLesson": "Next lesson",
+    "nextStep": {
+      "lesson": "Next lesson",
+      "practice": "To the practice",
+      "test": "To the final test",
+      "writing": "To the writing task"
+    },
     "noAccess": "You do not have access to this course. Purchase the course or start a trial from the catalog, then open it from My learning.",
     "noLessons": "No lessons in this course yet.",
     "noMoreLessons": "This is the last material in the course",
@@ -401,6 +408,7 @@
     "notesPlaceholder": "Take your notes here...",
     "openQuiz": "Open quiz",
     "openQuizHint": "Open the quiz to answer the questions for this lesson.",
+    "practice": "Lesson practice",
     "progressCompletedText": "{{current}} of {{total}} lessons completed",
     "progressText": "{{current}} of {{total}} lessons",
     "progressUpdateFailed": "Could not update lesson progress.",
@@ -559,5 +567,56 @@
     "tryAgain": "Try again",
     "yourLetter": "Your letter",
     "yourResult": "Your result"
+  },
+  "practice": {
+    "backToHub": "← Back to practice",
+    "blockDone": "✓ Done · {{correct}}/{{total}}",
+    "blockStart": "Start →",
+    "blocks": {
+      "grammatik": {
+        "description": "Exercises on the lesson’s grammar",
+        "summary_one": "{{count}} question on the lesson",
+        "summary_other": "{{count}} questions on the lesson",
+        "title": "Grammatik"
+      },
+      "lesen": {
+        "description": "A text and questions about it",
+        "summary_one": "a text and {{count}} question",
+        "summary_other": "a text and {{count}} questions",
+        "title": "Lesen"
+      },
+      "horen": {
+        "description": "Audio and questions about it",
+        "summary_one": "audio and {{count}} question",
+        "summary_other": "audio and {{count}} questions",
+        "title": "Hören"
+      },
+      "sprechen": {
+        "description": "Record yourself speaking",
+        "summary_one": "{{count}} speaking task",
+        "summary_other": "{{count}} speaking tasks",
+        "title": "Sprechen"
+      }
+    },
+    "encouragement": {
+      "almost_one": "Almost there — {{count}} block left.",
+      "almost_other": "Almost there — {{count}} blocks left.",
+      "done_one": "You have finished the whole practice. Well done!",
+      "done_other": "You have finished the whole practice. Well done!",
+      "goodStart_one": "Good start! {{count}} block of practice to go.",
+      "goodStart_other": "Good start! {{count}} blocks of practice to go.",
+      "halfway_one": "Half is behind you. {{count}} block and the lesson is closed.",
+      "halfway_other": "Half is behind you. {{count}} blocks and the lesson is closed.",
+      "start_one": "Let us begin — {{blocks}} short block and the lesson is yours.",
+      "start_other": "Let us begin — {{blocks}} short blocks and the lesson is yours."
+    },
+    "loadFailed": "Could not load the practice.",
+    "loading": "Loading the practice…",
+    "nextLesson": "Next lesson →",
+    "ofBlocks_one": "/ {{count}} block",
+    "ofBlocks_other": "/ {{count}} blocks",
+    "subtitle": "Pick where to start",
+    "title": "Lesson practice",
+    "tryAgain": "Try again"
   }
 }

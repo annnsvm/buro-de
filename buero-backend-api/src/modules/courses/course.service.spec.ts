@@ -34,6 +34,7 @@ describe("CourseService", () => {
     courseModule: { findMany: jest.Mock };
     courseMaterial: { groupBy: jest.Mock; findMany: jest.Mock };
     materialAttachment: { findMany: jest.Mock };
+    question: { groupBy: jest.Mock };
     userCourseAccess: { findUnique: jest.Mock };
     $queryRaw: jest.Mock;
   };
@@ -69,6 +70,8 @@ describe("CourseService", () => {
       courseModule: { findMany: jest.fn().mockResolvedValue([]) },
       courseMaterial: { groupBy: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
       materialAttachment: { findMany: jest.fn().mockResolvedValue([]) },
+      // Which practice blocks each material has; none in these fixtures.
+      question: { groupBy: jest.fn().mockResolvedValue([]) },
       userCourseAccess: { findUnique: jest.fn() },
       $queryRaw: jest.fn().mockResolvedValue([]),
     };

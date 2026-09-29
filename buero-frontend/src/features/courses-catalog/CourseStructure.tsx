@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from '@/components/ui/Icon';
 import { ICON_NAMES } from '@/helpers/iconNames';
+import { nestMaterials } from './nestMaterials';
 
 export type CourseMaterial = {
   id: string;
@@ -10,6 +11,10 @@ export type CourseMaterial = {
   title: string;
   duration?: string;
   orderIndex?: number;
+  /** Set on a practice: the lesson it hangs under in the list. */
+  parentMaterialId?: string | null;
+  /** Which blocks a practice contains, for the line under its name. */
+  blocks?: string[];
 };
 
 export type CourseModule = {
@@ -103,69 +108,114 @@ const CourseStructure: React.FC<CourseStructureProps> = ({
 
             {expandedModules.has(mod.id) && mod.materials && mod.materials.length > 0 ? (
               <div className="mt-3 space-y-3 pl-2">
-                {mod.materials.map((lesson) => {
-                  const isQuiz = String(lesson.type).toLowerCase() === 'quiz';
-                  const isVideo = String(lesson.type).toLowerCase() === 'video';
-                  const isCompleted = completedMaterialIds?.has(lesson.id) ?? false;
-                  const isCompletedVideo = isVideo && isCompleted;
-                  const isCompletedQuiz = isQuiz && isCompleted;
-                  const rowBgClass =
-                    selectedMaterialId === lesson.id
-                      ? 'bg-[var(--color-dawn-pink-light)]'
-                      : isCompletedVideo
-                        ? 'bg-[#f5f3f0]'
-                        : isCompletedQuiz
-                          ? 'bg-[#eef2fc]'
-                          : '';
-                  const iconWrapClass = isCompletedVideo
-                    ? 'bg-[#6b9f7a]'
-                    : isCompletedQuiz
-                      ? 'bg-[#6b7eb8]'
-                      : 'bg-[var(--color-primary)]';
-                  const lessonIconName =
-                    isCompletedVideo || isCompletedQuiz
-                      ? ICON_NAMES.CHECK
-                      : isQuiz
-                        ? ICON_NAMES.HELP
-                        : ICON_NAMES.PLAY_ARROW;
-                  return (
-                    <button
-                      key={lesson.id}
-                      type="button"
-                      onClick={() =>
-                        onSelectLesson?.({ moduleId: mod.id, materialId: lesson.id })
-                      }
-                      className={`flex w-full min-w-0 items-center gap-3 rounded-lg p-2 text-left outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${rowBgClass}`}
-                    >
-                      <span
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconWrapClass}`}
-                        aria-hidden
-                      >
-                        <Icon
-                          name={lessonIconName}
-                          size={18}
-                          color="var(--color-white)"
+                {nestMaterials(mod.materials).map(({ material, children }) => (
+                  <div key={material.id} className="space-y-2">
+                    <LessonRow
+                      lesson={material}
+                      moduleId={mod.id}
+                      isSelected={selectedMaterialId === material.id}
+                      isCompleted={completedMaterialIds?.has(material.id) ?? false}
+                      onSelect={onSelectLesson}
+                    />
+                    {/* A practice sits indented under the lesson it belongs to. */}
+                    {children.map((child) => (
+                      <div key={child.id} className="pl-6">
+                        <LessonRow
+                          lesson={child}
+                          moduleId={mod.id}
+                          isSelected={selectedMaterialId === child.id}
+                          isCompleted={completedMaterialIds?.has(child.id) ?? false}
+                          onSelect={onSelectLesson}
+                          isNested
                         />
-                      </span>
-                      <div className="flex min-w-0 flex-col">
-                        <span className="truncate text-sm font-semibold text-[var(--color-neutral-darkest)]">
-                          {lesson.title}
-                        </span>
-                        {!isQuiz ? (
-                          <span className="text-xs text-[var(--color-neutral-dark)]">
-                            {lesson.duration}
-                          </span>
-                        ) : null}
                       </div>
-                    </button>
-                  );
-                })}
+                    ))}
+                  </div>
+                ))}
               </div>
             ) : null}
           </div>
         );
       })}
     </div>
+  );
+};
+
+type LessonRowProps = {
+  lesson: CourseMaterial;
+  moduleId: string;
+  isSelected: boolean;
+  isCompleted: boolean;
+  onSelect?: (payload: { moduleId: string; materialId: string }) => void;
+  /** A practice under its lesson: smaller, and captioned with what is inside it. */
+  isNested?: boolean;
+};
+
+const LessonRow: React.FC<LessonRowProps> = ({
+  lesson,
+  moduleId,
+  isSelected,
+  isCompleted,
+  onSelect,
+  isNested = false,
+}) => {
+  const { t } = useTranslation();
+  const type = String(lesson.type).toLowerCase();
+  const isVideo = type === 'video';
+  const hasQuestions = type === 'quiz' || type === 'practice';
+
+  const completedVideo = isVideo && isCompleted;
+  const completedExercise = hasQuestions && isCompleted;
+
+  const rowBgClass = isSelected
+    ? 'bg-[var(--color-dawn-pink-light)]'
+    : completedVideo
+      ? 'bg-[#f5f3f0]'
+      : completedExercise
+        ? 'bg-[#eef2fc]'
+        : '';
+  const iconWrapClass = completedVideo
+    ? 'bg-[#6b9f7a]'
+    : completedExercise
+      ? 'bg-[#6b7eb8]'
+      : 'bg-[var(--color-primary)]';
+  const iconName = isCompleted
+    ? ICON_NAMES.CHECK
+    : hasQuestions
+      ? ICON_NAMES.HELP
+      : ICON_NAMES.PLAY_ARROW;
+
+  /**
+   * A practice is captioned "Übungen" rather than by the blocks it holds. Naming them here would
+   * be a second list to keep in step with the one on the hub, and a practice that gains a
+   * listening block would keep saying "Grammatik" until someone noticed.
+   */
+  const caption =
+    type === 'practice' ? t('coursePage.exercises') : isVideo ? lesson.duration : null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect?.({ moduleId, materialId: lesson.id })}
+      className={`flex w-full min-w-0 items-center gap-3 rounded-lg p-2 text-left outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${rowBgClass}`}
+    >
+      <span
+        className={`flex shrink-0 items-center justify-center rounded-lg ${iconWrapClass} ${isNested ? 'h-8 w-8' : 'h-10 w-10'}`}
+        aria-hidden
+      >
+        <Icon name={iconName} size={isNested ? 15 : 18} color="var(--color-white)" />
+      </span>
+      <div className="flex min-w-0 flex-col">
+        <span
+          className={`truncate font-semibold text-[var(--color-neutral-darkest)] ${isNested ? 'text-[13px]' : 'text-sm'}`}
+        >
+          {lesson.title || t('coursePage.practice')}
+        </span>
+        {caption ? (
+          <span className="truncate text-xs text-[var(--color-neutral-dark)]">{caption}</span>
+        ) : null}
+      </div>
+    </button>
   );
 };
 

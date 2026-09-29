@@ -13,7 +13,15 @@ import type { CreateCourseMaterialModalValues } from '@/types/features/courseMan
  */
 export const quizMaterialSettings = (
   payload: CreateCourseMaterialModalValues,
-): { quiz_mode?: 'practice' | 'test'; passing_score?: number | null } => {
+): {
+  quiz_mode?: 'practice' | 'test';
+  passing_score?: number | null;
+  parent_material_id?: string | null;
+} => {
+  /** An empty choice detaches the practice, so it is sent as null rather than omitted. */
+  if (payload.type === 'practice') {
+    return { parent_material_id: payload.parentMaterialId || null };
+  }
   if (payload.type !== 'quiz') return {};
   return payload.quizMode === 'test'
     ? { quiz_mode: 'test', passing_score: payload.passingScore }

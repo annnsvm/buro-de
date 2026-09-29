@@ -148,6 +148,10 @@ export class CourseMaterialService {
           content: dto.content as object,
           orderIndex: dto.order_index,
           ...(dto.quiz_mode !== undefined && { quizMode: dto.quiz_mode }),
+          /** Null detaches a practice from its lesson; undefined leaves it where it is. */
+          ...(dto.parent_material_id !== undefined && {
+            parentMaterialId: dto.parent_material_id,
+          }),
           ...(dto.passing_score !== undefined && {
             passingScore: dto.passing_score,
           }),
@@ -176,6 +180,10 @@ export class CourseMaterialService {
           ...(dto.content !== undefined && { content: dto.content as object }),
           ...(dto.order_index !== undefined && { orderIndex: dto.order_index }),
           ...(dto.quiz_mode !== undefined && { quizMode: dto.quiz_mode }),
+          /** Null detaches a practice from its lesson; undefined leaves it where it is. */
+          ...(dto.parent_material_id !== undefined && {
+            parentMaterialId: dto.parent_material_id,
+          }),
           ...(dto.passing_score !== undefined && {
             passingScore: dto.passing_score,
           }),

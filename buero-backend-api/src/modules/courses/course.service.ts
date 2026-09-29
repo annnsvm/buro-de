@@ -9,6 +9,7 @@ import { ConfigService } from "@nestjs/config";
 import {
   Language,
   Level,
+  PracticeBlock,
   Role,
   UserCourseAccessType,
 } from "../../generated/prisma/enums";
@@ -627,7 +628,7 @@ export class CourseService {
    * sequentially (4 RTTs to remote Postgres). Fetch all four in parallel.
    */
   private async loadCourseTree(id: string): Promise<Record<string, unknown> | null> {
-    const [course, modules, materials, attachments] = await Promise.all([
+    const [course, modules, materials, questionBlocks, attachments] = await Promise.all([
       this.prisma.course.findUnique({ where: { id } }),
       this.prisma.courseModule.findMany({
         where: { courseId: id },
@@ -650,10 +651,21 @@ export class CourseService {
            */
           quizMode: true,
           passingScore: true,
+          /** Which video a practice hangs under, so the lesson list can nest it. */
+          parentMaterialId: true,
           orderIndex: true,
           createdAt: true,
           updatedAt: true,
         },
+      }),
+      /**
+       * Which blocks each practice actually contains, so the lesson list can say
+       * "Grammatik · Lesen" under it. Grouped rather than counted per material: one query
+       * for the whole course instead of one per practice.
+       */
+      this.prisma.question.groupBy({
+        by: ["materialId", "block"],
+        where: { material: { module: { courseId: id } } },
       }),
       this.prisma.materialAttachment.findMany({
         where: { material: { module: { courseId: id } } },
@@ -673,6 +685,21 @@ export class CourseService {
     ]);
     if (!course) return null;
 
+    /** Kept in the enum's order, so the subtitle always reads the same way round. */
+    const blockOrder = Object.values(PracticeBlock) as PracticeBlock[];
+    const blocksByMaterial = new Map<string, PracticeBlock[]>();
+    for (const row of questionBlocks) {
+      const found = blocksByMaterial.get(row.materialId) ?? [];
+      found.push(row.block);
+      blocksByMaterial.set(row.materialId, found);
+    }
+    for (const [materialId, blocks] of blocksByMaterial) {
+      blocksByMaterial.set(
+        materialId,
+        blockOrder.filter((block) => blocks.includes(block)),
+      );
+    }
+
     const attachmentsByMaterial = new Map<string, Array<Record<string, unknown>>>();
     for (const item of attachments) {
       const { materialId, ...rest } = item;
@@ -686,6 +713,7 @@ export class CourseService {
       const list = materialsByModule.get(material.moduleId) ?? [];
       list.push({
         ...material,
+        blocks: blocksByMaterial.get(material.id) ?? [],
         attachments: attachmentsByMaterial.get(material.id) ?? [],
       });
       materialsByModule.set(material.moduleId, list);

@@ -20,6 +20,8 @@ export type LearningPageProps = {
   courseId?: string;
   moduleId?: string;
   hasNextLesson?: boolean;
+  /** Names the step ahead, so the button says where it actually leads. */
+  nextStepKind?: 'lesson' | 'practice' | 'test' | 'writing';
   onNextLesson?: () => void;
   isVideoLessonCompleted?: boolean;
   onMarkVideoComplete?: () => void | Promise<void>;

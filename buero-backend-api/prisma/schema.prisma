@@ -43,6 +43,9 @@ enum CourseMaterialType {
   /// A short piece of writing the student submits and Claude grades against the
   /// material's own rubric. Distinct from `homework`, which is an offline task.
   writing
+  /// The practice that belongs to one lesson: up to four blocks of exercises hanging off
+  /// the video it follows. Distinct from `quiz`, which stays the module test.
+  practice
 }
 
 enum AttachmentKind {
@@ -70,6 +73,18 @@ enum VocabularyCategory {
 enum QuizMode {
   practice
   test
+}
+
+/// Which part of a lesson's practice a question belongs to.
+///
+/// `grammatik` is the default so that every question written before blocks existed lands
+/// somewhere sensible without being touched. The three others each pair questions with
+/// something to read, listen to or say.
+enum PracticeBlock {
+  grammatik
+  lesen
+  horen
+  sprechen
 }
 
 enum QuestionType {
@@ -257,11 +272,20 @@ model CourseMaterial {
   quizMode   QuizMode?          @map("quiz_mode")
   /// Percent needed to pass, for a test. Null means there is nothing to fail.
   passingScore Int?             @map("passing_score")
+  /// The material this one hangs under in the lesson list — a practice under its video.
+  ///
+  /// Nullable, and that is the point: a practice with no parent simply sits in the module
+  /// as quizzes always have. Nothing needs moving for the nesting to arrive, and a lesson
+  /// without practice is just a video with no children.
+  parentMaterialId String?      @map("parent_material_id")
   orderIndex Int                @map("order_index")
   createdAt  DateTime           @default(now()) @map("created_at")
   updatedAt  DateTime           @updatedAt @map("updated_at")
 
   module         CourseModule          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  /// Deleting a video takes its practice with it: a practice with no lesson is unreachable.
+  parentMaterial CourseMaterial?       @relation("MaterialChildren", fields: [parentMaterialId], references: [id], onDelete: Cascade)
+  children       CourseMaterial[]      @relation("MaterialChildren")
   courseProgress CourseProgress[]
   quizAttempts   QuizAttempt[]
   writingSubmissions WritingSubmission[]
@@ -269,6 +293,7 @@ model CourseMaterial {
   questions      Question[]
 
   @@index([moduleId])
+  @@index([parentMaterialId])
   @@map("course_materials")
 }
 
@@ -552,6 +577,9 @@ model Question {
   points          Int          @default(1)
   /// Topic tags such as "weil" or "praeteritum", for per-topic reporting later.
   skills          String[]     @default([])
+  /// Which block of the practice this belongs to. Every question written before blocks
+  /// existed is grammar practice, so that is the default and nothing had to be migrated.
+  block           PracticeBlock @default(grammatik)
   /// The section of the test this task belongs to, verbatim from the author's file —
   /// e.g. "ЧАСТИНА 2 · dass і das". A failed test is reported part by part, so the
   /// student is told which topic let them down rather than only a number.

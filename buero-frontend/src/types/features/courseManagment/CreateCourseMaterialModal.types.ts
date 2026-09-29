@@ -36,6 +36,12 @@ export type CreateCourseMaterialModalValues =
       passingScore: number | null;
     }
   | {
+      type: 'practice';
+      title: string;
+      /** The lesson this practice hangs under; empty means it stands on its own. */
+      parentMaterialId: string;
+    }
+  | {
       type: 'writing';
       title: string;
       writing: WritingTaskDraft;

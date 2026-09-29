@@ -12,6 +12,7 @@ export type CourseMaterialInitialState = {
   quizMode: QuizMaterialMode;
   passingScore: number;
   writing: WritingTaskDraft;
+  parentMaterialId: string;
   createdMaterialId: string | null;
   savedSnapshot: string | null;
 };

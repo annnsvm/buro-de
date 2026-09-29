@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -20,7 +21,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { RolesGuard } from "../auth/guards/roles.guard";
-import { Role } from "src/generated/prisma/enums";
+import { PracticeBlock, Role } from "src/generated/prisma/enums";
 import type { UserWithoutPassword } from "../user/types/user-response.type";
 import { QuizService } from "./quiz.service";
 import { CreateAttemptDto } from "./dto/create-attempt.dto";
@@ -52,8 +53,9 @@ export class QuizController {
   getQuestions(
     @CurrentUser() user: UserWithoutPassword,
     @Param("materialId") materialId: string,
+    @Query("block") block?: PracticeBlock,
   ) {
-    return this.quizService.getQuestions(materialId, user.id, user.role);
+    return this.quizService.getQuestions(materialId, user.id, user.role, block);
   }
 
   @Get("materials/:materialId/last-attempt")

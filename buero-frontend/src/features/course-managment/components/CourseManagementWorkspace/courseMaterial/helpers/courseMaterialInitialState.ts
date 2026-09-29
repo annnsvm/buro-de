@@ -53,6 +53,7 @@ export const getInitialMaterialState = (
       quizMode: 'practice',
       passingScore: DEFAULT_PASSING_SCORE,
       writing: emptyWritingTask(),
+      parentMaterialId: '',
       createdMaterialId: null,
       savedSnapshot: null,
     };
@@ -80,6 +81,7 @@ export const getInitialMaterialState = (
       quizMode: 'practice',
       passingScore: DEFAULT_PASSING_SCORE,
       writing: emptyWritingTask(),
+      parentMaterialId: '',
       createdMaterialId: selectedMaterial.id,
       savedSnapshot: JSON.stringify(payload),
     };
@@ -98,11 +100,18 @@ export const getInitialMaterialState = (
       : DEFAULT_PASSING_SCORE;
 
   const isWriting = selectedMaterial.type === 'writing';
+  const isPractice = selectedMaterial.type === 'practice';
   const writing = readWritingTask(selectedMaterial.content);
 
   const payload: CreateCourseMaterialModalValues = isWriting
     ? { type: 'writing', title: selectedMaterial.title ?? '', writing }
-    : {
+    : isPractice
+      ? {
+          type: 'practice',
+          title: selectedMaterial.title ?? '',
+          parentMaterialId: selectedMaterial.parentMaterialId ?? '',
+        }
+      : {
         type: 'quiz',
         title: selectedMaterial.title ?? '',
         quizMode,
@@ -110,13 +119,14 @@ export const getInitialMaterialState = (
       };
 
   return {
-    materialType: isWriting ? 'writing' : 'quiz',
+    materialType: isWriting ? 'writing' : isPractice ? 'practice' : 'quiz',
     title: selectedMaterial.title ?? '',
     youtubeVideoId: '',
     youtubeVideoDuration: '',
     quizMode,
     passingScore,
     writing,
+    parentMaterialId: selectedMaterial.parentMaterialId ?? '',
     createdMaterialId: selectedMaterial.id,
     savedSnapshot: JSON.stringify(payload),
   };
