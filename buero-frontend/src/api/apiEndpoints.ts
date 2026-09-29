@@ -80,6 +80,9 @@ export const API_ENDPOINTS = {
     questions: (materialId: string) => `/quiz/materials/${materialId}/questions`,
     lastAttempt: (materialId: string) => `/quiz/materials/${materialId}/last-attempt`,
   },
+  practice: {
+    overview: (materialId: string) => `/practice/materials/${materialId}`,
+  },
   writing: {
     task: (materialId: string) => `/writing/materials/${materialId}`,
     submit: (materialId: string) => `/writing/materials/${materialId}/submit`,

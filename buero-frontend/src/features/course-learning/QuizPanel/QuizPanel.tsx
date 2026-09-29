@@ -39,6 +39,8 @@ export type QuizPanelProps = {
   moduleId?: string;
   quizMaterialTitle: string;
   attachments?: MaterialAttachment[];
+  /** Narrows a practice to one of its blocks; absent for a quiz or the module test. */
+  block?: string;
   onQuizResult?: (result: QuizResultSummary | null) => void;
   /**
    * Where to go once this is finished. A practice quiz leads to the next lesson, a
@@ -63,6 +65,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   moduleId,
   quizMaterialTitle,
   attachments,
+  block,
   onQuizResult,
   onMoveOn,
 }) => {
@@ -122,7 +125,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     setAttemptId(null);
     try {
       const [loaded, previous] = await Promise.all([
-        fetchQuizQuestions(courseMaterialId),
+        fetchQuizQuestions(courseMaterialId, block),
         fetchLastQuizAttempt(courseMaterialId),
       ]);
       setQuestions(loaded.questions);
@@ -171,7 +174,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [courseMaterialId, onQuizResult, t]);
+  }, [block, courseMaterialId, onQuizResult, t]);
 
   useEffect(() => {
     void loadQuiz();

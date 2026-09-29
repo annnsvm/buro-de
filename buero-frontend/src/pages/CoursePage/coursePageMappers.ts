@@ -32,6 +32,10 @@ export type ApiCourseMaterial = {
    * player needs it to know where finishing leads — the next lesson, or the next module.
    */
   quizMode?: 'practice' | 'test' | null;
+  /** On a practice: the lesson it hangs under. */
+  parentMaterialId?: string | null;
+  /** Which blocks a practice contains. */
+  blocks?: string[];
   attachments?: ApiMaterialAttachment[];
 };
 
@@ -146,18 +150,47 @@ export const mapApiModulesToCourseStructure = (
       title: mat.title,
       duration: formatMaterialDuration(mat),
       type: mat.type,
+      orderIndex: mat.orderIndex,
+      /**
+       * Carried through so the student's lesson list can nest a practice under its lesson.
+       * Dropping them here was why the teacher saw the nesting and the student did not.
+       */
+      parentMaterialId: mat.parentMaterialId ?? null,
+      blocks: mat.blocks ?? [],
     })),
   }));
 };
 
 export type FlatMaterialRef = { moduleId: string; material: ApiCourseMaterial };
 
+/**
+ * Every material of the course in the order a student walks through it.
+ *
+ * A lesson's practice follows that lesson rather than sitting wherever its order index happens
+ * to put it, so "next" after a video is its own practice and not the video after it. Everything
+ * without a parent keeps its place exactly as before.
+ */
 export const flattenMaterialsInOrder = (course: ApiCourseWithTree): FlatMaterialRef[] => {
   const out: FlatMaterialRef[] = [];
-  const modules = sortByOrder(course.modules ?? []);
-  for (const mod of modules) {
-    for (const mat of sortByOrder(mod.materials ?? [])) {
+  for (const mod of sortByOrder(course.modules ?? [])) {
+    const materials = sortByOrder(mod.materials ?? []);
+    const childrenOf = new Map<string, ApiCourseMaterial[]>();
+    const present = new Set(materials.map((mat) => mat.id));
+
+    for (const mat of materials) {
+      const parentId = mat.parentMaterialId;
+      if (parentId && present.has(parentId)) {
+        childrenOf.set(parentId, [...(childrenOf.get(parentId) ?? []), mat]);
+      }
+    }
+
+    for (const mat of materials) {
+      /** Children are emitted with their parent, so they are skipped here. */
+      if (mat.parentMaterialId && present.has(mat.parentMaterialId)) continue;
       out.push({ moduleId: mod.id, material: mat });
+      for (const child of childrenOf.get(mat.id) ?? []) {
+        out.push({ moduleId: mod.id, material: child });
+      }
     }
   }
   return out;
@@ -195,6 +228,27 @@ export const resolveSelectedMaterialId = (
  * "next video" button under a player but wrong as a way through the course: it steps
  * over quizzes and every other kind of material. A quiz needs to lead somewhere too.
  */
+/** What the next step is, so the button can name it instead of always saying "next lesson". */
+export type NextStepKind = 'lesson' | 'practice' | 'test' | 'writing';
+
+/**
+ * Names the step that follows.
+ *
+ * Telling a student they are going "to the next lesson" when the next thing is the module test
+ * is the kind of small lie that makes an interface feel careless — and here it matters, because
+ * a test is a step they may want to prepare for rather than walk into.
+ */
+export const nextStepKind = (material: ApiCourseMaterial | undefined): NextStepKind => {
+  const type = String(material?.type ?? '').toLowerCase();
+  if (type === 'writing') return 'writing';
+  if (type === 'practice') return 'practice';
+  if (type === 'quiz') {
+    /** An older lesson quiz is practice by any other name; only a test is a test. */
+    return material?.quizMode === 'test' ? 'test' : 'practice';
+  }
+  return 'lesson';
+};
+
 export const findNextMaterialId = (
   flat: FlatMaterialRef[],
   currentMaterialId: string | null,

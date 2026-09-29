@@ -142,7 +142,15 @@ export class QuestionImportService {
           const material = await tx.courseMaterial.create({
             data: {
               moduleId,
-              type: CourseMaterialType.quiz,
+              /**
+               * Lesson exercises become a practice; the module test stays a quiz. The practice
+               * is what a lesson's questions belong to now, and importing straight into one
+               * saves the teacher creating it by hand and then filling it.
+               */
+              type:
+                mode === QuizMode.test
+                  ? CourseMaterialType.quiz
+                  : CourseMaterialType.practice,
               title: target.title,
               // The questions live in their own table; the JSON stays empty.
               content: {},
@@ -251,7 +259,10 @@ export class QuestionImportService {
         : groupQuestions(usable);
 
     const existing = await this.prisma.courseMaterial.findMany({
-      where: { moduleId, type: CourseMaterialType.quiz },
+      where: {
+        moduleId,
+        type: { in: [CourseMaterialType.quiz, CourseMaterialType.practice] },
+      },
       select: { id: true, title: true },
     });
     const idByTitle = new Map(

@@ -186,8 +186,12 @@ export class QuestionEditorService {
         'Матеріал не знайдено або не належить цьому модулю',
       );
     }
-    if (material.type !== CourseMaterialType.quiz) {
-      throw new BadRequestException('Матеріал не є квізом');
+    /** A practice holds questions in the same way a quiz does, so both are editable here. */
+    if (
+      material.type !== CourseMaterialType.quiz &&
+      material.type !== CourseMaterialType.practice
+    ) {
+      throw new BadRequestException('Матеріал не містить питань');
     }
     return material;
   }

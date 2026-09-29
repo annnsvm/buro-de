@@ -225,6 +225,7 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
   courseId,
   moduleId,
   hasNextLesson = false,
+  nextStepKind = 'lesson',
   onNextLesson,
   isVideoLessonCompleted = false,
   onMarkVideoComplete,
@@ -359,12 +360,12 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
                 disabled={!hasNextLesson}
                 aria-label={
                   hasNextLesson
-                    ? t('coursePage.nextLesson')
+                    ? t(`coursePage.nextStep.${nextStepKind}`)
                     : t('coursePage.noMoreLessons')
                 }
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d7cbc5] bg-transparent px-5 py-3 text-sm font-medium text-[#5f5854] transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
               >
-                {t('coursePage.nextLesson')}
+                {t(`coursePage.nextStep.${nextStepKind}`)}
                 <SkipForward className="h-4 w-4" aria-hidden />
               </button>
             </div>

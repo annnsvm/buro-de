@@ -15,13 +15,18 @@ type ModuleMaterialType = {
     | 'cultural_insight'
     | 'homework'
     | 'text'
-    | 'writing';
+    | 'writing'
+    | 'practice';
   title?: string;
   content?: Record<string, unknown>;
   /** Set on quiz materials: the practice after a lesson, or the test after a module. */
   quizMode?: 'practice' | 'test' | null;
   /** Percentage needed to pass, on a test. */
   passingScore?: number | null;
+  /** On a practice: the lesson it hangs under in the list. */
+  parentMaterialId?: string | null;
+  /** Which blocks a practice contains. */
+  blocks?: string[];
   orderIndex?: number;
 };
 

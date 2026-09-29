@@ -153,7 +153,7 @@ const ImportQuestionsModal: React.FC<ImportQuestionsModalProps> = ({
                     onChange={() => setMode('practice')}
                     className="accent-[var(--color-primary)]"
                   />
-                  Квізи уроків — по одному на кожен урок із колонки «Урок»
+                  Практики уроків — по одній на кожен урок із колонки «Урок»
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input

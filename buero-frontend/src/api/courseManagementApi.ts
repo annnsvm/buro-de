@@ -56,6 +56,8 @@ export const createMaterial = async (
     quiz_mode?: 'practice' | 'test';
     /** Percentage needed to pass a test. */
     passing_score?: number | null;
+    /** The lesson a practice hangs under; null detaches it. */
+    parent_material_id?: string | null;
   },
 ) => apiInstance.post<{ id: string }>(API_ENDPOINTS.courseMaterials.create(courseId, moduleId), body);
 
@@ -69,6 +71,7 @@ export const updateMaterial = async (
     content: Record<string, unknown>;
     quiz_mode?: 'practice' | 'test';
     passing_score?: number | null;
+    parent_material_id?: string | null;
   },
 ) =>
   apiInstance.patch(

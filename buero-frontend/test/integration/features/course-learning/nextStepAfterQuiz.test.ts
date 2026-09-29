@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   findNextMaterialId,
   findNextModuleFirstMaterialId,
+  nextStepKind,
 } from '@/pages/CoursePage/coursePageMappers';
 
 /**
@@ -59,5 +60,31 @@ describe('the next module after a test', () => {
   it('says nothing for a lesson that is not in the course', () => {
     expect(findNextModuleFirstMaterialId(flat, 'stale-id')).toBeNull();
     expect(findNextMaterialId(flat, 'stale-id')).toBeNull();
+  });
+});
+
+describe('naming the step that follows', () => {
+  /**
+   * Telling a student they are going "to the next lesson" when the module test is what comes
+   * next is the kind of small inaccuracy that makes an interface feel careless — and a test is
+   * a step they may want to approach deliberately.
+   */
+  it('names a practice, a test and a lesson differently', () => {
+    expect(nextStepKind({ id: 'p', type: 'practice', title: '' })).toBe('practice');
+    expect(nextStepKind({ id: 't', type: 'quiz', title: '', quizMode: 'test' })).toBe('test');
+    expect(nextStepKind({ id: 'v', type: 'video', title: '' })).toBe('lesson');
+    expect(nextStepKind({ id: 'w', type: 'writing', title: '' })).toBe('writing');
+  });
+
+  /** An older lesson quiz is practice by another name; only a test is a test. */
+  it('treats a lesson quiz as practice', () => {
+    expect(nextStepKind({ id: 'q', type: 'quiz', title: '', quizMode: 'practice' })).toBe(
+      'practice',
+    );
+    expect(nextStepKind({ id: 'q', type: 'quiz', title: '' })).toBe('practice');
+  });
+
+  it('falls back to a lesson when there is nothing to name', () => {
+    expect(nextStepKind(undefined)).toBe('lesson');
   });
 });

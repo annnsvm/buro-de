@@ -15,6 +15,7 @@ import {
 import LessonAttachments from '@/features/course-learning/MaterialWindow/LessonAttachments';
 import QuizPanel, { type QuizResultSummary } from '@/features/course-learning/QuizPanel/QuizPanel';
 import WritingPanel from '@/features/course-learning/WritingPanel/WritingPanel';
+import PracticePanel from '@/features/course-learning/PracticePanel/PracticePanel';
 
 import type { LearningLesson } from '@/types/features/learning/LearningPage.types';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
@@ -28,6 +29,7 @@ import {
   buildLearningLessonFromMaterial,
   findLockedModuleIds,
   findNextMaterialId,
+  nextStepKind,
   findNextModuleFirstMaterialId,
   flattenMaterialsInOrder,
   formatMaterialDuration,
@@ -205,6 +207,13 @@ const CoursePage: React.FC = () => {
     [flatMaterials, selectedMaterialId],
   );
 
+  /**
+   * A practice opens on its hub of blocks; a quiz and the module test go straight to their
+   * questions. Both end up in the same question panel — the hub is a step in front of it.
+   */
+  const isPracticeSelected = Boolean(
+    selectedMaterial && String(selectedMaterial.type).toLowerCase() === 'practice',
+  );
   const isQuizSelected = Boolean(
     selectedMaterial && String(selectedMaterial.type).toLowerCase() === 'quiz',
   );
@@ -212,7 +221,7 @@ const CoursePage: React.FC = () => {
     selectedMaterial && String(selectedMaterial.type).toLowerCase() === 'writing',
   );
   /** The video player is for everything that is not a step of its own. */
-  const showsOwnPanel = isQuizSelected || isWritingSelected;
+  const showsOwnPanel = isQuizSelected || isWritingSelected || isPracticeSelected;
 
 
   const currentLesson: LearningLesson | undefined = useMemo(() => {
@@ -287,6 +296,15 @@ const CoursePage: React.FC = () => {
   const nextMaterialId = useMemo(
     () => findNextMaterialId(flatMaterials, selectedMaterialId),
     [flatMaterials, selectedMaterialId],
+  );
+
+  /** What the button after a video should call the thing it leads to. */
+  const nextStep = useMemo(
+    () =>
+      nextStepKind(
+        flatMaterials.find((row) => row.material.id === nextMaterialId)?.material,
+      ),
+    [flatMaterials, nextMaterialId],
   );
 
   const handleNextLesson = useCallback(() => {
@@ -477,6 +495,7 @@ const CoursePage: React.FC = () => {
               courseId={courseId}
               moduleId={selectedModuleId ?? undefined}
               hasNextLesson={Boolean(nextMaterialId)}
+              nextStepKind={nextStep}
               onNextLesson={handleNextLesson}
               isVideoLessonCompleted={
                 isStudentVideoProgress && selectedMaterialId
@@ -504,6 +523,19 @@ const CoursePage: React.FC = () => {
               onMoveOn={
                 quizMoveOnTarget ? () => goToMaterial(quizMoveOnTarget) : undefined
               }
+            />
+          ) : null}
+          {flatMaterials.length > 0 && isPracticeSelected && selectedMaterial ? (
+            <PracticePanel
+              key={selectedMaterial.id}
+              courseMaterialId={selectedMaterial.id}
+              courseId={courseId}
+              moduleId={selectedModuleId ?? undefined}
+              attachments={mapApiAttachments(selectedMaterial.attachments)}
+              onMoveOn={
+                nextMaterialId ? () => goToMaterial(nextMaterialId) : undefined
+              }
+              nextStepLabel={t(`coursePage.nextStep.${nextStep}`)}
             />
           ) : null}
           {flatMaterials.length > 0 && isWritingSelected && selectedMaterial ? (

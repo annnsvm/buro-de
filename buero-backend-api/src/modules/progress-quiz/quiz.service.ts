@@ -3,7 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { QuizMode, Role } from "src/generated/prisma/enums";
+import {
+  CourseMaterialType,
+  PracticeBlock,
+  QuizMode,
+  Role,
+} from "src/generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
 import { shuffle } from "./shuffle";
 import { CourseMaterialService } from "../course-materials/course-material.service";
@@ -20,6 +25,12 @@ import {
   summariseParts,
   type PartResult,
 } from "./score-attempt";
+
+/** Materials whose questions are answered through the quiz endpoints. */
+const ANSWERABLE_TYPES = new Set<CourseMaterialType>([
+  CourseMaterialType.quiz,
+  CourseMaterialType.practice,
+]);
 
 @Injectable()
 export class QuizService {
@@ -42,9 +53,14 @@ export class QuizService {
         `Матеріал з id ${courseMaterialId} не знайдено`
       );
     }
-    if (material.type !== "quiz") {
+    /**
+     * A lesson's practice is answered through the same endpoints as a quiz: the questions, the
+     * attempts and the progress are the same shape. Only where it sits in the lesson list
+     * differs, which is not this service's concern.
+     */
+    if (!ANSWERABLE_TYPES.has(material.type)) {
       throw new BadRequestException(
-        "Матеріал не є квізом (type має бути quiz)"
+        "Матеріал не містить питань (потрібен quiz або practice)"
       );
     }
     const courseId = material.module?.courseId;
@@ -73,11 +89,21 @@ export class QuizService {
    * server, and the explanation is revealed by the submit response once the student
    * has actually answered.
    */
-  async getQuestions(materialId: string, userId: string, role: Role) {
+  /**
+   * `block` narrows a practice to one of its parts. A quiz has no blocks to speak of, so
+   * leaving it out returns everything, which is what the module test and every existing quiz
+   * continue to do.
+   */
+  async getQuestions(
+    materialId: string,
+    userId: string,
+    role: Role,
+    block?: PracticeBlock,
+  ) {
     const material = await this.assertCanAccessQuiz(materialId, userId, role);
 
     const questions = await this.prisma.question.findMany({
-      where: { materialId },
+      where: { materialId, ...(block && { block }) },
       orderBy: { orderIndex: "asc" },
     });
 
@@ -284,8 +310,13 @@ export class QuizService {
     if (!material) {
       throw new NotFoundException(`Матеріал з id ${materialId} не знайдено`);
     }
-    if (material.type !== "quiz") {
-      throw new BadRequestException("Матеріал не є квізом (type має бути quiz)");
+    /**
+     * A lesson's practice is answered through the same endpoints as a quiz: the questions, the
+     * attempts and the progress are the same shape. Only where it sits in the lesson list
+     * differs, which is not this service's concern.
+     */
+    if (!ANSWERABLE_TYPES.has(material.type)) {
+      throw new BadRequestException("Матеріал не містить питань (потрібен quiz або practice)");
     }
     if (material.module?.courseId) {
       await this.courseMaterialService.assertCanAccessModule(

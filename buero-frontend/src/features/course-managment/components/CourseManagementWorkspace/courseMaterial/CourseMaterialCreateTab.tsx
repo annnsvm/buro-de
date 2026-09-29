@@ -47,6 +47,7 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
   const [quizMode, setQuizMode] = useState<QuizMaterialMode>(initialState.quizMode);
   const [passingScore, setPassingScore] = useState(initialState.passingScore);
   const [writing, setWriting] = useState<WritingTaskDraft>(initialState.writing);
+  const [parentMaterialId, setParentMaterialId] = useState(initialState.parentMaterialId);
   const [error, setError] = useState<string | null>(null);
   const [createdMaterialId, setCreatedMaterialId] = useState<string | null>(
     initialState.createdMaterialId,
@@ -71,6 +72,9 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
     }
     if (materialType === 'writing') {
       return { type: 'writing', title: title.trim(), writing };
+    }
+    if (materialType === 'practice') {
+      return { type: 'practice', title: title.trim(), parentMaterialId };
     }
     return {
       type: 'quiz',
@@ -193,6 +197,32 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
             onYoutubeVideoIdChange={setYoutubeVideoId}
             onYoutubeVideoDurationChange={setYoutubeVideoDuration}
           />
+        ) : materialType === 'practice' ? (
+          <label className="block">
+            <span className="text-sm font-medium text-[var(--color-text-primary)]">
+              Урок, під яким показувати практику
+            </span>
+            <select
+              value={parentMaterialId}
+              onChange={(event) => setParentMaterialId(event.target.value)}
+              disabled={isBusy}
+              className="mt-1 block w-full rounded-[12px] border border-[var(--color-border-default)] px-3 py-2 text-sm"
+            >
+              <option value="">Без уроку — окремим пунктом модуля</option>
+              {(activeModule?.materials ?? [])
+                .filter((candidate) => candidate.type === 'video')
+                .map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>
+                    {candidate.title || candidate.id}
+                  </option>
+                ))}
+            </select>
+            {/* Optional on purpose: a practice with no lesson behaves exactly as a quiz
+                always has, which is why nothing had to move when nesting arrived. */}
+            <span className="mt-1 block text-xs text-[var(--color-text-secondary)]">
+              Без уроку практика стоїть у модулі сама по собі — так само, як зараз стоять квізи.
+            </span>
+          </label>
         ) : materialType === 'writing' ? (
           <WritingTaskFields
             draft={writing}

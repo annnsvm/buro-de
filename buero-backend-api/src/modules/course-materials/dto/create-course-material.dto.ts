@@ -6,6 +6,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -53,6 +54,15 @@ export class CreateCourseMaterialDto {
   @Min(1)
   @Max(100)
   passing_score?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Матеріал, під яким цей показується у списку уроків — практика під своїм відео. ' +
+      'Без нього матеріал стоїть у модулі сам по собі, як завжди стояли квізи.',
+  })
+  @IsOptional()
+  @IsUUID()
+  parent_material_id?: string | null;
 
   @ApiProperty({ example: 0, description: 'Порядок у модулі (order_index)' })
   @IsInt()

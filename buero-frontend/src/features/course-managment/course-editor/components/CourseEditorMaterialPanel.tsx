@@ -25,7 +25,8 @@ const CourseEditorMaterialPanel: React.FC<CourseEditorMaterialPanelProps> = ({
   const showQuestionEditor =
     Boolean(courseId) &&
     Boolean(activeMaterialIdForEdit) &&
-    editedMaterial?.material.type === 'quiz';
+    /** A practice holds questions the same way a quiz does, so both are edited here. */
+    ['quiz', 'practice'].includes(editedMaterial?.material.type ?? '');
 
   return (
     <Section className="py-8">
@@ -45,9 +46,11 @@ const CourseEditorMaterialPanel: React.FC<CourseEditorMaterialPanelProps> = ({
         {showQuestionEditor && courseId && editedMaterial && activeMaterialIdForEdit ? (
           <div className="mt-10">
             <h3 className="text-lg font-bold text-[var(--color-text-primary)]">
-              {editedMaterial.material.quizMode === 'test'
-                ? 'Завдання тесту'
-                : 'Питання квізу'}
+              {editedMaterial.material.type === 'practice'
+                ? 'Питання практики'
+                : editedMaterial.material.quizMode === 'test'
+                  ? 'Завдання тесту'
+                  : 'Питання квізу'}
             </h3>
             <div className="mt-4">
               <QuestionEditor

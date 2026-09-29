@@ -15,6 +15,7 @@ import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { ProgressQuizModule } from './modules/progress-quiz/progress-quiz.module';
+import { PracticeModule } from './modules/practice/practice.module';
 import { WritingModule } from './modules/writing/writing.module';
 import { VocabularyModule } from './modules/vocabulary/vocabulary.module';
 import { LessonRequestsModule } from './modules/lesson-requests/lesson-requests.module';
@@ -62,6 +63,7 @@ import { ContactModule } from './modules/contact/contact.module';
     }),
     SubscriptionsModule,
     ProgressQuizModule,
+    PracticeModule,
     WritingModule,
     VocabularyModule,
     LessonRequestsModule,
