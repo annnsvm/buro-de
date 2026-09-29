@@ -19,7 +19,7 @@ export class ProgressService {
       this.prisma.courseProgress.findMany({
         where: { userId },
         include: {
-          course: { select: { id: true, title: true } },
+          course: { select: { id: true, title: true, level: true } },
           courseMaterial: { select: { id: true } },
         },
       }),
@@ -72,8 +72,69 @@ export class ProgressService {
     return {
       courses,
       level: profile?.level ?? null,
+      resume: await this.resumeLesson(progressRows),
     };
   }
+
+  /**
+   * The lesson to offer as "continue": the first one not yet finished, in the course the
+   * student worked in most recently.
+   *
+   * `course_progress` records only what has been *completed*, so the newest row is the
+   * lesson they just left behind — not the one to go back to. Offering it sent the student
+   * to a lesson they had already done, and the card counted it as where they were.
+   *
+   * The rule matches what the course page does when it is opened without a lesson named,
+   * so the two cannot disagree about where somebody stopped.
+   */
+  private async resumeLesson(
+    progressRows: {
+      courseId: string;
+      courseMaterialId: string | null;
+      completedAt: Date;
+      course: { title: string; level: string | null };
+    }[],
+  ) {
+    const latest = progressRows
+      .filter((row) => row.courseMaterialId)
+      .sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime())[0];
+    if (!latest) return null;
+
+    const modules = await this.prisma.courseModule.findMany({
+      where: { courseId: latest.courseId },
+      orderBy: { orderIndex: "asc" },
+      select: {
+        materials: {
+          orderBy: { orderIndex: "asc" },
+          select: { id: true, title: true },
+        },
+      },
+    });
+    const flat = modules.flatMap((mod) => mod.materials);
+    if (flat.length === 0) return null;
+
+    const completed = new Set(
+      progressRows
+        .filter((row) => row.courseId === latest.courseId && row.courseMaterialId)
+        .map((row) => row.courseMaterialId as string),
+    );
+
+    const index = flat.findIndex((material) => !completed.has(material.id));
+    /** Nothing left undone: the course is finished, so point at where it ends. */
+    const at = index >= 0 ? index : flat.length - 1;
+    const material = flat[at];
+
+    return {
+      course_id: latest.courseId,
+      course_title: latest.course.title,
+      course_level: latest.course.level,
+      material_id: material.id,
+      material_title: material.title,
+      lesson_number: at + 1,
+      lesson_total: flat.length,
+    };
+  }
+
 
   async getCourseProgress(userId: string, courseId: string) {
     const [course, progressList] = await Promise.all([
