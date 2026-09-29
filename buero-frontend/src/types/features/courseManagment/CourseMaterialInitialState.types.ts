@@ -1,4 +1,7 @@
-import type { QuizMaterialMode } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
+import type {
+  QuizMaterialMode,
+  WritingTaskDraft,
+} from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
 import type { CourseMaterialType } from '@/types/features/courseManagment/CourseMaterialCreateTab.types';
 
 export type CourseMaterialInitialState = {
@@ -8,6 +11,7 @@ export type CourseMaterialInitialState = {
   youtubeVideoDuration: string;
   quizMode: QuizMaterialMode;
   passingScore: number;
+  writing: WritingTaskDraft;
   createdMaterialId: string | null;
   savedSnapshot: string | null;
 };

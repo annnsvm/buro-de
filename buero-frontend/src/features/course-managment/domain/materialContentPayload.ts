@@ -18,5 +18,21 @@ export const materialContentPayload = (
     };
   }
 
+  if (payload.type === 'writing') {
+    /**
+     * The task and its rubric are the material's content. Keeping them here rather than in code
+     * is what lets every module have its own criteria without a deploy.
+     */
+    return {
+      task: payload.writing.task.trim(),
+      minSentences: payload.writing.minSentences,
+      maxSentences: payload.writing.maxSentences,
+      criteria: payload.writing.criteria.map((line) => line.trim()).filter(Boolean),
+      ...(payload.writing.modelAnswer.trim()
+        ? { modelAnswer: payload.writing.modelAnswer.trim() }
+        : {}),
+    };
+  }
+
   return {};
 };

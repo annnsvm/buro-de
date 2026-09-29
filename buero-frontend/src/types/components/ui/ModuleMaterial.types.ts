@@ -14,7 +14,8 @@ type ModuleMaterialType = {
     | 'scenario'
     | 'cultural_insight'
     | 'homework'
-    | 'text';
+    | 'text'
+    | 'writing';
   title?: string;
   content?: Record<string, unknown>;
   /** Set on quiz materials: the practice after a lesson, or the test after a module. */

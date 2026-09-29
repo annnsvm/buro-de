@@ -80,6 +80,10 @@ export const API_ENDPOINTS = {
     questions: (materialId: string) => `/quiz/materials/${materialId}/questions`,
     lastAttempt: (materialId: string) => `/quiz/materials/${materialId}/last-attempt`,
   },
+  writing: {
+    task: (materialId: string) => `/writing/materials/${materialId}`,
+    submit: (materialId: string) => `/writing/materials/${materialId}/submit`,
+  },
   progress: {
     me: '/progress/me',
     course: (courseId: string) => `/courses/${courseId}/progress`,

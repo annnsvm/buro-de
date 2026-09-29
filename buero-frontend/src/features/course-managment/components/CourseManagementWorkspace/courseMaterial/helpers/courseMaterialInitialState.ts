@@ -1,6 +1,7 @@
 import type {
   CreateCourseMaterialModalValues,
   QuizMaterialMode,
+  WritingTaskDraft,
 } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
 import type { CourseMaterialInitialState } from '@/types/features/courseManagment/CourseMaterialInitialState.types';
 import type { ModuleMaterialType } from '@/types/components/ui/ModuleMaterial.types';
@@ -14,6 +15,32 @@ export const createLocalId = (prefix: string) =>
  */
 export const DEFAULT_PASSING_SCORE = 60;
 
+/**
+ * A new writing task starts with the shape of the module 4 letter — the length rule and six
+ * criteria — because that is the form every one of these tasks takes. The teacher rewrites the
+ * sentences; they do not have to work out how many boxes to make.
+ */
+export const emptyWritingTask = (): WritingTaskDraft => ({
+  task: '',
+  minSentences: 6,
+  maxSentences: 8,
+  criteria: ['', '', '', '', '', ''],
+  modelAnswer: '',
+});
+
+const readWritingTask = (content: Record<string, unknown> | undefined): WritingTaskDraft => {
+  const criteria = Array.isArray(content?.criteria)
+    ? (content.criteria as unknown[]).map(String)
+    : [];
+  return {
+    task: typeof content?.task === 'string' ? content.task : '',
+    minSentences: typeof content?.minSentences === 'number' ? content.minSentences : 6,
+    maxSentences: typeof content?.maxSentences === 'number' ? content.maxSentences : 8,
+    criteria: criteria.length >= 2 ? criteria : emptyWritingTask().criteria,
+    modelAnswer: typeof content?.modelAnswer === 'string' ? content.modelAnswer : '',
+  };
+};
+
 export const getInitialMaterialState = (
   selectedMaterial: ModuleMaterialType | null,
 ): CourseMaterialInitialState => {
@@ -25,6 +52,7 @@ export const getInitialMaterialState = (
       youtubeVideoDuration: '',
       quizMode: 'practice',
       passingScore: DEFAULT_PASSING_SCORE,
+      writing: emptyWritingTask(),
       createdMaterialId: null,
       savedSnapshot: null,
     };
@@ -51,6 +79,7 @@ export const getInitialMaterialState = (
       youtubeVideoDuration: duration,
       quizMode: 'practice',
       passingScore: DEFAULT_PASSING_SCORE,
+      writing: emptyWritingTask(),
       createdMaterialId: selectedMaterial.id,
       savedSnapshot: JSON.stringify(payload),
     };
@@ -68,20 +97,26 @@ export const getInitialMaterialState = (
       ? selectedMaterial.passingScore
       : DEFAULT_PASSING_SCORE;
 
-  const payload: CreateCourseMaterialModalValues = {
-    type: 'quiz',
-    title: selectedMaterial.title ?? '',
-    quizMode,
-    passingScore: quizMode === 'test' ? passingScore : null,
-  };
+  const isWriting = selectedMaterial.type === 'writing';
+  const writing = readWritingTask(selectedMaterial.content);
+
+  const payload: CreateCourseMaterialModalValues = isWriting
+    ? { type: 'writing', title: selectedMaterial.title ?? '', writing }
+    : {
+        type: 'quiz',
+        title: selectedMaterial.title ?? '',
+        quizMode,
+        passingScore: quizMode === 'test' ? passingScore : null,
+      };
 
   return {
-    materialType: 'quiz',
+    materialType: isWriting ? 'writing' : 'quiz',
     title: selectedMaterial.title ?? '',
     youtubeVideoId: '',
     youtubeVideoDuration: '',
     quizMode,
     passingScore,
+    writing,
     createdMaterialId: selectedMaterial.id,
     savedSnapshot: JSON.stringify(payload),
   };

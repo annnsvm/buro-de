@@ -1,7 +1,7 @@
 import type { Modules } from '@/types/components/ui/ModuleMaterial.types';
 import type { CreateCourseMaterialModalValues } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
 
-export type CourseMaterialType = 'video' | 'quiz';
+export type CourseMaterialType = 'video' | 'quiz' | 'writing';
 
 export type CourseMaterialCreateTabProps = {
   courseId: string | null;

@@ -3,6 +3,7 @@ import { Button, FormField, Input, Select, Spinner } from '@/components/ui';
 import type {
   CreateCourseMaterialModalValues,
   QuizMaterialMode,
+  WritingTaskDraft,
 } from '@/types/features/courseManagment/CreateCourseMaterialModal.types';
 import type {
   CourseMaterialCreateTabProps,
@@ -13,6 +14,7 @@ import { MATERIAL_TYPE_OPTIONS } from '@/features/course-managment/helpers/cours
 import CourseMaterialCreateSection from './CourseMaterialCreateSection';
 import CourseMaterialVideoFields from './CourseMaterialVideoFields';
 import QuizModeFields from './QuizModeFields';
+import WritingTaskFields from './WritingTaskFields';
 import CourseMaterialAttachmentsSection from './CourseMaterialAttachmentsSection';
 import { getInitialMaterialState } from './helpers/courseMaterialInitialState';
 
@@ -44,6 +46,7 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
   );
   const [quizMode, setQuizMode] = useState<QuizMaterialMode>(initialState.quizMode);
   const [passingScore, setPassingScore] = useState(initialState.passingScore);
+  const [writing, setWriting] = useState<WritingTaskDraft>(initialState.writing);
   const [error, setError] = useState<string | null>(null);
   const [createdMaterialId, setCreatedMaterialId] = useState<string | null>(
     initialState.createdMaterialId,
@@ -57,20 +60,25 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
 
   const isBusy = isSubmitting || isMutating;
 
-  const buildPayload = (): CreateCourseMaterialModalValues =>
-    materialType === 'video'
-      ? {
-          type: 'video',
-          title: title.trim(),
-          youtubeVideoId: extractYouTubeVideoId(youtubeVideoId) ?? youtubeVideoId.trim(),
-          youtubeVideoDuration: youtubeVideoDuration.trim(),
-        }
-      : {
-          type: 'quiz',
-          title: title.trim(),
-          quizMode,
-          passingScore: quizMode === 'test' ? passingScore : null,
-        };
+  const buildPayload = (): CreateCourseMaterialModalValues => {
+    if (materialType === 'video') {
+      return {
+        type: 'video',
+        title: title.trim(),
+        youtubeVideoId: extractYouTubeVideoId(youtubeVideoId) ?? youtubeVideoId.trim(),
+        youtubeVideoDuration: youtubeVideoDuration.trim(),
+      };
+    }
+    if (materialType === 'writing') {
+      return { type: 'writing', title: title.trim(), writing };
+    }
+    return {
+      type: 'quiz',
+      title: title.trim(),
+      quizMode,
+      passingScore: quizMode === 'test' ? passingScore : null,
+    };
+  };
 
   const currentSnapshot = JSON.stringify(buildPayload());
   const hasFormChanges = Boolean(createdMaterialId) && savedSnapshot !== currentSnapshot;
@@ -102,6 +110,15 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
     }
     if (materialType === 'video' && !youtubeVideoDuration.trim())
       return setError('Video duration is required');
+    if (materialType === 'writing') {
+      if (!writing.task.trim()) return setError('Умова письмового завдання обовʼязкова');
+      if (writing.criteria.filter((line) => line.trim()).length < 2) {
+        return setError('Потрібно щонайменше два критерії');
+      }
+      if (writing.minSentences > writing.maxSentences) {
+        return setError('Мінімальна кількість речень більша за максимальну');
+      }
+    }
     setError(null);
     const payload = buildPayload();
 
@@ -175,6 +192,12 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
             isSubmitting={isBusy}
             onYoutubeVideoIdChange={setYoutubeVideoId}
             onYoutubeVideoDurationChange={setYoutubeVideoDuration}
+          />
+        ) : materialType === 'writing' ? (
+          <WritingTaskFields
+            draft={writing}
+            isSubmitting={isBusy}
+            onChange={setWriting}
           />
         ) : (
           <QuizModeFields

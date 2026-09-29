@@ -40,6 +40,9 @@ enum CourseMaterialType {
   cultural_insight
   homework
   text
+  /// A short piece of writing the student submits and Claude grades against the
+  /// material's own rubric. Distinct from `homework`, which is an offline task.
+  writing
 }
 
 enum AttachmentKind {
@@ -121,6 +124,7 @@ model User {
   payments                Payment[]
   courseProgress          CourseProgress[]
   quizAttempts            QuizAttempt[]
+  writingSubmissions      WritingSubmission[]
   lessonRequestsAsStudent LessonRequest[]    @relation("LessonRequestStudent")
   lessonRequestsAsTeacher LessonRequest[]    @relation("LessonRequestTeacher")
   placementResults        PlacementResult[]
@@ -260,6 +264,7 @@ model CourseMaterial {
   module         CourseModule          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   courseProgress CourseProgress[]
   quizAttempts   QuizAttempt[]
+  writingSubmissions WritingSubmission[]
   attachments    MaterialAttachment[]
   questions      Question[]
 
@@ -396,6 +401,42 @@ model CourseProgress {
   @@unique([userId, courseId, courseMaterialId])
   @@index([userId, courseId])
   @@map("course_progress")
+}
+
+/// One graded attempt at a writing task.
+///
+/// Every row is a paid call, so this table is also the meter: the attempt limits, the daily cap
+/// and the monthly breaker are all counted from it rather than from a separate counter that
+/// could drift away from what was actually spent. A row is written only when the model was
+/// asked — a submission turned away by the free length check leaves no trace and costs the
+/// student nothing.
+model WritingSubmission {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  courseMaterialId String   @map("course_material_id")
+  /// What the student wrote, kept so they can read their attempt back.
+  text             String
+  /// SHA-256 of the normalised text. Sending the same letter twice returns the stored
+  /// result instead of paying for it again.
+  textHash         String   @map("text_hash")
+  score            Int
+  maxScore         Int      @map("max_score")
+  /// One verdict per criterion, as the grader returned it.
+  assessment       Json
+  inputTokens      Int      @map("input_tokens")
+  outputTokens     Int      @map("output_tokens")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseMaterial CourseMaterial @relation(fields: [courseMaterialId], references: [id], onDelete: Cascade)
+
+  /// Serves both the attempt window for one task and reading the best result back.
+  @@index([userId, courseMaterialId, createdAt])
+  /// The daily cap across every task.
+  @@index([userId, createdAt])
+  /// The monthly breaker, counted across everyone.
+  @@index([createdAt])
+  @@map("writing_submissions")
 }
 
 model QuizAttempt {

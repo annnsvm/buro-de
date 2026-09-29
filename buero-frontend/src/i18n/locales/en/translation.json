@@ -529,5 +529,35 @@
     "greetingPlain": "Hi",
     "loadFailed": "Could not load your courses.",
     "loading": "Loading your courses"
+  },
+  "writing": {
+    "attemptNotSpent": "No attempt was used — add more and send again.",
+    "attemptsLeft_one": "{{count}} attempt left",
+    "attemptsLeft_other": "{{count}} attempts left",
+    "bestResult": "Your best result",
+    "blocked": "Checking is unavailable right now.",
+    "check": "Check",
+    "checking": "Checking…",
+    "comeBackAt": "Your next attempt opens at {{time}}.",
+    "criteriaTitle": "How it is marked ({{count}} points)",
+    "loadFailed": "Could not load the task.",
+    "loading": "Loading the task…",
+    "needsMore": {
+      "too_short": "The body has {{count}} sentences; it needs {{min}}–{{max}}.",
+      "no_salutation": "There is no salutation — start with Sehr geehrte Frau … or Sehr geehrter Herr …",
+      "no_closing": "There is no closing formula — end with, for example, Mit freundlichen Grüßen.",
+      "too_long": "This letter is too long for the task."
+    },
+    "noAttemptsLeft": "No attempts left.",
+    "placeholder": "Betreff: …\n\nSehr geehrte Frau …",
+    "pointsOf": "{{score}} of {{total}} points",
+    "repeated": "You have sent this text before — showing the saved result.",
+    "selfCheckHint": "Automatic checking is unavailable for now. Compare your letter with the model answer and mark yourself against the criteria above.",
+    "selfCheckTitle": "Mark yourself",
+    "submitFailed": "Could not send your letter.",
+    "title": "Writing task",
+    "tryAgain": "Try again",
+    "yourLetter": "Your letter",
+    "yourResult": "Your result"
   }
 }

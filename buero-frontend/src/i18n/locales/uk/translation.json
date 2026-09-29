@@ -539,5 +539,37 @@
     "greetingPlain": "Привіт",
     "loadFailed": "Не вдалося завантажити ваші курси.",
     "loading": "Завантажуємо ваші курси"
+  },
+  "writing": {
+    "attemptNotSpent": "Спроба не зарахована — допишіть і надішліть ще раз.",
+    "attemptsLeft_few": "Залишилось {{count}} спроби",
+    "attemptsLeft_many": "Залишилось {{count}} спроб",
+    "attemptsLeft_one": "Залишилась {{count}} спроба",
+    "attemptsLeft_other": "Залишилось {{count}} спроб",
+    "bestResult": "Ваш найкращий результат",
+    "blocked": "Перевірка зараз недоступна.",
+    "check": "Перевірити",
+    "checking": "Перевіряємо…",
+    "comeBackAt": "Наступна спроба буде доступна {{time}}.",
+    "criteriaTitle": "За чим оцінюємо ({{count}} балів)",
+    "loadFailed": "Не вдалося завантажити завдання.",
+    "loading": "Завантажуємо завдання…",
+    "needsMore": {
+      "too_short": "У тілі листа {{count}} речень, а потрібно {{min}}–{{max}}.",
+      "no_salutation": "Немає звертання — почніть із Sehr geehrte Frau … або Sehr geehrter Herr …",
+      "no_closing": "Немає формули прощання — завершіть лист, наприклад, Mit freundlichen Grüßen.",
+      "too_long": "Лист занадто довгий для цього завдання."
+    },
+    "noAttemptsLeft": "Спроби вичерпано.",
+    "placeholder": "Betreff: …\n\nSehr geehrte Frau …",
+    "pointsOf": "{{score}} з {{total}} балів",
+    "repeated": "Цей текст ви вже надсилали — показуємо збережений результат.",
+    "selfCheckHint": "Автоматична перевірка тимчасово недоступна. Порівняйте свій лист зі зразком і оцініть себе за критеріями вище.",
+    "selfCheckTitle": "Перевірте себе самі",
+    "submitFailed": "Не вдалося надіслати лист.",
+    "title": "Письмове завдання",
+    "tryAgain": "Спробувати ще раз",
+    "yourLetter": "Ваш лист",
+    "yourResult": "Ваш результат"
   }
 }
