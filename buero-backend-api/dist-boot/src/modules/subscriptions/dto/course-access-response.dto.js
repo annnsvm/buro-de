@@ -1,0 +1,49 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CourseAccessResponseDto = void 0;
+const swagger_1 = require("@nestjs/swagger");
+const enums_1 = require("src/generated/prisma/enums");
+class CourseAccessResponseDto {
+}
+exports.CourseAccessResponseDto = CourseAccessResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: "ID доступу" }),
+    __metadata("design:type", String)
+], CourseAccessResponseDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: "ID курсу" }),
+    __metadata("design:type", String)
+], CourseAccessResponseDto.prototype, "course_id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: "Тип доступу",
+        enum: enums_1.UserCourseAccessType,
+    }),
+    __metadata("design:type", String)
+], CourseAccessResponseDto.prototype, "access_type", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: "Кінець trial (якщо trial)" }),
+    __metadata("design:type", Date)
+], CourseAccessResponseDto.prototype, "trial_ends_at", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: "ID платежу (якщо purchase)" }),
+    __metadata("design:type", String)
+], CourseAccessResponseDto.prototype, "payment_id", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: "ID підписки (якщо subscription)" }),
+    __metadata("design:type", String)
+], CourseAccessResponseDto.prototype, "subscription_id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: "Дата створення" }),
+    __metadata("design:type", Date)
+], CourseAccessResponseDto.prototype, "created_at", void 0);
+//# sourceMappingURL=course-access-response.dto.js.map

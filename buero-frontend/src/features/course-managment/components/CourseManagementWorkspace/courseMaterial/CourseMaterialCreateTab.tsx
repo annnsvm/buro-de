@@ -196,6 +196,8 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
             isSubmitting={isBusy}
             onYoutubeVideoIdChange={setYoutubeVideoId}
             onYoutubeVideoDurationChange={setYoutubeVideoDuration}
+            /** Only fills an empty title, so a name the teacher wrote is never overwritten. */
+            onYoutubeTitleFound={(found) => setTitle((current) => current.trim() || found)}
           />
         ) : materialType === 'practice' ? (
           <label className="block">
