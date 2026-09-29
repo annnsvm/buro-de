@@ -555,6 +555,34 @@
   }
 }
 
+.buero-scroll-quiet {
+  scrollbar-width: none;
+}
+
+.buero-scroll-quiet.is-scrolling {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(1, 1, 1, 0.28) transparent;
+}
+
+.buero-scroll-quiet::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.buero-scroll-quiet.is-scrolling::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.buero-scroll-quiet::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+
+.buero-scroll-quiet.is-scrolling::-webkit-scrollbar-thumb {
+  background: rgba(1, 1, 1, 0.28);
+}
+
 .simplebar-buero-modal .simplebar-scrollbar::before,
 .simplebar-buero-panel .simplebar-scrollbar::before {
   background-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-neutral-white));

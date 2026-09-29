@@ -9,6 +9,11 @@ export const courseFormFields = (
   tags: values.tags,
   price: Number(values.price.trim()),
   level: values.level,
+  /**
+   * Sent only when the course really spans a range. The server validates it as a level, so
+   * an empty string would be rejected outright rather than read as "no range".
+   */
+  ...(values.levelTo ? { level_to: values.levelTo } : {}),
   ...(values.durationHours?.trim()
     ? { duration_hours: Number(values.durationHours.trim()) }
     : {}),

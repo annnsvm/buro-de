@@ -14,7 +14,7 @@ const CallToActionBackground: React.FC = () => (
     />
     <div
       aria-hidden
-      className="absolute inset-0 bg-[var(--color-cod-gray-base)]/70"
+      className="absolute inset-0 bg-black/70"
     />
   </>
 );

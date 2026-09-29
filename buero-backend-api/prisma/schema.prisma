@@ -28,6 +28,7 @@ enum Level {
   A2
   B1
   B2
+  C1
 }
 
 enum CourseMaterialType {
@@ -200,7 +201,12 @@ model Course {
   isPublished      Boolean        @default(false) @map("is_published")
   price            Decimal?       @db.Decimal(10, 2)
   tags             String[]       @default([])
+  /// Where the course starts on the CEFR ladder.
   level            Level?
+  /// The highest level the course reaches, when it spans more than one — an integration
+  /// course may run from A2 to B1. Null means it sits at `level` alone. Together the two
+  /// describe a range, which is what the catalogue draws and filters on.
+  levelTo          Level?         @map("level_to")
   durationHours    Int?           @map("duration_hours")
   imageUrl         String?        @map("image_url")
   stripeProductId  String?        @map("stripe_product_id")

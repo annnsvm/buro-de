@@ -37,6 +37,16 @@ export class ListCoursesQueryDto {
   tags?: string;
 
   @ApiPropertyOptional({
+    example: "Integration",
+    description:
+      "Виключити курси з цими тегами (через кому). Дозволяє описати категорію через те, " +
+      "чим вона не є, і не залежати від того, чи розставлені теги вручну.",
+  })
+  @IsOptional()
+  @IsString()
+  tags_exclude?: string;
+
+  @ApiPropertyOptional({
     enum: Level,
     description: "Фільтр за рівнем курсу (A1, A2, B1, B2)",
   })

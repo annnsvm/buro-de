@@ -20,19 +20,21 @@ const Header = () => {
       className={'absolute top-0 right-0 left-0 z-50 transition-colors duration-200 bg-transparent'}
     >
       <Container>
-        <div className="flex items-center justify-between gap-6 px-8 py-12 text-lg lg:px-16">
-          <Link
-            to={ROUTES.HOME}
-            className="flex items-center gap-2 transition-opacity hover:opacity-80"
-            aria-label={t('header.goHome')}
-          >
-            <Logo width={70} height={28} isLight = {isLight}/>
-          </Link>
-          <HeaderNavBar
-            pathname={pathname}
-            isLight={isLight}
-            className="hidden lg:flex"
-          />
+        <div className="flex items-center justify-between gap-6 py-12 text-lg">
+          <div className="flex items-center gap-8 lg:gap-10">
+            <Link
+              to={ROUTES.HOME}
+              className="flex items-center gap-2 transition-opacity hover:opacity-80"
+              aria-label={t('header.goHome')}
+            >
+              <Logo width={88} height={35} isLight = {isLight}/>
+            </Link>
+            <HeaderNavBar
+              pathname={pathname}
+              isLight={isLight}
+              className="hidden lg:flex"
+            />
+          </div>
           <div className="hidden items-center gap-2 lg:flex">
             <LanguageSwitcher isLight={isLight} />
             <HeaderAuthBar isLight={isLight} />

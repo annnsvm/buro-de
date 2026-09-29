@@ -73,12 +73,14 @@
   "landing": {
     "heroTitle1": "Learn German.",
     "heroTitle2": "Live German.",
-    "heroDescription": "Language courses and integration guides - so you can speak German and know how to use it in everyday life in Germany.",
+    "heroDescription": "Language courses and integration guides — so you can speak German and know how to use it in everyday life in Germany.",
     "getStarted": "Get started",
     "heroBenefits": "What you get",
     "heroBenefitPace": "Learn at your own pace",
     "heroBenefitLifetime": "Lifetime access",
     "heroBenefitTrial": "First module free",
+    "heroCardIntegration": "Integration · from A2",
+    "heroCardLanguage": "Sprachkurs · 80 lessons",
     "whySection": "WHY BÜRO.DE",
     "whyTitle": "Language and life in Germany - in one place",
     "whyDescription": "Büro.de combines German language courses with integration courses. You learn the language and also where and how to use it - from everyday situations to bureaucracy.",
@@ -228,6 +230,7 @@
     "ctaAfterDemo": "Go the courses",
     "ctaAfterBenefits": "Get lifetime access",
     "ctaAfterBenefitsHint": "One purchase. Learn language and life in Germany.",
+    "ctaCardLanguage": "Sprachkurs · 56 lessons",
     "ctaTitle": "Your German starts with one click",
     "ctaDescription": "Open the first module free. Feel the platform. Then decide - language, integration, or both.",
     "startFreeTrial": "Start now"
@@ -271,6 +274,7 @@
     "dragToReorder": "Drag courses by the handle to change their order in the catalog.",
     "editCourse": "Edit course",
     "emptyState": "No courses found. Try adjusting your filters.",
+    "filterByKind": "Course kind",
     "filters": {
       "all": "All Courses",
       "language": "Language",
@@ -284,6 +288,8 @@
     },
     "lessonsCount_one": "{{count}} lesson",
     "lessonsCount_other": "{{count}} lessons",
+    "level": "Level",
+    "levelHasNoCourses": "No courses at this level yet",
     "loadingCourseDetails": "Loading course details…",
     "loadingCourses": "Loading courses",
     "loadingResults": "Loading results…",
@@ -303,9 +309,19 @@
       "checkingAccess": "Checking access…",
       "tryForFree": "Try for free",
       "tryForFreeAria": "Try this course for free",
-      "supportSubject": "Question about course"
+      "supportSubject": "Question about course",
+      "readMore": "Read more",
+      "readLess": "Show less",
+      "priceNote": "one-time · lifetime access",
+      "trialNote": "The first module is open for free.",
+      "program": "Course program",
+      "buyCourse": "Buy course",
+      "hours_one": "{{count}} h",
+      "hours_other": "{{count}} h",
+      "coverMeta": "{{kind}} · {{lessons}}"
     },
     "pageLabel": "Courses catalog",
+    "pathStep": "Step {{step}} · {{level}}",
     "progressOf": "{{completed}} of {{total}} done",
     "published": "Published",
     "removeCourse": "Remove course",
@@ -313,6 +329,16 @@
     "reorderHintFiltered": "Clear search and select “All Courses” to reorder courses.",
     "savingOrder": "Saving order…",
     "searchPlaceholder": "Search courses, topics...",
+    "sections": {
+      "language": {
+        "title": "Language courses",
+        "subtitle": "Step by step from A1 to C1"
+      },
+      "integration": {
+        "title": "Integration",
+        "subtitle": "Practical topics for life in Germany, with a suggested level."
+      }
+    },
     "startTrialAria": "Start trial for {{title}}",
     "structure": {
       "module": "MODULE",
@@ -327,7 +353,21 @@
       "advanced": "Advanced"
     },
     "trial": "Trial",
-    "unpublished": "Unpublished"
+    "unpublished": "Unpublished",
+    "whereToStart": {
+      "title": "Where do I start?",
+      "hint": "Pick one and we will point out the course that fits.",
+      "options": {
+        "zero": "Starting from nothing",
+        "basics": "I know a few phrases",
+        "speaking": "I can speak a little"
+      },
+      "answers": {
+        "zero": "Start at A1 — the course is highlighted below. The first two modules are free.",
+        "basics": "A2 is for you — the course is highlighted below. The first two modules are free.",
+        "speaking": "Look at B1 — the course is highlighted below. The first two modules are free."
+      }
+    }
   },
   "coursePage": {
     "addUnknownWord": "Add Unknown Word",
@@ -480,6 +520,13 @@
     "yourSentence": "Your sentence"
   },
   "myLearning": {
+    "continueAfter": "{{done}} is done. Pick {{course}} up at the next lesson.",
+    "continueHint": "Pick {{course}} up at the next lesson.",
+    "continueLesson": "Continue lesson",
+    "continueMeta": "{{course}} · lesson {{current}} of {{total}}",
+    "eyebrow": "Your course catalog",
+    "greeting": "Hi, {{name}}",
+    "greetingPlain": "Hi",
     "loadFailed": "Could not load your courses.",
     "loading": "Loading your courses"
   }

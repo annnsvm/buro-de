@@ -26,9 +26,21 @@ export type MyProgressCourse = {
   total_materials_count: number;
 };
 
+/** The lesson the student opened most recently, in whichever course that was. */
+export type ResumeLesson = {
+  course_id: string;
+  course_title: string;
+  course_level: string | null;
+  material_id: string;
+  material_title: string;
+  lesson_number: number;
+  lesson_total: number;
+};
+
 export type MyProgressResponse = {
   courses: MyProgressCourse[];
   level: string | null;
+  resume?: ResumeLesson | null;
 };
 
 /**

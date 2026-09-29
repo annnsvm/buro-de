@@ -381,43 +381,16 @@ const CoursePage: React.FC = () => {
         <CourseWorkspaceHeader
           desktopStart={
             <>
-              {userRole === 'student' ? (
-                <NavLink
-                  to={ROUTES.MY_LEARNING}
-                  className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
-                >
-                  {t('header.myLearning')}
-                </NavLink>
-              ) : null}
-              {userRole === 'student' ? (
-                <NavLink
-                  to={ROUTES.VOCABULARY.replace(':courseId', courseId)}
-                  className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
-                >
-                  {t('coursePage.vocabulary')}
-                </NavLink>
-              ) : null}
               <NavLink
                 to={ROUTES.COURSES}
                 className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
               >
                 {t('coursePage.allCourses')}
               </NavLink>
-            </>
-          }
-          renderMobileNav={({ className: navClass }) => (
-            <nav className={navClass} aria-label={t('coursePage.quickLinks')}>
               {userRole === 'student' ? (
                 <NavLink
                   to={ROUTES.MY_LEARNING}
-                  className={({ isActive }) =>
-                    [
-                      'text-lg font-medium transition-colors',
-                      isActive
-                        ? 'text-[var(--color-primary)]'
-                        : 'text-white/95 hover:text-[var(--color-primary)]',
-                    ].join(' ')
-                  }
+                  className="text-[1.125rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
                 >
                   {t('header.myLearning')}
                 </NavLink>
@@ -425,18 +398,15 @@ const CoursePage: React.FC = () => {
               {userRole === 'student' ? (
                 <NavLink
                   to={ROUTES.VOCABULARY.replace(':courseId', courseId)}
-                  className={({ isActive }) =>
-                    [
-                      'text-lg font-medium transition-colors',
-                      isActive
-                        ? 'text-[var(--color-primary)]'
-                        : 'text-white/95 hover:text-[var(--color-primary)]',
-                    ].join(' ')
-                  }
+                  className="text-[1.125rem] font-bold text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
                 >
                   {t('coursePage.vocabulary')}
                 </NavLink>
               ) : null}
+            </>
+          }
+          renderMobileNav={({ className: navClass }) => (
+            <nav className={navClass} aria-label={t('coursePage.quickLinks')}>
               <NavLink
                 to={ROUTES.COURSES}
                 className={({ isActive }) =>
@@ -450,6 +420,36 @@ const CoursePage: React.FC = () => {
               >
                 {t('coursePage.allCourses')}
               </NavLink>
+              {userRole === 'student' ? (
+                <NavLink
+                  to={ROUTES.MY_LEARNING}
+                  className={({ isActive }) =>
+                    [
+                      'text-lg font-medium transition-colors',
+                      isActive
+                        ? 'text-[var(--color-primary)]'
+                        : 'text-white/95 hover:text-[var(--color-primary)]',
+                    ].join(' ')
+                  }
+                >
+                  {t('header.myLearning')}
+                </NavLink>
+              ) : null}
+              {userRole === 'student' ? (
+                <NavLink
+                  to={ROUTES.VOCABULARY.replace(':courseId', courseId)}
+                  className={({ isActive }) =>
+                    [
+                      'text-lg font-bold transition-colors',
+                      isActive
+                        ? 'text-[var(--color-primary)]'
+                        : 'text-white/95 hover:text-[var(--color-primary)]',
+                    ].join(' ')
+                  }
+                >
+                  {t('coursePage.vocabulary')}
+                </NavLink>
+              ) : null}
             </nav>
           )}
           onOpenCourseStructure={() => setCourseStructureMobileOpen(true)}

@@ -10,6 +10,8 @@ export type ApiCourseTreeResponse = {
   duration_hours?: number | null;
   tags?: string[];
   level?: string | null;
+  /** Top of the level range, when the course covers more than one. */
+  levelTo?: string | null;
   isPublished?: boolean;
   is_published?: boolean;
   image_url?: string | null;

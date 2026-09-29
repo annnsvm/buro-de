@@ -12,7 +12,7 @@ import { TEST_API_BASE_URL } from '../../../constants';
 import { server } from '../../../mocks/server';
 
 describe('fetchCoursesCatalogThunk', () => {
-  it('requests /courses with tags=Beginner when beginner filter is active', async () => {
+  it('requests /courses excluding integration when the language filter is active', async () => {
     let requestUrl = '';
 
     server.use(
@@ -24,12 +24,12 @@ describe('fetchCoursesCatalogThunk', () => {
 
     const store = configureStore({ reducer: rootReducer });
     setStore(store);
-    store.dispatch(setFilters({ tags: 'beginner' }));
+    store.dispatch(setFilters({ tags: 'language' }));
 
     await store.dispatch(fetchCoursesCatalogThunk());
 
     expect(requestUrl).toContain(`${TEST_API_BASE_URL}/courses`);
-    expect(new URL(requestUrl).searchParams.get('tags')).toBe('Beginner');
+    expect(new URL(requestUrl).searchParams.get('tags_exclude')).toBe('Integration');
   });
 
   it('requests /courses/manage for teacher role', async () => {
@@ -53,12 +53,12 @@ describe('fetchCoursesCatalogThunk', () => {
         language: 'de',
       }),
     );
-    store.dispatch(setFilters({ tags: 'beginner' }));
+    store.dispatch(setFilters({ tags: 'language' }));
 
     await store.dispatch(fetchCoursesCatalogThunk());
 
     expect(new URL(requestUrl).pathname).toBe('/api/courses/manage');
-    expect(new URL(requestUrl).searchParams.get('tags')).toBe('Beginner');
+    expect(new URL(requestUrl).searchParams.get('tags_exclude')).toBe('Integration');
   });
 
   it('loads access from /subscriptions/me in parallel for a student', async () => {

@@ -42,6 +42,7 @@ export const useCourseEditorState = () => {
       durationHours: '',
       tags: [],
       level: '',
+      levelTo: '',
     },
   });
 
@@ -50,6 +51,7 @@ export const useCourseEditorState = () => {
   const watchedTags = watch('tags') ?? [];
   const watchedPrice = watch('price') ?? '';
   const watchedLevel = watch('level') ?? '';
+  const watchedLevelTo = watch('levelTo') ?? '';
   const watchedVideoLessonsCount = videoMaterialCount(modules);
   const computedDurationMinutes = videoMinutesSum(modules);
 
@@ -132,6 +134,7 @@ export const useCourseEditorState = () => {
       durationHours: '',
       tags: [],
       level: '',
+      levelTo: '',
     });
   }, [reset]);
 
@@ -154,6 +157,7 @@ export const useCourseEditorState = () => {
     watchedTags,
     watchedPrice,
     watchedLevel,
+    watchedLevelTo,
     watchedVideoLessonsCount,
     computedDurationMinutes,
     coverFile,

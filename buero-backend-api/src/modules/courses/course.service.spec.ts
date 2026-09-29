@@ -13,6 +13,13 @@ import {
   PublicationStatus,
 } from "./dto/list-courses-query.dto";
 
+
+/** The levels at or below a given one, and at or above it, in CEFR order. */
+const levelOrder = () => Object.values(Level) as Level[];
+const levelsUpTo = (level: Level) =>
+  levelOrder().slice(0, levelOrder().indexOf(level) + 1);
+const levelsFrom = (level: Level) => levelOrder().slice(levelOrder().indexOf(level));
+
 describe("CourseService", () => {
   let service: CourseService;
   let prisma: {
@@ -136,10 +143,29 @@ describe("CourseService", () => {
         tags: "A, B",
       };
       await service.findAll(q, { publicationFilter: PublicationStatus.all });
+      /**
+       * The level is asked for as a range rather than as an exact value, so a course
+       * spanning two levels is found under both of them. B1 is the third of the four
+       * levels, so a match starts at or before B1 and reaches B1 or beyond.
+       */
       expect(prisma.course.findMany).toHaveBeenCalledWith({
         where: {
           language: Language.de,
-          level: Level.B1,
+          AND: [
+            {
+              OR: [
+                { level: Level.B1, levelTo: null },
+                {
+                  /**
+                   * Derived from the enum rather than written out, so adding a level to the
+                   * ladder does not send this test red for no reason.
+                   */
+                  level: { in: levelsUpTo(Level.B1) },
+                  levelTo: { in: levelsFrom(Level.B1) },
+                },
+              ],
+            },
+          ],
           OR: [
             { title: { contains: "German", mode: "insensitive" } },
             { description: { contains: "German", mode: "insensitive" } },

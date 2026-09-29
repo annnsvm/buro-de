@@ -38,10 +38,25 @@ export class CreateCourseDto {
   @IsString({ each: true })
   tags?: string[];
 
-  @ApiPropertyOptional({ enum: Level, example: 'A1', description: 'Рівень курсу: A1 | A2 | B1 | B2' })
+  @ApiPropertyOptional({
+    enum: Level,
+    example: 'A1',
+    description: 'Рівень, з якого починається курс',
+  })
   @IsOptional()
   @IsEnum(Level)
   level?: Level;
+
+  @ApiPropertyOptional({
+    enum: Level,
+    example: 'B1',
+    description:
+      'Найвищий рівень, якого досягає курс, якщо він охоплює кілька. ' +
+      'Без нього курс стоїть лише на level. Каталог показує курс під кожним рівнем діапазону.',
+  })
+  @IsOptional()
+  @IsEnum(Level)
+  level_to?: Level;
 
   @ApiPropertyOptional({ example: 12, description: 'Тривалість курсу в годинах' })
   @IsOptional()

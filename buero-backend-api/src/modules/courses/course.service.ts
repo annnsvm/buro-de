@@ -43,6 +43,30 @@ export type CourseViewer = { id: string; role: Role };
 /** Modules whose `content` may be serialized: every one, or an explicit allow-list. */
 type ReadableModules = "all" | ReadonlySet<string>;
 
+/**
+ * The catalogue query, in one place.
+ *
+ * This was spelled out twice — once where it is built and once where it is run — and the
+ * second copy fell behind, so conditions added to the first were handed over without
+ * being type-checked at all.
+ */
+type CourseListWhere = {
+  isPublished?: boolean;
+  language?: Language;
+  tags?: { hasSome: string[] };
+  NOT?: { tags: { hasSome: string[] } };
+  OR?: Array<
+    | { title: { contains: string; mode: "insensitive" } }
+    | { description: { contains: string; mode: "insensitive" } }
+  >;
+  AND?: Array<{
+    OR: Array<
+      | { level: Level; levelTo: null }
+      | { level: { in: Level[] }; levelTo: { in: Level[] } }
+    >;
+  }>;
+};
+
 @Injectable()
 export class CourseService {
   private readonly logger = new Logger(CourseService.name);
@@ -95,21 +119,34 @@ export class CourseService {
   ) {
     try {
       const pubFilter = opts?.publicationFilter ?? PublicationStatus.published;
-      const where: {
-        isPublished?: boolean;
-        language?: Language;
-        tags?: { hasSome: string[] };
-        level?: Level;
-        OR?: Array<
-          | { title: { contains: string; mode: "insensitive" } }
-          | { description: { contains: string; mode: "insensitive" } }
-        >;
-      } = {};
+      const where: CourseListWhere = {};
       if (pubFilter === PublicationStatus.published) where.isPublished = true;
       else if (pubFilter === PublicationStatus.unpublished)
         where.isPublished = false;
       if (filters?.language) where.language = filters.language;
-      if (filters?.level) where.level = filters.level;
+      /**
+       * A course covers a level when the level falls inside its range.
+       *
+       * Matching `level` exactly would hide a course that spans two — an integration
+       * course running from A2 to B1 belongs under both, and under an exact match it
+       * appeared under neither of them but one. Prisma cannot compare enum values, so
+       * the range is turned into the two sets of levels that bracket it.
+       */
+      if (filters?.level) {
+        const order = Object.values(Level) as Level[];
+        const at = order.indexOf(filters.level);
+        where.AND = [
+          {
+            OR: [
+              { level: filters.level, levelTo: null },
+              {
+                level: { in: order.slice(0, at + 1) },
+                levelTo: { in: order.slice(at) },
+              },
+            ],
+          },
+        ];
+      }
       const searchTrim = filters?.search?.trim();
       if (searchTrim) {
         where.OR = [
@@ -117,12 +154,29 @@ export class CourseService {
           { description: { contains: searchTrim, mode: "insensitive" } },
         ];
       }
-      if (filters?.tags) {
-        const tagsArray = filters.tags
+      const splitTags = (value: string) =>
+        value
           .split(",")
-          .map((s) => s.trim())
+          .map((part) => part.trim())
           .filter(Boolean);
+
+      if (filters?.tags) {
+        const tagsArray = splitTags(filters.tags);
         if (tagsArray.length > 0) where.tags = { hasSome: tagsArray };
+      }
+
+      /**
+       * Selecting everything *except* a tag.
+       *
+       * The catalogue's "language courses" filter used to look for a `Language` tag, so
+       * it depended on every language course having been tagged by hand — and most had
+       * not, which is why it returned one course out of three. Defined as the opposite of
+       * the integration tag instead, it cannot fall out of date: a new course counts as a
+       * language course unless it is explicitly tagged otherwise.
+       */
+      if (filters?.tags_exclude) {
+        const excluded = splitTags(filters.tags_exclude);
+        if (excluded.length > 0) where.NOT = { tags: { hasSome: excluded } };
       }
 
       const cacheKey = JSON.stringify({ pubFilter, filters: filters ?? {} });
@@ -311,6 +365,7 @@ export class CourseService {
           ...(dto.price !== undefined && { price: dto.price }),
           tags: dto.tags ?? [],
           ...(dto.level !== undefined && { level: dto.level }),
+          ...(dto.level_to !== undefined && { levelTo: dto.level_to }),
           ...(dto.duration_hours !== undefined && {
             durationHours: dto.duration_hours,
           }),
@@ -377,6 +432,7 @@ export class CourseService {
         ...(dto.price !== undefined && { price: dto.price }),
         ...(dto.tags !== undefined && { tags: dto.tags }),
         ...(dto.level !== undefined && { level: dto.level }),
+          ...(dto.level_to !== undefined && { levelTo: dto.level_to }),
         ...(dto.duration_hours !== undefined && {
           durationHours: dto.duration_hours,
         }),
@@ -536,16 +592,7 @@ export class CourseService {
 
   private refreshCourseList(
     cacheKey: string,
-    where: {
-      isPublished?: boolean;
-      language?: Language;
-      tags?: { hasSome: string[] };
-      level?: Level;
-      OR?: Array<
-        | { title: { contains: string; mode: "insensitive" } }
-        | { description: { contains: string; mode: "insensitive" } }
-      >;
-    },
+    where: CourseListWhere,
   ): Promise<CourseListItem[]> {
     const inflight = this.listInflight.get(cacheKey);
     if (inflight) return inflight;

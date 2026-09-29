@@ -8,7 +8,7 @@ const categorySchema = z.enum(['language', 'sociocultural'], {
   message: 'Category must be language or sociocultural',
 });
 
-const levelSchema = z.enum(['A1', 'A2', 'B1', 'B2'], {
+const levelSchema = z.enum(['A1', 'A2', 'B1', 'B2', 'C1'], {
   message: 'Level must be A1, A2, B1 or B2',
 });
 
@@ -38,6 +38,11 @@ export const createCourseSchema = z.object({
   ),
 
   level: z.union([levelSchema, z.literal('')]),
+  /**
+   * Only a course spanning several levels needs a top of the range, so an absent value is
+   * the ordinary case and reads as empty rather than as missing.
+   */
+  levelTo: z.union([levelSchema, z.literal('')]),
 }).superRefine((values, ctx) => {
   if (!values.price.trim()) {
     ctx.addIssue({

@@ -58,6 +58,13 @@ export const mapApiCourseToCourseInfo = (course: CatalogCourse): CourseInfoData 
     description: String(course.description ?? ''),
     category: categoryRaw.charAt(0).toUpperCase() + categoryRaw.slice(1),
     levelLabel: level,
+    /**
+     * The raw level range and catalogue position, for grouping and ordering the list.
+     * `levelLabel` is for display; these are for deciding what goes where.
+     */
+    level,
+    levelTo: course.levelTo != null ? String(course.levelTo) : null,
+    orderIndex: typeof course.orderIndex === 'number' ? course.orderIndex : 0,
     imageUrl:
       typeof course.imageUrl === 'string'
         ? course.imageUrl
@@ -112,6 +119,13 @@ export const mapApiCourseToCourseCard = (course: CatalogCourse): CourseCardProps
     description: String(course.description ?? ''),
     category: categoryRaw.charAt(0).toUpperCase() + categoryRaw.slice(1),
     levelLabel: level,
+    /**
+     * The raw level range and catalogue position, for grouping and ordering the list.
+     * `levelLabel` is for display; these are for deciding what goes where.
+     */
+    level,
+    levelTo: course.levelTo != null ? String(course.levelTo) : null,
+    orderIndex: typeof course.orderIndex === 'number' ? course.orderIndex : 0,
     imageUrl:
       typeof course.imageUrl === 'string'
         ? course.imageUrl
@@ -171,19 +185,21 @@ export const filterMyLearningCourses = (
   let out = courses;
   const { category, search } = filters;
 
+  /**
+   * The same two categories the catalogue offers, decided the same way.
+   *
+   * These used to be read off `c.category`, which does not exist on a course: the mapper
+   * fills it in as "language" for every one of them, so the language filter matched
+   * everything and a "culture & life" filter matched nothing. Integration is a tag that
+   * really is applied; a language course is simply one without it.
+   */
+  const isIntegration = (course: CourseInfoData) =>
+    course.tags.some((tag: string) => tag.toLowerCase().includes('integration'));
+
   if (category === 'language') {
-    out = out.filter((c) => c.category.toLowerCase().includes('language'));
-  } else if (category === 'sociocultural') {
-    out = out.filter(
-      (c) =>
-        c.category.toLowerCase().includes('socio') ||
-        c.category.toLowerCase().includes('culture') ||
-        c.category.toLowerCase().includes('life'),
-    );
+    out = out.filter((course) => !isIntegration(course));
   } else if (category === 'integration') {
-    out = out.filter((c) =>
-      c.tags.some((t: string) => t.toLowerCase().includes('integration')),
-    );
+    out = out.filter(isIntegration);
   }
 
   const q = search?.trim().toLowerCase();
