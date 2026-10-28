@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   answerQuizQuestion,
@@ -9,6 +9,7 @@ import {
   submitQuizAttempt,
   type AnswerQuestionResponse,
   type QuizMode,
+  type PracticeElement,
   type QuizPartResult,
   type QuizQuestion,
 } from '@/api/quizApi';
@@ -17,6 +18,8 @@ import { getErrorMessage } from '@/helpers/getErrorMessage';
 import LessonAttachments from '@/features/course-learning/MaterialWindow/LessonAttachments';
 import type { MaterialAttachment } from '@/types/features/courseManagment/MaterialAttachment.types';
 import { getExerciseRenderer } from '@/features/course-learning/exercises/exerciseRenderers';
+import ReadingText from '@/features/course-learning/QuizPanel/ReadingText';
+import { groupByElement } from '@/features/course-learning/QuizPanel/groupByElement';
 import {
   isAnswered,
   type ExerciseAnswer,
@@ -49,6 +52,11 @@ export type QuizPanelProps = {
    * work out for themselves.
    */
   onMoveOn?: () => void;
+  /**
+   * What that button says. A block of a practice leads back to the hub rather than out of
+   * the lesson, so it names that instead of the next lesson it does not go to.
+   */
+  moveOnLabel?: string;
 };
 
 /**
@@ -68,10 +76,13 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   block,
   onQuizResult,
   onMoveOn,
+  moveOnLabel: moveOnLabelOverride,
 }) => {
   const { t } = useTranslation();
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  /** The texts and recordings this block's questions are asked about; empty for Grammatik. */
+  const [elements, setElements] = useState<PracticeElement[]>([]);
   const [drafts, setDrafts] = useState<Record<string, ExerciseAnswer>>({});
   const [feedback, setFeedback] = useState<Record<string, AnswerQuestionResponse>>({});
   const [checking, setChecking] = useState<string | null>(null);
@@ -103,13 +114,16 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   const showPoints = mode === 'test' && totalPoints != null;
   /**
    * A lesson quiz leads to the next lesson; a module test to the next module. The wording
-   * has to say which, because the two are steps of a very different size.
+   * has to say which, because the two are steps of a very different size — and a block of a
+   * practice says where it really goes, which is back to the practice, not out of the lesson.
    */
   const moveOnLabel =
-    mode === 'test' ? t('quiz.nextModule') : t('quiz.nextLesson');
+    moveOnLabelOverride ?? (mode === 'test' ? t('quiz.nextModule') : t('quiz.nextLesson'));
 
   const total = questions.length;
   const answeredCount = Object.keys(feedback).length;
+  /** Each text with the questions it is about, so the text can stay in view while they run. */
+  const groups = useMemo(() => groupByElement(questions, elements), [questions, elements]);
 
   /**
    * Opens the quiz without starting anything.
@@ -126,9 +140,10 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     try {
       const [loaded, previous] = await Promise.all([
         fetchQuizQuestions(courseMaterialId, block),
-        fetchLastQuizAttempt(courseMaterialId),
+        fetchLastQuizAttempt(courseMaterialId, block),
       ]);
       setQuestions(loaded.questions);
+      setElements(loaded.elements ?? []);
       setMode(loaded.mode);
       setPassingScore(loaded.passing_score);
       setTotalPoints(loaded.total_points);
@@ -183,10 +198,10 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   /** The attempt is created by the first answer, not by opening the quiz. */
   const ensureAttempt = useCallback(async (): Promise<string> => {
     if (attemptId) return attemptId;
-    const attempt = await startQuizAttempt(courseMaterialId);
+    const attempt = await startQuizAttempt(courseMaterialId, block);
     setAttemptId(attempt.id);
     return attempt.id;
-  }, [attemptId, courseMaterialId]);
+  }, [attemptId, courseMaterialId, block]);
 
   const setDraft = useCallback((questionId: string, answer: ExerciseAnswer) => {
     setAnswerError(null);
@@ -315,7 +330,6 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     }
   }, [drafts, ensureAttempt, onQuizResult, questions, t]);
 
-
   if (loading) {
     return (
       <p className="px-6 py-12 text-center text-[var(--color-text-secondary)]">
@@ -368,75 +382,85 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           {t('quiz.noQuestions')}
         </p>
       ) : (
-        <ol className="mt-6 list-none space-y-8 p-0">
-          {questions.map((question, index) => {
-            const Renderer = getExerciseRenderer(question.type);
-            const given = feedback[question.id];
-            const locked =
-              Boolean(given) || checking === question.id || submitting;
-            const needsConfirm =
-              mode === 'practice' &&
-              question.type !== 'single_choice' &&
-              !given &&
-              isAnswered(drafts[question.id]);
+        groups.map((group) => (
+          /**
+           * A text and its questions are one unit on the page: the text sticks to the top of
+           * the group so it is still there at the last question, and stops following once the
+           * next group begins.
+           */
+          <section key={group.element?.id ?? `plain-${group.questions[0].question.id}`}>
+            {group.element ? <ReadingText element={group.element} /> : null}
 
-            return (
-              <li
-                key={question.id}
-                className={[
-                  'scroll-mt-20 rounded-2xl border-l-4 p-4 transition-colors sm:p-6',
-                  given
-                    ? given.correct
-                      ? 'border-[var(--color-success)] bg-[var(--color-success-soft)]'
-                      : 'border-[var(--color-error)] bg-[var(--color-error-soft)]'
-                    : 'border-transparent bg-[var(--color-surface-section)]',
-                ].join(' ')}
-              >
-                <p className="text-xs font-bold tracking-wider text-[var(--color-text-secondary)] uppercase">
-                  {t('quiz.questionPosition', { current: index + 1, total })}
-                  {/**
-                   * Only where a weight actually differs from the rest. A task worth
-                   * double should say so before it is answered, not once the points
-                   * are already lost.
-                   */}
-                  {showPoints && question.points > 1
-                    ? ` · ${t('quiz.questionPoints', { count: question.points })}`
-                    : ''}
-                </p>
-                <p className="mt-2 text-base font-bold text-[var(--color-text-primary)]">
-                  {question.prompt}
-                </p>
+            <ol className="mt-6 list-none space-y-8 p-0">
+              {group.questions.map(({ question, position }) => {
+                const Renderer = getExerciseRenderer(question.type);
+                const given = feedback[question.id];
+                const locked = Boolean(given) || checking === question.id || submitting;
+                const needsConfirm =
+                  mode === 'practice' &&
+                  question.type !== 'single_choice' &&
+                  !given &&
+                  isAnswered(drafts[question.id]);
 
-                <div className="mt-4">
-                  {Renderer ? (
-                    <Renderer
-                      question={question}
-                      answer={drafts[question.id] ?? ''}
-                      onChange={(value) => setDraft(question.id, value)}
-                      disabled={locked}
-                    />
-                  ) : (
-                    <p className="text-sm text-[var(--color-error)]">
-                      {t('quiz.unsupportedType')}
-                    </p>
-                  )}
-                </div>
-
-                {needsConfirm ? (
-                  <button
-                    type="button"
-                    onClick={() => void check(question)}
-                    className="mt-4 inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                return (
+                  <li
+                    key={question.id}
+                    className={[
+                      'scroll-mt-20 rounded-2xl border-l-4 p-4 transition-colors sm:p-6',
+                      given
+                        ? given.correct
+                          ? 'border-[var(--color-success)] bg-[var(--color-success-soft)]'
+                          : 'border-[var(--color-error)] bg-[var(--color-error-soft)]'
+                        : 'border-transparent bg-[var(--color-surface-section)]',
+                    ].join(' ')}
                   >
-                    {t('quiz.checkAnswer')}
-                  </button>
-                ) : null}
+                    <p className="text-xs font-bold tracking-wider text-[var(--color-text-secondary)] uppercase">
+                      {t('quiz.questionPosition', { current: position, total })}
+                      {/**
+                       * Only where a weight actually differs from the rest. A task worth
+                       * double should say so before it is answered, not once the points
+                       * are already lost.
+                       */}
+                      {showPoints && question.points > 1
+                        ? ` · ${t('quiz.questionPoints', { count: question.points })}`
+                        : ''}
+                    </p>
+                    <p className="mt-2 text-base font-bold text-[var(--color-text-primary)]">
+                      {question.prompt}
+                    </p>
 
-                {given ? <QuestionFeedback given={given} /> : null}
-              </li>
-            );
-          })}
-        </ol>
+                    <div className="mt-4">
+                      {Renderer ? (
+                        <Renderer
+                          question={question}
+                          answer={drafts[question.id] ?? ''}
+                          onChange={(value) => setDraft(question.id, value)}
+                          disabled={locked}
+                        />
+                      ) : (
+                        <p className="text-sm text-[var(--color-error)]">
+                          {t('quiz.unsupportedType')}
+                        </p>
+                      )}
+                    </div>
+
+                    {needsConfirm ? (
+                      <button
+                        type="button"
+                        onClick={() => void check(question)}
+                        className="mt-4 inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                      >
+                        {t('quiz.checkAnswer')}
+                      </button>
+                    ) : null}
+
+                    {given ? <QuestionFeedback given={given} /> : null}
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))
       )}
 
       <LessonAttachments
@@ -476,7 +500,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           <p className="text-sm font-semibold text-[var(--color-text-primary)]">
             {t('quiz.yourBestResult')}
           </p>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-[var(--color-primary)]">
+          <p className="mt-2 text-3xl font-bold text-[var(--color-primary)] tabular-nums">
             {result.bestPercent}%
           </p>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
@@ -564,7 +588,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           <p className="text-sm font-semibold text-[var(--color-text-primary)]">
             {t('quiz.yourResult')}
           </p>
-          <p className="mt-3 text-4xl font-bold tabular-nums text-[var(--color-primary)]">
+          <p className="mt-3 text-4xl font-bold text-[var(--color-primary)] tabular-nums">
             {result.percent}%
           </p>
           <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
@@ -641,7 +665,7 @@ const PartBreakdown: React.FC<{ parts: QuizPartResult[] }> = ({ parts }) => {
           >
             <span className="flex flex-wrap items-baseline justify-between gap-x-3">
               <span className={part.weak ? 'font-semibold' : ''}>{part.title}</span>
-              <span className="tabular-nums whitespace-nowrap">
+              <span className="whitespace-nowrap tabular-nums">
                 {t('quiz.pointsSummary', {
                   earned: part.earned_points,
                   total: part.total_points,
@@ -676,17 +700,13 @@ const QuestionFeedback: React.FC<{ given: AnswerQuestionResponse }> = ({ given }
       <p
         className={[
           'font-semibold',
-          given.correct
-            ? 'text-[var(--color-success-text)]'
-            : 'text-[var(--color-error)]',
+          given.correct ? 'text-[var(--color-success-text)]' : 'text-[var(--color-error)]',
         ].join(' ')}
       >
         {given.correct ? t('quiz.answerCorrect') : t('quiz.answerWrong')}
       </p>
 
-      {nearMiss ? (
-        <p className="mt-1 text-[var(--color-text-secondary)]">{nearMiss}</p>
-      ) : null}
+      {nearMiss ? <p className="mt-1 text-[var(--color-text-secondary)]">{nearMiss}</p> : null}
 
       {!given.correct && given.accepted_answers.length > 0 ? (
         <p className="mt-2 text-[var(--color-text-primary)]">

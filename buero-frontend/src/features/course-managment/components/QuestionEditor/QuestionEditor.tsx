@@ -1,15 +1,23 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import {
+  createEditorElement,
   createEditorQuestion,
+  deleteEditorElement,
   deleteEditorQuestion,
+  fetchEditorElements,
   fetchEditorQuestions,
+  updateEditorElement,
   updateEditorQuestion,
+  type EditorElement,
   type EditorQuestion,
+  type PracticeBlockName,
+  type SaveElementPayload,
   type SaveQuestionPayload,
 } from '@/api/questionEditorApi';
 import type { QuizQuestionType } from '@/api/quizApi';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
+import PracticeTexts from './PracticeTexts';
 
 export type QuestionEditorProps = {
   courseId: string;
@@ -20,7 +28,22 @@ export type QuestionEditorProps = {
    * questions rather than points, so the weight is not offered there.
    */
   scoredByPoints: boolean;
+  /**
+   * True for a practice, whose questions belong to one of four blocks. A quiz and a test
+   * have no blocks, so nothing about them is shown there.
+   */
+  hasBlocks?: boolean;
 };
+
+const BLOCK_LABELS: Record<PracticeBlockName, string> = {
+  grammatik: 'Grammatik',
+  lesen: 'Lesen',
+  hoeren: 'Hören',
+  sprechen: 'Sprechen',
+};
+
+/** Only a block whose questions are asked about something needs a text. */
+const BLOCKS_WITH_TEXTS: PracticeBlockName[] = ['lesen'];
 
 const TYPE_LABELS: Record<QuizQuestionType, string> = {
   single_choice: 'Один варіант',
@@ -37,7 +60,18 @@ const TYPE_LABELS: Record<QuizQuestionType, string> = {
  */
 const newOption = () => ({ id: crypto.randomUUID(), text: '' });
 
-const blankQuestion = (): EditorQuestion => ({
+/**
+ * A new question in a block with exactly one text is about that text.
+ *
+ * Leaving it unbound by default made forgetting the dropdown the likely outcome, and a
+ * forgotten dropdown means the student answers questions about a text they were never shown.
+ * Where there are two texts there is a real choice to make, so nothing is assumed.
+ */
+const blankQuestion = (
+  block: PracticeBlockName,
+  elements: EditorElement[] = [],
+  elementId?: string,
+): EditorQuestion => ({
   id: '',
   type: 'single_choice',
   prompt: '',
@@ -46,6 +80,8 @@ const blankQuestion = (): EditorQuestion => ({
   points: 1,
   skills: [],
   order_index: 0,
+  block,
+  element_id: elementId ?? (elements.length === 1 ? elements[0].id : null),
   options: [newOption(), newOption()],
   tokens: [],
 });
@@ -63,24 +99,35 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   moduleId,
   materialId,
   scoredByPoints,
+  hasBlocks = false,
 }) => {
   const [questions, setQuestions] = useState<EditorQuestion[]>([]);
+  const [elements, setElements] = useState<EditorElement[]>([]);
   const [draft, setDraft] = useState<EditorQuestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Which block is being worked on. A quiz has none, and everything stays in grammatik. */
+  const [block, setBlock] = useState<PracticeBlockName>('grammatik');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setQuestions(await fetchEditorQuestions(courseId, moduleId, materialId));
+      const [loadedQuestions, loadedElements] = await Promise.all([
+        fetchEditorQuestions(courseId, moduleId, materialId),
+        hasBlocks
+          ? fetchEditorElements(courseId, moduleId, materialId)
+          : Promise.resolve([] as EditorElement[]),
+      ]);
+      setQuestions(loadedQuestions);
+      setElements(loadedElements);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Не вдалося завантажити питання'));
     } finally {
       setLoading(false);
     }
-  }, [courseId, moduleId, materialId]);
+  }, [courseId, moduleId, materialId, hasBlocks]);
 
   useEffect(() => {
     void load();
@@ -97,6 +144,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         accepted_answers: draft.accepted_answers,
         explanation: draft.explanation ?? undefined,
         points: draft.points,
+        ...(hasBlocks
+          ? {
+              block: draft.block,
+              ...(draft.element_id ? { element_id: draft.element_id } : {}),
+            }
+          : {}),
         ...(draft.type === 'single_choice' || draft.type === 'multi_choice'
           ? { options: draft.options }
           : {}),
@@ -114,7 +167,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     } finally {
       setSaving(false);
     }
-  }, [draft, courseId, moduleId, materialId, load]);
+  }, [draft, courseId, moduleId, materialId, load, hasBlocks]);
 
   const remove = useCallback(
     async (questionId: string) => {
@@ -129,6 +182,39 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     [courseId, moduleId, materialId, load],
   );
 
+  const saveElement = useCallback(
+    async (elementId: string | null, payload: SaveElementPayload) => {
+      setSaving(true);
+      setError(null);
+      try {
+        if (elementId) {
+          await updateEditorElement(courseId, moduleId, materialId, elementId, payload);
+        } else {
+          await createEditorElement(courseId, moduleId, materialId, payload);
+        }
+        await load();
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Не вдалося зберегти текст'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [courseId, moduleId, materialId, load],
+  );
+
+  const removeElement = useCallback(
+    async (elementId: string) => {
+      setError(null);
+      try {
+        await deleteEditorElement(courseId, moduleId, materialId, elementId);
+        await load();
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Не вдалося видалити текст'));
+      }
+    },
+    [courseId, moduleId, materialId, load],
+  );
+
   if (loading) {
     return (
       <p className="py-8 text-center text-sm text-[var(--color-text-secondary)]">
@@ -137,15 +223,54 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     );
   }
 
+  /** A quiz has one undivided list; a practice shows one block at a time. */
+  const shown = hasBlocks ? questions.filter((question) => question.block === block) : questions;
+  const blockElements = elements.filter((element) => element.block === block);
+
   return (
     <div className="space-y-4">
+      {hasBlocks ? (
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(BLOCK_LABELS) as PracticeBlockName[]).map((name) => {
+            const count = questions.filter((question) => question.block === name).length;
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => {
+                  setBlock(name);
+                  setDraft(null);
+                }}
+                className={[
+                  'rounded-full px-4 py-1.5 text-sm font-medium transition',
+                  name === block
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'border border-[var(--color-border-default)] text-[var(--color-text-secondary)]',
+                ].join(' ')}
+              >
+                {BLOCK_LABELS[name]} · {count}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {hasBlocks && BLOCKS_WITH_TEXTS.includes(block) ? (
+        <PracticeTexts
+          block={block}
+          elements={blockElements}
+          saving={saving}
+          onSave={saveElement}
+          onDelete={removeElement}
+          onAddQuestion={(elementId) => setDraft(blankQuestion(block, blockElements, elementId))}
+        />
+      ) : null}
+
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          Питань у квізі: {questions.length}
-        </p>
+        <p className="text-sm text-[var(--color-text-secondary)]">Питань у квізі: {shown.length}</p>
         <button
           type="button"
-          onClick={() => setDraft(blankQuestion())}
+          onClick={() => setDraft(blankQuestion(block, blockElements))}
           className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-medium text-white"
         >
           Додати питання
@@ -163,6 +288,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           draft={draft}
           saving={saving}
           scoredByPoints={scoredByPoints}
+          elements={blockElements}
           onChange={setDraft}
           onCancel={() => setDraft(null)}
           onSave={() => void save()}
@@ -170,7 +296,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       ) : null}
 
       <ul className="space-y-2">
-        {questions.map((question, index) => (
+        {shown.map((question, index) => (
           <li
             key={question.id}
             className="rounded-xl border border-[var(--color-border-default)] p-3"
@@ -183,9 +309,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               >
                 <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase">
                   {index + 1} · {TYPE_LABELS[question.type]}
-                  {scoredByPoints && question.points > 1
-                    ? ` · ${question.points} бали`
-                    : ''}
+                  {scoredByPoints && question.points > 1 ? ` · ${question.points} бали` : ''}
                 </span>
                 <p className="mt-1 text-sm text-[var(--color-text-primary)]">
                   {question.prompt || '—'}
@@ -207,7 +331,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         ))}
       </ul>
 
-      {questions.length === 0 ? (
+      {shown.length === 0 ? (
         <p className="py-6 text-center text-sm text-[var(--color-text-secondary)]">
           Питань ще немає. Завантажте їх із CSV або додайте вручну.
         </p>
@@ -236,10 +360,12 @@ const QuestionForm: React.FC<{
   draft: EditorQuestion;
   saving: boolean;
   scoredByPoints: boolean;
+  /** The texts of this block, to pick which one the question is about. */
+  elements: EditorElement[];
   onChange: (draft: EditorQuestion) => void;
   onCancel: () => void;
   onSave: () => void;
-}> = ({ draft, saving, scoredByPoints, onChange, onCancel, onSave }) => {
+}> = ({ draft, saving, scoredByPoints, elements, onChange, onCancel, onSave }) => {
   const isChoice = draft.type === 'single_choice' || draft.type === 'multi_choice';
 
   return (
@@ -265,6 +391,25 @@ const QuestionForm: React.FC<{
           ))}
         </select>
       </label>
+
+      {/* Offered only where there is something to pick: Grammatik has no texts at all. */}
+      {elements.length > 0 ? (
+        <label className="block text-sm">
+          Про який текст це питання
+          <select
+            value={draft.element_id ?? ''}
+            onChange={(event) => onChange({ ...draft, element_id: event.target.value || null })}
+            className="mt-1 block w-full rounded-lg border border-[var(--color-border-default)] px-3 py-2"
+          >
+            <option value="">Без тексту</option>
+            {elements.map((element) => (
+              <option key={element.id} value={element.id}>
+                {element.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
       <label className="block text-sm">
         Питання
@@ -305,9 +450,7 @@ const QuestionForm: React.FC<{
                     else chosen.add(option.id);
                     onChange({
                       ...draft,
-                      accepted_answers: chosen.size
-                        ? [[...chosen].sort().join(',')]
-                        : [],
+                      accepted_answers: chosen.size ? [[...chosen].sort().join(',')] : [],
                     });
                   }}
                   className="accent-[var(--color-primary)]"
@@ -327,9 +470,7 @@ const QuestionForm: React.FC<{
           })}
           <button
             type="button"
-            onClick={() =>
-              onChange({ ...draft, options: [...draft.options, newOption()] })
-            }
+            onClick={() => onChange({ ...draft, options: [...draft.options, newOption()] })}
             className="text-xs text-[var(--color-primary)]"
           >
             Додати варіант

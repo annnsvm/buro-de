@@ -11,7 +11,11 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { QuestionType } from '../../generated/prisma/enums';
+import {
+  PracticeBlock,
+  PracticeElementKind,
+  QuestionType,
+} from '../../generated/prisma/enums';
 
 export class QuestionOptionDto {
   @ApiPropertyOptional({ description: 'Залишіть порожнім для нового варіанту' })
@@ -76,6 +80,66 @@ export class SaveQuestionDto {
   @IsArray()
   @IsString({ each: true })
   skills?: string[];
+
+  @ApiPropertyOptional({
+    enum: PracticeBlock,
+    description: 'Блок практики. Для квізу й тесту не вказується.',
+  })
+  @IsOptional()
+  @IsEnum(PracticeBlock)
+  block?: PracticeBlock;
+
+  @ApiPropertyOptional({
+    description: 'Id тексту або аудіо, до якого це питання. Порожнє — питання саме по собі.',
+  })
+  @IsOptional()
+  @IsString()
+  element_id?: string;
+}
+
+/**
+ * A text to read, a recording to listen to, or a prompt to speak from.
+ *
+ * Kept apart from the question because several questions share one, and because the student
+ * sees it for as long as they answer them rather than once per question.
+ */
+export class SavePracticeElementDto {
+  @ApiProperty({ enum: PracticeBlock })
+  @IsEnum(PracticeBlock)
+  block!: PracticeBlock;
+
+  @ApiProperty({ enum: PracticeElementKind })
+  @IsEnum(PracticeElementKind)
+  kind!: PracticeElementKind;
+
+  @ApiProperty({ example: 'Eine E-Mail aus dem Büro' })
+  @IsString()
+  @MaxLength(300)
+  title!: string;
+
+  @ApiPropertyOptional({ description: 'Сам текст. Для аудіо — порожнє.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  body?: string;
+
+  @ApiPropertyOptional({ description: 'Відкривається після всіх відповідей про це аудіо' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  transcript?: string;
+
+  @ApiPropertyOptional({ description: 'Зразкова відповідь для усного завдання' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  sample_answer?: string;
+
+  @ApiPropertyOptional({ description: 'Слова-опори' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  hints?: string;
 }
 
 export class ReorderQuestionsDto {

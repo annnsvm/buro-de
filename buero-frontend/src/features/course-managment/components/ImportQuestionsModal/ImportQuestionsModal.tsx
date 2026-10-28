@@ -1,11 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { BaseDialog, ModalBody } from '@/components/modal';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
-import {
-  importQuestions,
-  type ImportMode,
-  type ImportPreview,
-} from '@/api/questionImportApi';
+import { importQuestions, type ImportMode, type ImportPreview } from '@/api/questionImportApi';
 
 export type ImportQuestionsModalProps = {
   isOpen: boolean;
@@ -100,18 +96,14 @@ const ImportQuestionsModal: React.FC<ImportQuestionsModalProps> = ({
       contentClassName="relative z-[1] w-[min(94vw,640px)] max-h-[85vh] overflow-y-auto rounded-2xl bg-[var(--color-neutral-white)] p-6 focus:outline-none sm:p-8"
     >
       <ModalBody>
-        <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
-          Імпорт питань
-        </h2>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          Модуль: {moduleTitle}
-        </p>
+        <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Імпорт питань</h2>
+        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">Модуль: {moduleTitle}</p>
 
         {done ? (
           <div className="mt-6 space-y-3">
             <p className="text-sm font-semibold text-[var(--color-success-text)]">
-              Готово: створено {done.created ?? 0}, оновлено {done.updated ?? 0} квізів,
-              усього {done.totalQuestions} питань.
+              Готово: створено {done.created ?? 0}, оновлено {done.updated ?? 0} квізів, усього{' '}
+              {done.totalQuestions} питань.
             </p>
             <button
               type="button"
@@ -140,6 +132,21 @@ const ImportQuestionsModal: React.FC<ImportQuestionsModalProps> = ({
                   </span>
                 ) : null}
               </label>
+
+              {/**
+               * The labels named where the file is chosen, because that is the moment they are
+               * needed — `READ` in particular, which is new and has no counterpart in the files
+               * written so far.
+               */}
+              <dl className="space-y-1 rounded-lg bg-[var(--color-surface-section)] p-3 text-xs text-[var(--color-text-secondary)]">
+                <div className="font-medium text-[var(--color-text-primary)]">Колонка «Тип»</div>
+                <div>ONE — один варіант · GAP — вписати слово</div>
+                <div>TEXT — вписати речення · ORDER — порядок слів</div>
+                <div>
+                  READ — текст для читання: сам текст у колонці «Матеріал», заголовок у «Питання».
+                  Питання нижче в тому ж уроці й блоці стають питаннями про нього.
+                </div>
+              </dl>
 
               <fieldset className="space-y-2">
                 <legend className="text-sm font-medium text-[var(--color-text-primary)]">
@@ -239,9 +246,7 @@ const Preview: React.FC<{ preview: ImportPreview }> = ({ preview }) => (
     <ul className="space-y-2">
       {preview.targets.map((target) => (
         <li key={target.title} className="text-sm">
-          <span className="font-medium text-[var(--color-text-primary)]">
-            {target.title}
-          </span>
+          <span className="font-medium text-[var(--color-text-primary)]">{target.title}</span>
           <span className="text-[var(--color-text-secondary)]">
             {' '}
             — {target.questionCount} питань, {target.points} балів

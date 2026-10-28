@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -15,6 +16,7 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -22,13 +24,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Role } from 'src/generated/prisma/enums';
+import { PracticeBlock, Role } from 'src/generated/prisma/enums';
 import type { UserWithoutPassword } from '../user/types/user-response.type';
 import { QuestionImportService } from '../exercises/import/question-import.service';
 import { ImportQuestionsDto } from '../exercises/import/import-questions.dto';
 import { QuestionEditorService } from '../exercises/question-editor.service';
 import {
   ReorderQuestionsDto,
+  SavePracticeElementDto,
   SaveQuestionDto,
 } from '../exercises/question-editor.dto';
 import { CourseMaterialService } from './course-material.service';
@@ -174,6 +177,85 @@ export class CourseMaterialsController {
     @Param('questionId') questionId: string,
   ) {
     return this.questionEditor.remove(courseId, moduleId, materialId, questionId);
+  }
+
+  @Get(":id/elements")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({
+    summary: 'Тексти та аудіо практики',
+    description:
+      'Те, про що питають питання блоку: текст для читання, запис для аудіювання, завдання для усного.',
+  })
+  @ApiQuery({ name: 'block', enum: PracticeBlock, required: false })
+  listElements(
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') materialId: string,
+    @Query('block') block?: PracticeBlock,
+  ) {
+    return this.questionEditor.listElements(courseId, moduleId, materialId, block);
+  }
+
+  @Post(":id/elements")
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Додати текст або аудіо до блоку практики' })
+  @ApiBody({ type: SavePracticeElementDto })
+  createElement(
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') materialId: string,
+    @Body() dto: SavePracticeElementDto,
+  ) {
+    return this.questionEditor.saveElement(courseId, moduleId, materialId, null, dto);
+  }
+
+  @Patch(":id/elements/:elementId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Оновити текст або аудіо' })
+  @ApiBody({ type: SavePracticeElementDto })
+  updateElement(
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') materialId: string,
+    @Param('elementId') elementId: string,
+    @Body() dto: SavePracticeElementDto,
+  ) {
+    return this.questionEditor.saveElement(
+      courseId,
+      moduleId,
+      materialId,
+      elementId,
+      dto,
+    );
+  }
+
+  @Delete(":id/elements/:elementId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({
+    summary: 'Видалити текст або аудіо',
+    description: 'Питання залишаються — вони просто більше ні до чого не прив’язані.',
+  })
+  deleteElement(
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') materialId: string,
+    @Param('elementId') elementId: string,
+  ) {
+    return this.questionEditor.removeElement(
+      courseId,
+      moduleId,
+      materialId,
+      elementId,
+    );
   }
 
   @Patch(":id/questions")

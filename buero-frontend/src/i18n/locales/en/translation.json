@@ -610,13 +610,16 @@
       "start_one": "Let us begin — {{blocks}} short block and the lesson is yours.",
       "start_other": "Let us begin — {{blocks}} short blocks and the lesson is yours."
     },
+    "hideText": "Hide text",
     "loadFailed": "Could not load the practice.",
     "loading": "Loading the practice…",
     "nextLesson": "Next lesson →",
     "ofBlocks_one": "/ {{count}} block",
     "ofBlocks_other": "/ {{count}} blocks",
+    "showText": "Show text",
     "subtitle": "Pick where to start",
     "title": "Lesson practice",
+    "toHub": "Back to practice",
     "tryAgain": "Try again"
   }
 }

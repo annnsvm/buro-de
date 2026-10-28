@@ -87,6 +87,14 @@ enum PracticeBlock {
   sprechen
 }
 
+/// What a practice element is. `text` is something to read, and the two that follow it arrive
+/// with the listening and speaking blocks.
+enum PracticeElementKind {
+  text
+  audio
+  rec
+}
+
 enum QuestionType {
   single_choice
   multi_choice
@@ -291,6 +299,7 @@ model CourseMaterial {
   writingSubmissions WritingSubmission[]
   attachments    MaterialAttachment[]
   questions      Question[]
+  practiceElements PracticeElement[]
 
   @@index([moduleId])
   @@index([parentMaterialId])
@@ -464,10 +473,45 @@ model WritingSubmission {
   @@map("writing_submissions")
 }
 
+/// Something a block's questions are asked about: a text to read, an audio to listen to, or a
+/// prompt to speak from.
+///
+/// Separate from `Question` because several questions share one of these, and because it has a
+/// life of its own — a text is read, an audio is played, and neither is answered.
+model PracticeElement {
+  id         String              @id @default(uuid())
+  materialId String              @map("material_id")
+  block      PracticeBlock
+  kind       PracticeElementKind
+  /// Shown as the heading above the text or the player.
+  title      String
+  /// The text to read. Empty for an audio, whose file is in `audioUrl` instead.
+  body       String?
+  /// Where the mp3 lives once the listening block arrives.
+  audioUrl   String?             @map("audio_url")
+  /// Opened only after every question about this audio has been answered.
+  transcript String?
+  /// For a speaking prompt: a full-marks answer, and the words to lean on.
+  sampleAnswer String?           @map("sample_answer")
+  hints      String?
+  orderIndex Int                 @default(0) @map("order_index")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+
+  material  CourseMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@index([materialId, block, orderIndex])
+  @@map("practice_elements")
+}
+
 model QuizAttempt {
   id               String    @id @default(uuid())
   userId           String    @map("user_id")
   courseMaterialId String    @map("course_material_id")
+  /// Which block of a practice this sitting is. Null for a quiz or a test, which are
+  /// answered whole — and null on every attempt made before practices had blocks.
+  block            PracticeBlock?
   score            Decimal?  @db.Decimal(5, 2)
   answersSnapshot  Json?     @map("answers_snapshot") // JSONB for resume
   completedAt      DateTime? @map("completed_at")
@@ -580,6 +624,9 @@ model Question {
   /// Which block of the practice this belongs to. Every question written before blocks
   /// existed is grammar practice, so that is the default and nothing had to be migrated.
   block           PracticeBlock @default(grammatik)
+  /// The text or audio this question is about. Null for grammar practice, which asks about
+  /// nothing but the lesson — which is why no existing question had to be touched.
+  elementId       String?       @map("element_id")
   /// The section of the test this task belongs to, verbatim from the author's file —
   /// e.g. "ЧАСТИНА 2 · dass і das". A failed test is reported part by part, so the
   /// student is told which topic let them down rather than only a number.
@@ -592,9 +639,11 @@ model Question {
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
   material CourseMaterial    @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  element  PracticeElement?  @relation(fields: [elementId], references: [id], onDelete: SetNull)
   attempts QuestionAttempt[]
 
   @@index([materialId, orderIndex])
+  @@index([elementId])
   @@map("questions")
 }
 

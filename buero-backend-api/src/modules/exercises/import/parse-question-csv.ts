@@ -1,4 +1,4 @@
-import { QuestionType } from '../../../generated/prisma/enums';
+import { PracticeBlock, QuestionType } from '../../../generated/prisma/enums';
 
 /**
  * Reads the CSV the course author writes her questions in.
@@ -13,6 +13,33 @@ import { QuestionType } from '../../../generated/prisma/enums';
 
 export type ParsedOption = { id: string; text: string };
 
+/**
+ * Which part of a practice a row belongs to. Written in any case, and Hören spelled any of the
+ * three ways a keyboard allows.
+ */
+export const parseBlock = (raw: string): PracticeBlock | null => {
+  const value = raw.trim().toLowerCase();
+  if (!value) return PracticeBlock.grammatik;
+  if (value === 'grammatik' || value === 'grammar') return PracticeBlock.grammatik;
+  if (value === 'lesen') return PracticeBlock.lesen;
+  if (value === 'hören' || value === 'horen' || value === 'hoeren') {
+    return PracticeBlock.horen;
+  }
+  if (value === 'sprechen') return PracticeBlock.sprechen;
+  return null;
+};
+
+/** A text to read, an audio to listen to, or a prompt to speak from. */
+export type ParsedElement = {
+  id: string;
+  group: string;
+  block: PracticeBlock;
+  kind: 'text';
+  /** The heading above it, from the `Питання` column. */
+  title: string;
+  body: string;
+};
+
 export type ParsedQuestion = {
   /** The author's own id, such as 4.1.2 or T7. Becomes the question's id. */
   id: string;
@@ -25,6 +52,12 @@ export type ParsedQuestion = {
   explanation: string | null;
   /** Which lesson to revisit when this part goes badly; from an optional column. */
   reviewLesson: string | null;
+  block: PracticeBlock;
+  /**
+   * The text or audio this question is about — the nearest one above it in the same lesson and
+   * block, as the author's files are laid out.
+   */
+  elementId: string | null;
   points: number;
   /**
    * Wordings the explanation mentions as also acceptable. They are prose, so they are
@@ -42,6 +75,7 @@ export type ParseProblem = {
 
 export type ParsedCsv = {
   questions: ParsedQuestion[];
+  elements: ParsedElement[];
   problems: ParseProblem[];
 };
 
@@ -185,6 +219,7 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
   if (rows.length === 0) {
     return {
       questions: [],
+      elements: [],
       problems: [{ row: 0, id: '', message: 'the file is empty' }],
     };
   }
@@ -194,6 +229,7 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
   if (missing.length > 0) {
     return {
       questions: [],
+      elements: [],
       problems: [
         {
           row: 1,
@@ -220,10 +256,16 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
   const reviewIdx = ['Урок для повторення', 'Повторити', 'Урок для повторення:']
     .map(columnIndex)
     .find((at) => at >= 0);
+  /** Both optional: a file without them reads exactly as it did before they existed. */
+  const blockIdx = columnIndex('Блок');
+  const materialIdx = columnIndex('Матеріал');
 
   const questions: ParsedQuestion[] = [];
+  const elements: ParsedElement[] = [];
   const problems: ParseProblem[] = [];
   const seenIds = new Set<string>();
+  /** The element a question attaches to: the last one seen in the same lesson and block. */
+  const openElement = new Map<string, string>();
 
   rows.slice(1).forEach((row, index) => {
     const rowNumber = index + 2;
@@ -241,12 +283,57 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
       problems.push({ row: rowNumber, id, message: 'duplicate ID' });
       return;
     }
+
+    const block = parseBlock(blockIdx >= 0 ? cell(blockIdx) : '');
+    if (!block) {
+      problems.push({
+        row: rowNumber,
+        id,
+        message: `unknown block "${cell(blockIdx)}" (expected Grammatik, Lesen, Hören or Sprechen)`,
+      });
+      return;
+    }
+    const group = cell(groupIdx) || 'Без уроку';
+    const material = materialIdx >= 0 ? cell(materialIdx) : '';
+
+    /**
+     * `READ` is a text to read; `TEXT` is a question answered with a whole sentence.
+     *
+     * The two used to share the name `TEXT`, told apart only by whether the `Матеріал` column
+     * was filled. That inference is kept, because sixteen rows of module 4 rely on it, but it
+     * is no longer how a new file should say which it means: `READ` says so outright, and a
+     * row that says `READ` is a text whether or not the reader guesses right.
+     */
+    if (typeLabel === 'READ' || (typeLabel === 'TEXT' && material)) {
+      /** A text with nothing in it is the one way `READ` can be wrong, so it is reported. */
+      if (!material) {
+        problems.push({
+          row: rowNumber,
+          id,
+          message: 'READ row has no text in the "Матеріал" column',
+        });
+        return;
+      }
+      seenIds.add(id);
+      const element: ParsedElement = {
+        id,
+        group,
+        block,
+        kind: 'text',
+        title: cell(promptIdx),
+        body: material,
+      };
+      elements.push(element);
+      openElement.set(`${group}\u0000${block}`, id);
+      return;
+    }
+
     const type = TYPE_BY_LABEL[typeLabel];
     if (!type) {
       problems.push({
         row: rowNumber,
         id,
-        message: `unknown type "${cell(typeIdx)}" (expected ONE, GAP, TEXT or ORDER)`,
+        message: `unknown type "${cell(typeIdx)}" (expected ONE, GAP, TEXT, ORDER or READ)`,
       });
       return;
     }
@@ -319,7 +406,10 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
     seenIds.add(id);
     questions.push({
       id,
-      group: cell(groupIdx) || 'Без уроку',
+      group,
+      block,
+      /** The nearest text above it in the same lesson and block, or none for grammar. */
+      elementId: openElement.get(`${group}\u0000${block}`) ?? null,
       type,
       prompt,
       options,
@@ -334,21 +424,46 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
     } as ParsedQuestion & { tokens?: string[] });
   });
 
-  return { questions, problems };
+  return { questions, elements, problems };
 };
 
 /** Groups questions by the lesson or part they belong to, keeping file order. */
+/**
+ * Groups a file's rows by the lesson they belong to, keeping file order.
+ *
+ * The texts travel with their lesson too: a question points at the text above it, and the two
+ * have to land in the same material for that pointer to mean anything.
+ */
 export const groupQuestions = (
   questions: ParsedQuestion[],
-): Array<{ group: string; questions: ParsedQuestion[] }> => {
+  elements: ParsedElement[] = [],
+): Array<{ group: string; questions: ParsedQuestion[]; elements: ParsedElement[] }> => {
   const order: string[] = [];
   const byGroup = new Map<string, ParsedQuestion[]>();
-  for (const question of questions) {
-    if (!byGroup.has(question.group)) {
-      byGroup.set(question.group, []);
-      order.push(question.group);
+  const elementsByGroup = new Map<string, ParsedElement[]>();
+
+  const note = (group: string) => {
+    if (!byGroup.has(group)) {
+      byGroup.set(group, []);
+      order.push(group);
     }
+  };
+
+  for (const element of elements) {
+    note(element.group);
+    elementsByGroup.set(element.group, [
+      ...(elementsByGroup.get(element.group) ?? []),
+      element,
+    ]);
+  }
+  for (const question of questions) {
+    note(question.group);
     byGroup.get(question.group)!.push(question);
   }
-  return order.map((group) => ({ group, questions: byGroup.get(group)! }));
+
+  return order.map((group) => ({
+    group,
+    questions: byGroup.get(group) ?? [],
+    elements: elementsByGroup.get(group) ?? [],
+  }));
 };

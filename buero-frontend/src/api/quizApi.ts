@@ -26,6 +26,8 @@ export type QuizQuestion = {
   type: QuizQuestionType;
   prompt: string;
   points: number;
+  /** The text or audio this question is about; null for grammar practice. */
+  element_id: string | null;
   order_index: number;
   options?: QuizQuestionOption[];
   /** Words to arrange, already shuffled by the server. */
@@ -37,6 +39,18 @@ export type QuizQuestion = {
  * questions went right, so the server sends null here and nothing shows a total the
  * author never wrote.
  */
+/**
+ * Something a block's questions are asked about. The student keeps it in view while answering —
+ * a reading task where the text scrolls away is a memory test.
+ */
+export type PracticeElement = {
+  id: string;
+  kind: 'text' | 'audio' | 'rec';
+  title: string;
+  body: string | null;
+  has_transcript: boolean;
+};
+
 export type QuizQuestionsResponse = {
   mode: QuizMode;
   /** The percentage needed to pass. */
@@ -45,6 +59,8 @@ export type QuizQuestionsResponse = {
   total_points: number | null;
   /** The same threshold in points, e.g. 15 — the way the test is written. */
   passing_points: number | null;
+  /** Empty unless a practice block was asked for. */
+  elements: PracticeElement[];
   questions: QuizQuestion[];
 };
 
@@ -70,9 +86,14 @@ export type QuizAttemptResponse = {
   created_at: string;
 };
 
-export const startQuizAttempt = async (courseMaterialId: string): Promise<QuizAttemptResponse> => {
+/** `block` ties the sitting to one part of a practice; a quiz and a test leave it out. */
+export const startQuizAttempt = async (
+  courseMaterialId: string,
+  block?: string,
+): Promise<QuizAttemptResponse> => {
   const { data } = await apiInstance.post<QuizAttemptResponse>(API_ENDPOINTS.quiz.startAttempt, {
     course_material_id: courseMaterialId,
+    ...(block ? { block } : {}),
   });
   return data;
 };
@@ -177,10 +198,13 @@ export type OutdatedQuizAttempt = { outdated: true };
  */
 export const fetchLastQuizAttempt = async (
   materialId: string,
+  block?: string,
 ): Promise<LastQuizAttempt | OutdatedQuizAttempt | null> => {
   const { data } = await apiInstance.get<
     LastQuizAttempt | OutdatedQuizAttempt | null | ''
-  >(API_ENDPOINTS.quiz.lastAttempt(materialId));
+  >(API_ENDPOINTS.quiz.lastAttempt(materialId), {
+    params: block ? { block } : undefined,
+  });
   return data && typeof data === 'object' ? data : null;
 };
 
