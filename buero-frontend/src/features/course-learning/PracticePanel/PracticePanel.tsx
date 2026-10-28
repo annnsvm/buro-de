@@ -107,6 +107,7 @@ const PracticePanel: React.FC<PracticePanelProps> = ({
           moduleId={moduleId}
           quizMaterialTitle={t(`practice.blocks.${openBlock}.title`)}
           onMoveOn={closeBlock}
+          moveOnLabel={t('practice.toHub')}
         />
       </div>
     );

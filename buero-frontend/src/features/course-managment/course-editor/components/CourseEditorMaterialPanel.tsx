@@ -63,6 +63,8 @@ const CourseEditorMaterialPanel: React.FC<CourseEditorMaterialPanelProps> = ({
                  * silently does not apply.
                  */
                 scoredByPoints={editedMaterial.material.quizMode === 'test'}
+                /** Only a practice is divided into Grammatik, Lesen, Hören and Sprechen. */
+                hasBlocks={editedMaterial.material.type === 'practice'}
               />
             </div>
           </div>

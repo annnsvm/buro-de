@@ -14,6 +14,7 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
@@ -69,11 +70,14 @@ export class QuizController {
   @ApiResponse({ status: 200, description: "Остання спроба або null" })
   @ApiResponse({ status: 403, description: "Немає доступу до модуля" })
   @ApiResponse({ status: 404, description: "Матеріал не знайдено" })
+  @ApiQuery({ name: "block", enum: PracticeBlock, required: false })
   getLastAttempt(
     @CurrentUser() user: UserWithoutPassword,
     @Param("materialId") materialId: string,
+    /** Narrows to one block of a practice, so its sittings are not mixed with another's. */
+    @Query("block") block?: PracticeBlock,
   ) {
-    return this.quizService.getLastAttempt(materialId, user.id, user.role);
+    return this.quizService.getLastAttempt(materialId, user.id, user.role, block);
   }
 
   @Post("attempts")
@@ -101,7 +105,8 @@ export class QuizController {
     return this.quizService.startAttempt(
       user.id,
       user.role as Role,
-      dto.course_material_id
+      dto.course_material_id,
+      dto.block
     );
   }
 

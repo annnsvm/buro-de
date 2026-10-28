@@ -104,6 +104,122 @@ describe("parseQuestionCsv", () => {
     });
   });
 
+  /**
+   * The two things `TEXT` can mean, in one file.
+   *
+   * A written question and a text to read are entirely different: one is answered with a
+   * sentence, the other is read before questions about it are answered. Both are spelled
+   * `TEXT` in the authored files, and only the `Матеріал` column tells them apart — so this
+   * is the test that keeps a reading text from being imported as a question, and a
+   * sentence-answer question from being imported as a text nobody can answer.
+   */
+  describe("a written question and a text to read, side by side", () => {
+    const WITH_MATERIAL =
+      "ID,Урок,Тип,Блок,Питання,A,B,C,D,Правильна відповідь,Пояснення,Матеріал";
+    const parsed = parseQuestionCsv(
+      [
+        WITH_MATERIAL,
+        '4.1.8,4.1,TEXT,grammatik,"Перекладіть німецькою: Її немає.",,,,,"Sie ist nicht da, weil sie eine Besprechung hat.","hat — останнє слово.",',
+        '4.1.T,4.1,TEXT,lesen,Eine E-Mail aus dem Büro,,,,,,,"Hallo Anna, ich kann morgen nicht kommen, weil ich krank bin."',
+        '4.1.9,4.1,ONE,lesen,Warum kommt er nicht?,Er ist krank,Er hat Urlaub,,,A) Er ist krank,Im Text steht «weil ich krank bin».',
+      ].join("\n"),
+    );
+
+    it("parses both without complaint", () => {
+      expect(parsed.problems).toEqual([]);
+    });
+
+    /** The row with an answer and no material stays a question the student writes into. */
+    it("keeps the sentence-answer row a question", () => {
+      const written = parsed.questions.find((question) => question.id === "4.1.8");
+      expect(written?.type).toBe(QuestionType.text_input);
+      expect(written?.acceptedAnswers).toEqual([
+        "Sie ist nicht da, weil sie eine Besprechung hat.",
+      ]);
+    });
+
+    /** The row carrying the text itself becomes something to read, not something to answer. */
+    it("turns the row with a material into a text to read", () => {
+      expect(parsed.elements).toHaveLength(1);
+      expect(parsed.elements[0]).toMatchObject({
+        id: "4.1.T",
+        kind: "text",
+        title: "Eine E-Mail aus dem Büro",
+      });
+      expect(parsed.elements[0].body).toContain("weil ich krank bin");
+      expect(parsed.questions.map((question) => question.id)).not.toContain("4.1.T");
+    });
+
+    it("ties the question that follows it to that text", () => {
+      const about = parsed.questions.find((question) => question.id === "4.1.9");
+      expect(about?.elementId).toBe("4.1.T");
+    });
+
+    /** A Grammatik question must not pick up the Lesen text that happens to be nearby. */
+    it("leaves the written question in Grammatik unbound", () => {
+      const written = parsed.questions.find((question) => question.id === "4.1.8");
+      expect(written?.elementId).toBeNull();
+    });
+  });
+
+  /**
+   * `READ`, the way files from module 5 on should say "this is a text to read".
+   *
+   * The older spelling — `TEXT` with the material column filled — still works, but it asks the
+   * reader of the file to infer which of two unrelated things a row is. `READ` says it, and a
+   * mistake in the row then produces a reported problem rather than a silently wrong import.
+   */
+  describe("a text to read, written as READ", () => {
+    const WITH_MATERIAL =
+      "ID,Урок,Тип,Блок,Питання,A,B,C,D,Правильна відповідь,Пояснення,Матеріал";
+
+    const parsed = parseQuestionCsv(
+      [
+        WITH_MATERIAL,
+        '5.1.T,5.1,READ,lesen,Eine E-Mail aus dem Büro,,,,,,,"Hallo Anna, ich kann morgen nicht kommen, weil ich krank bin."',
+        '5.1.1,5.1,ONE,lesen,Warum kommt er nicht?,Er ist krank,Er hat Urlaub,,,A) Er ist krank,Im Text steht «weil ich krank bin».',
+        '5.1.2,5.1,TEXT,grammatik,"Перекладіть німецькою: Її немає.",,,,,"Sie ist nicht da, weil sie eine Besprechung hat.",hat — останнє слово.',
+      ].join("\n"),
+    );
+
+    it("parses without complaint", () => {
+      expect(parsed.problems).toEqual([]);
+    });
+
+    it("reads the row as a text rather than as a question", () => {
+      expect(parsed.elements).toHaveLength(1);
+      expect(parsed.elements[0]).toMatchObject({
+        id: "5.1.T",
+        kind: "text",
+        title: "Eine E-Mail aus dem Büro",
+      });
+      expect(parsed.questions.map((question) => question.id)).not.toContain("5.1.T");
+    });
+
+    it("ties the questions that follow it to that text", () => {
+      const about = parsed.questions.find((question) => question.id === "5.1.1");
+      expect(about?.elementId).toBe("5.1.T");
+    });
+
+    /** The whole point of the new label: `TEXT` now means only one thing. */
+    it("still reads TEXT as a question the student writes into", () => {
+      const written = parsed.questions.find((question) => question.id === "5.1.2");
+      expect(written?.type).toBe(QuestionType.text_input);
+      expect(written?.elementId).toBeNull();
+    });
+
+    /** Better a named problem than a text that imports empty and shows a blank panel. */
+    it("reports a READ row with no text instead of importing it", () => {
+      const empty = parseQuestionCsv(
+        [WITH_MATERIAL, "5.2.T,5.2,READ,lesen,Ein Text,,,,,,,"].join("\n"),
+      );
+      expect(empty.elements).toEqual([]);
+      expect(empty.problems).toEqual([
+        { row: 2, id: "5.2.T", message: 'READ row has no text in the "Матеріал" column' },
+      ]);
+    });
+  });
+
   describe("an ordering row", () => {
     const { questions, problems } = parseQuestionCsv(
       csv(

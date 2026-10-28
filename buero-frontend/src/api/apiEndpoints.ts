@@ -3,12 +3,12 @@ export const API_ENDPOINTS = {
     register: '/auth/register',
     verifyRegistration: '/auth/verify-registration',
     resendRegistrationCode: '/auth/resend-registration-code',
-    login: '/auth/login', 
-    refresh: '/auth/refresh', 
-    logout: '/auth/logout', 
+    login: '/auth/login',
+    refresh: '/auth/refresh',
+    logout: '/auth/logout',
   },
   users: {
-    me: '/users/me', 
+    me: '/users/me',
     updateMe: '/users/me',
   },
   courses: {
@@ -25,16 +25,22 @@ export const API_ENDPOINTS = {
     structure: (id: string) => `/courses/${id}/structure`,
   },
   courseMaterials: {
-    list: (courseId: string, moduleId: string) => `/courses/${courseId}/modules/${moduleId}/materials`,
+    list: (courseId: string, moduleId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/materials`,
     byId: (courseId: string, moduleId: string, id: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${id}`,
-    create: (courseId: string, moduleId: string) => `/courses/${courseId}/modules/${moduleId}/materials`,
+    create: (courseId: string, moduleId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/materials`,
     import: (courseId: string, moduleId: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/import`,
     questions: (courseId: string, moduleId: string, materialId: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/questions`,
     question: (courseId: string, moduleId: string, materialId: string, questionId: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/questions/${questionId}`,
+    elements: (courseId: string, moduleId: string, materialId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/elements`,
+    element: (courseId: string, moduleId: string, materialId: string, elementId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/elements/${elementId}`,
     update: (courseId: string, moduleId: string, id: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${id}`,
     delete: (courseId: string, moduleId: string, id: string) =>
@@ -108,12 +114,12 @@ export const API_ENDPOINTS = {
 } as const;
 
 export const PUBLIC_ENDPOINT_PREFIXE = [
-    API_ENDPOINTS.auth.login,
-    API_ENDPOINTS.auth.register,
-    API_ENDPOINTS.auth.verifyRegistration,
-    API_ENDPOINTS.auth.resendRegistrationCode,
-    API_ENDPOINTS.auth.refresh,
-    API_ENDPOINTS.auth.logout,
-    API_ENDPOINTS.courses.list,
-    API_ENDPOINTS.contact.submit,
+  API_ENDPOINTS.auth.login,
+  API_ENDPOINTS.auth.register,
+  API_ENDPOINTS.auth.verifyRegistration,
+  API_ENDPOINTS.auth.resendRegistrationCode,
+  API_ENDPOINTS.auth.refresh,
+  API_ENDPOINTS.auth.logout,
+  API_ENDPOINTS.courses.list,
+  API_ENDPOINTS.contact.submit,
 ] as const;

@@ -43,6 +43,7 @@ export class QuizService {
     userId: string,
     role: Role,
     courseMaterialId: string,
+    block?: PracticeBlock,
   ) {
     const material = await this.prisma.courseMaterial.findUnique({
       where: { id: courseMaterialId },
@@ -72,10 +73,18 @@ export class QuizService {
       );
     }
 
+    /**
+     * A sitting belongs to the block it was opened from.
+     *
+     * Without this, a practice of four blocks had one shared attempt measured against every
+     * question in the material: answering all eight Grammatik questions never finished it,
+     * because three Lesen questions it had never shown were still counted as unanswered.
+     */
     const attempt = await this.prisma.quizAttempt.create({
       data: {
         userId,
         courseMaterialId,
+        block: block ?? null,
       },
     });
 
@@ -102,10 +111,23 @@ export class QuizService {
   ) {
     const material = await this.assertCanAccessQuiz(materialId, userId, role);
 
-    const questions = await this.prisma.question.findMany({
-      where: { materialId, ...(block && { block }) },
-      orderBy: { orderIndex: "asc" },
-    });
+    const [questions, elements] = await Promise.all([
+      this.prisma.question.findMany({
+        where: { materialId, ...(block && { block }) },
+        orderBy: { orderIndex: "asc" },
+      }),
+      /**
+       * The texts and audio the questions are about. Fetched alongside rather than from their
+       * own endpoint: a reading task is one thing on screen, and two requests could show the
+       * questions before the text they refer to.
+       */
+      block
+        ? this.prisma.practiceElement.findMany({
+            where: { materialId, block },
+            orderBy: { orderIndex: "asc" },
+          })
+        : Promise.resolve([]),
+    ]);
 
     /**
      * The mode travels with the questions because the player has to know, before the
@@ -127,6 +149,15 @@ export class QuizService {
       passing_score: material.passingScore,
       total_points: totalPoints,
       passing_points: passingPoints(material.passingScore, totalPoints),
+      /** Empty unless a block was asked for; a quiz has nothing to read. */
+      elements: elements.map((element) => ({
+        id: element.id,
+        kind: element.kind,
+        title: element.title,
+        body: element.body,
+        /** Held back until every question about it has been answered. */
+        has_transcript: Boolean(element.transcript),
+      })),
       questions: questions.map((question) => {
       const payload = (question.payload ?? {}) as {
         options?: Array<{ id: string; text: string }>;
@@ -137,6 +168,8 @@ export class QuizService {
         type: question.type,
         prompt: question.prompt,
         points: question.points,
+        /** Which text or audio this question is about, if any. */
+        element_id: question.elementId,
         order_index: question.orderIndex,
         ...(Array.isArray(payload.options) && {
           options: payload.options.map((option) => ({
@@ -162,7 +195,12 @@ export class QuizService {
    * recorded but never shown again, so the answers and explanations were effectively
    * lost the moment the student navigated away.
    */
-  async getLastAttempt(materialId: string, userId: string, role: Role) {
+  async getLastAttempt(
+    materialId: string,
+    userId: string,
+    role: Role,
+    block?: PracticeBlock,
+  ) {
     const material = await this.assertCanAccessQuiz(materialId, userId, role);
 
     /**
@@ -173,6 +211,7 @@ export class QuizService {
     const { best: attempt, hasOutdated } = await this.bestCurrentAttempt(
       materialId,
       userId,
+      block,
     );
     if (!attempt) {
       /**
@@ -187,7 +226,9 @@ export class QuizService {
       this.prisma.questionAttempt.findMany({
         where: { quizAttemptId: attempt.id },
       }),
-      this.prisma.question.findMany({ where: { materialId } }),
+      this.prisma.question.findMany({
+        where: { materialId, ...(block ? { block } : {}) },
+      }),
     ]);
     const questionsById = new Map(questions.map((q) => [q.id, q]));
 
@@ -195,7 +236,12 @@ export class QuizService {
     const reveal = this.mayRevealAnswers(material, score);
 
     const attemptCount = await this.prisma.quizAttempt.count({
-      where: { userId, courseMaterialId: materialId, completedAt: { not: null } },
+      where: {
+        userId,
+        courseMaterialId: materialId,
+        completedAt: { not: null },
+        ...(block ? { block } : {}),
+      },
     });
 
     /**
@@ -266,34 +312,73 @@ export class QuizService {
    * student has actually done. Such attempts are passed over, and the next attempt
    * sets the result again.
    */
-  private async bestCurrentAttempt(materialId: string, userId: string) {
+  private async bestCurrentAttempt(
+    materialId: string,
+    userId: string,
+    block?: PracticeBlock,
+  ) {
     const questions = await this.prisma.question.findMany({
-      where: { materialId },
+      where: { materialId, ...(block ? { block } : {}) },
       select: { id: true },
     });
     const currentIds = new Set(questions.map((question) => question.id));
 
+    /**
+     * Only sittings of the same block are comparable. Measuring a Grammatik sitting against
+     * the whole practice made it read as an attempt at an older set of questions the moment
+     * a text was added to Lesen, and the student was told their quiz had changed.
+     */
     const attempts = await this.prisma.quizAttempt.findMany({
-      where: { userId, courseMaterialId: materialId, completedAt: { not: null } },
+      where: {
+        userId,
+        courseMaterialId: materialId,
+        completedAt: { not: null },
+        /**
+         * This block's sittings, and the ones recorded before a sitting knew its block.
+         *
+         * An older sitting is claimed by a block only if the questions it answered are
+         * exactly that block's — the check below decides that, and it is the same check
+         * that already told a current sitting from a stale one. So work done before blocks
+         * existed keeps being shown, and nothing had to be written to say so.
+         */
+        ...(block ? { OR: [{ block }, { block: null }] } : {}),
+      },
       include: { questionAttempts: { select: { questionId: true } } },
       orderBy: [{ score: "desc" }, { completedAt: "desc" }],
     });
 
+    const answeredIds = (attempt: (typeof attempts)[number]) =>
+      new Set(attempt.questionAttempts.map((answer) => answer.questionId));
+
     const current = attempts.filter((attempt) => {
-      const answered = new Set(
-        attempt.questionAttempts.map((answer) => answer.questionId),
-      );
+      const answered = answeredIds(attempt);
       return (
         answered.size === currentIds.size &&
         [...answered].every((id) => currentIds.has(id))
       );
     });
 
+    /**
+     * Which sittings are this block's at all.
+     *
+     * A sitting that says which block it is speaks for itself. One recorded before blocks
+     * existed is this block's only if everything it answered is in this block — otherwise it
+     * is another block's work, and must not make this one announce that the quiz has changed.
+     * Opening Lesen for the first time and being told to redo it is exactly what that
+     * confusion looked like.
+     */
+    const ofThisBlock = attempts.filter(
+      (attempt) =>
+        attempt.block === (block ?? null) ||
+        (attempt.block === null &&
+          [...answeredIds(attempt)].every((id) => currentIds.has(id))),
+    );
+
     return {
       best: current[0] ?? null,
       questionCount: currentIds.size,
-      /** True when the student has a finished attempt, but at an older set. */
-      hasOutdated: current.length === 0 && attempts.length > 0,
+      /** True when the student has a finished attempt at this block, but at an older set. */
+      hasOutdated: current.length === 0 && ofThisBlock.length > 0,
     };
   }
 
@@ -408,8 +493,12 @@ export class QuizService {
     });
 
     const [questionCount, answers] = await Promise.all([
+      /** Only what this sitting actually asks: its own block, or the whole quiz. */
       this.prisma.question.count({
-        where: { materialId: attempt.courseMaterialId },
+        where: {
+          materialId: attempt.courseMaterialId,
+          ...(attempt.block ? { block: attempt.block } : {}),
+        },
       }),
       this.prisma.questionAttempt.findMany({
         where: { quizAttemptId: attemptId },
@@ -446,7 +535,7 @@ export class QuizService {
    * deliberately left out of it.
    */
   private async finishAttempt(
-    attempt: { id: string; courseMaterialId: string },
+    attempt: { id: string; courseMaterialId: string; block?: PracticeBlock | null },
     userId: string,
     answers: Array<{ isCorrect: boolean }>,
     questionCount: number,
@@ -474,6 +563,7 @@ export class QuizService {
       userId,
       score,
       completedAt,
+      attempt.block ?? undefined,
     );
 
     /**
@@ -535,11 +625,31 @@ export class QuizService {
     return score >= material.passingScore;
   }
 
+  /** True when no question of this practice is left without an answer from this student. */
+  private async everyBlockAnswered(
+    courseMaterialId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const questions = await this.prisma.question.findMany({
+      where: { materialId: courseMaterialId },
+      select: { id: true },
+    });
+    if (questions.length === 0) return false;
+
+    const answered = await this.prisma.questionAttempt.findMany({
+      where: { userId, questionId: { in: questions.map((q) => q.id) } },
+      select: { questionId: true },
+      distinct: ['questionId'],
+    });
+    return answered.length === questions.length;
+  }
+
   private async recordMaterialProgress(
     courseMaterialId: string,
     userId: string,
     score: number,
     completedAt: Date,
+    block?: PracticeBlock,
   ): Promise<number> {
     const material = await this.prisma.courseMaterial.findUnique({
       where: { id: courseMaterialId },
@@ -553,7 +663,7 @@ export class QuizService {
      * and does worse should not lose the result they already earned. `completedAt` is
      * always refreshed, so the material still reads as recently worked on.
      */
-    const { best } = await this.bestCurrentAttempt(courseMaterialId, userId);
+    const { best } = await this.bestCurrentAttempt(courseMaterialId, userId, block);
     const previousBest = best?.score != null ? Number(best.score) : null;
     const bestScore =
       previousBest != null ? Math.max(previousBest, score) : score;
@@ -568,6 +678,18 @@ export class QuizService {
      * the score itself follows: having passed once, a worse retry cannot take it away.
      */
     if (!this.hasPassed(material, bestScore)) {
+      return bestScore;
+    }
+
+    /**
+     * One block finished is not the practice finished.
+     *
+     * A practice is ticked in the lesson list only once every question in it has been
+     * answered, whichever sitting each answer came from — the same rule the practice hub
+     * uses to say four of four. Ticking it after Grammatik alone told the student the
+     * lesson was behind them while three blocks were still untouched.
+     */
+    if (block && !(await this.everyBlockAnswered(courseMaterialId, userId))) {
       return bestScore;
     }
 

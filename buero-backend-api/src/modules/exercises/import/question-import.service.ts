@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../../generated/prisma/client';
 import {
   CourseMaterialType,
+  PracticeElementKind,
   QuizMode,
 } from '../../../generated/prisma/enums';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -171,6 +172,27 @@ export class QuestionImportService {
           where: { materialId, id: { notIn: keptIds } },
         });
 
+        /**
+         * The texts and audio first, because a question carries the id of the one it is about.
+         * They are upserted by the author's own id, so re-importing corrects a text in place
+         * rather than orphaning every question that referred to it.
+         */
+        for (const [index, element] of (target.elements ?? []).entries()) {
+          const elementData = {
+            materialId,
+            block: element.block,
+            kind: element.kind as PracticeElementKind,
+            title: element.title,
+            body: element.body,
+            orderIndex: index,
+          };
+          await tx.practiceElement.upsert({
+            where: { id: element.id },
+            create: { id: element.id, ...elementData },
+            update: elementData,
+          });
+        }
+
         for (const [index, question] of target.questions.entries()) {
           const acceptedAnswers = options.acceptAlternatives
             ? [...question.acceptedAnswers, ...question.suggestedAlternatives]
@@ -197,6 +219,8 @@ export class QuestionImportService {
              */
             partTitle: question.group,
             reviewLesson: question.reviewLesson,
+            block: question.block,
+            elementId: question.elementId,
             orderIndex: index,
           };
 
@@ -228,7 +252,7 @@ export class QuestionImportService {
       );
     }
 
-    const { questions, problems } = parseQuestionCsv(csv);
+    const { questions, elements, problems } = parseQuestionCsv(csv);
 
     /** A question the graders cannot mark would be a dead end for the student. */
     const unusable = questions
@@ -255,8 +279,8 @@ export class QuestionImportService {
 
     const groups =
       mode === QuizMode.test
-        ? [{ group: TEST_MATERIAL_TITLE, questions: usable }]
-        : groupQuestions(usable);
+        ? [{ group: TEST_MATERIAL_TITLE, questions: usable, elements }]
+        : groupQuestions(usable, elements);
 
     const existing = await this.prisma.courseMaterial.findMany({
       where: {
@@ -275,6 +299,7 @@ export class QuestionImportService {
         title: entry.group,
         existingMaterialId: idByTitle.get(entry.group) ?? null,
         questions: entry.questions as ParsedQuestion[],
+        elements: entry.elements,
       }));
 
     return { plan, problems, unusable };

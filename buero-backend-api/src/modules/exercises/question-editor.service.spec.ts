@@ -1,6 +1,11 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { CourseMaterialType, QuestionType } from "src/generated/prisma/enums";
+import {
+  CourseMaterialType,
+  PracticeBlock,
+  PracticeElementKind,
+  QuestionType,
+} from "src/generated/prisma/enums";
 import { PrismaService } from "src/prisma/prisma.service";
 import { QuestionEditorService } from "./question-editor.service";
 
@@ -9,6 +14,15 @@ describe("QuestionEditorService", () => {
   let prisma: {
     courseMaterial: { findFirst: jest.Mock };
     question: {
+      findMany: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+      aggregate: jest.Mock;
+      count: jest.Mock;
+    };
+    practiceElement: {
       findMany: jest.Mock;
       findFirst: jest.Mock;
       create: jest.Mock;
@@ -43,6 +57,15 @@ describe("QuestionEditorService", () => {
         update: jest.fn((args: { data: unknown }) => args.data),
         delete: jest.fn(),
         aggregate: jest.fn().mockResolvedValue({ _max: { orderIndex: 2 } }),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      practiceElement: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue({ id: "el-1" }),
+        create: jest.fn((args: { data: unknown }) => args.data),
+        update: jest.fn((args: { data: unknown }) => args.data),
+        delete: jest.fn(),
+        aggregate: jest.fn().mockResolvedValue({ _max: { orderIndex: null } }),
       },
       $transaction: jest.fn((operations: unknown[]) => Promise.all(operations)),
     };
@@ -206,6 +229,131 @@ describe("QuestionEditorService", () => {
         where: { id: "q1" },
         data: { orderIndex: 1 },
       });
+    });
+  });
+  /**
+   * Adding a reading text by hand, rather than through a CSV import.
+   *
+   * A text is what makes Lesen a reading task instead of a set of questions about nothing,
+   * so what matters here is that a question cannot end up pointing at a text the student
+   * will never be shown.
+   */
+  describe("the text a block's questions are about", () => {
+    const textDto = () => ({
+      block: PracticeBlock.lesen,
+      kind: PracticeElementKind.text,
+      title: "  Eine E-Mail aus dem Büro  ",
+      body: "  Hallo Anna,  ",
+    });
+
+    it("adds it as the first text of its block", async () => {
+      await service.saveElement(courseId, moduleId, materialId, null, textDto());
+      expect(prisma.practiceElement.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          materialId,
+          block: PracticeBlock.lesen,
+          title: "Eine E-Mail aus dem Büro",
+          body: "Hallo Anna,",
+          orderIndex: 0,
+        }),
+      });
+    });
+
+    it("counts the position within the block, not the whole material", async () => {
+      prisma.practiceElement.aggregate.mockResolvedValue({
+        _max: { orderIndex: 1 },
+      });
+      await service.saveElement(courseId, moduleId, materialId, null, textDto());
+      expect(prisma.practiceElement.aggregate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { materialId, block: PracticeBlock.lesen },
+        }),
+      );
+      expect(prisma.practiceElement.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ orderIndex: 2 }),
+      });
+    });
+
+    it("binds a question to a text of the same block", async () => {
+      await service.save(courseId, moduleId, materialId, null, {
+        ...choiceDto(),
+        block: PracticeBlock.lesen,
+        element_id: "el-1",
+      });
+      expect(prisma.question.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          block: PracticeBlock.lesen,
+          elementId: "el-1",
+        }),
+      });
+    });
+
+    /**
+     * Without this the question would be saved with the link quietly dropped, and the
+     * teacher would only find out when a student met a question about nothing.
+     */
+    it("refuses a text that belongs to another block", async () => {
+      prisma.practiceElement.findFirst.mockResolvedValue(null);
+      await expect(
+        service.save(courseId, moduleId, materialId, null, {
+          ...choiceDto(),
+          block: PracticeBlock.lesen,
+          element_id: "el-from-hoeren",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.question.create).not.toHaveBeenCalled();
+    });
+
+    it("puts a question with no block into Grammatik", async () => {
+      await service.save(courseId, moduleId, materialId, null, choiceDto());
+      expect(prisma.question.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          block: PracticeBlock.grammatik,
+          elementId: null,
+        }),
+      });
+    });
+
+    /** Losing the questions with the text would turn a mistyped title into lost work. */
+    it("keeps the questions when the text is deleted", async () => {
+      prisma.practiceElement.findFirst.mockResolvedValue({ id: "el-1" });
+      prisma.question.count.mockResolvedValue(3);
+      const result = await service.removeElement(
+        courseId,
+        moduleId,
+        materialId,
+        "el-1",
+      );
+      expect(prisma.practiceElement.delete).toHaveBeenCalledWith({
+        where: { id: "el-1" },
+      });
+      expect(prisma.question.delete).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        deleted: true,
+        id: "el-1",
+        unbound_questions: 3,
+      });
+    });
+
+    /** So the author can see, on the page, that a text nobody asks about is invisible. */
+    it("says how many questions are about each text", async () => {
+      prisma.practiceElement.findMany.mockResolvedValue([
+        { id: "el-1", block: PracticeBlock.lesen, kind: "text", title: "T", body: "B",
+          audioUrl: null, transcript: null, sampleAnswer: null, hints: null,
+          orderIndex: 0, _count: { questions: 4 } },
+        { id: "el-2", block: PracticeBlock.lesen, kind: "text", title: "U", body: "B",
+          audioUrl: null, transcript: null, sampleAnswer: null, hints: null,
+          orderIndex: 1, _count: { questions: 0 } },
+      ]);
+      const listed = await service.listElements(courseId, moduleId, materialId);
+      expect(listed.map((element) => element.question_count)).toEqual([4, 0]);
+    });
+
+    it("refuses to touch a text of another material", async () => {
+      prisma.practiceElement.findFirst.mockResolvedValue(null);
+      await expect(
+        service.removeElement(courseId, moduleId, materialId, "elsewhere"),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });

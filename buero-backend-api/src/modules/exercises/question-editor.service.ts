@@ -7,11 +7,13 @@ import { randomUUID } from 'crypto';
 import { Prisma } from '../../generated/prisma/client';
 import {
   CourseMaterialType,
+  PracticeBlock,
   QuestionType,
 } from '../../generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
 import { validateQuestion } from './exercise-registry';
 import type {
+  SavePracticeElementDto,
   SaveQuestionDto,
   ReorderQuestionsDto,
 } from './question-editor.dto';
@@ -67,6 +69,13 @@ export class QuestionEditorService {
       throw new BadRequestException(problems.join('; '));
     }
 
+    /**
+     * A question may only point at a text of this same material and block — otherwise a
+     * student would be asked about a text the block never shows them.
+     */
+    const block = dto.block ?? PracticeBlock.grammatik;
+    const elementId = await this.resolveElementId(materialId, block, dto.element_id);
+
     const data = {
       materialId,
       type: dto.type,
@@ -76,6 +85,8 @@ export class QuestionEditorService {
       explanation: dto.explanation?.trim() || null,
       points: dto.points ?? 1,
       skills: dto.skills ?? [],
+      block,
+      elementId,
     };
 
     if (questionId) {
@@ -154,6 +165,152 @@ export class QuestionEditorService {
     return this.list(courseId, moduleId, materialId);
   }
 
+  /** The texts and recordings of a material, or of one of its blocks. */
+  async listElements(
+    courseId: string,
+    moduleId: string,
+    materialId: string,
+    block?: PracticeBlock,
+  ) {
+    await this.assertQuizMaterial(courseId, moduleId, materialId);
+    const elements = await this.prisma.practiceElement.findMany({
+      where: { materialId, ...(block ? { block } : {}) },
+      orderBy: [{ block: 'asc' }, { orderIndex: 'asc' }],
+      /**
+       * How many questions point at each text. A text nobody's question points at is never
+       * shown to a student, and that is invisible from the outside — the count is how the
+       * author finds out while they are still on the page.
+       */
+      include: { _count: { select: { questions: true } } },
+    });
+    return elements.map((element) => this.toElementResponse(element));
+  }
+
+  async saveElement(
+    courseId: string,
+    moduleId: string,
+    materialId: string,
+    elementId: string | null,
+    dto: SavePracticeElementDto,
+  ) {
+    await this.assertQuizMaterial(courseId, moduleId, materialId);
+
+    const data = {
+      block: dto.block,
+      kind: dto.kind,
+      title: dto.title.trim(),
+      body: dto.body?.trim() || null,
+      transcript: dto.transcript?.trim() || null,
+      sampleAnswer: dto.sample_answer?.trim() || null,
+      hints: dto.hints?.trim() || null,
+    };
+
+    if (elementId) {
+      const existing = await this.prisma.practiceElement.findFirst({
+        where: { id: elementId, materialId },
+      });
+      if (!existing) {
+        throw new NotFoundException('Матеріал для читання не знайдено');
+      }
+      const updated = await this.prisma.practiceElement.update({
+        where: { id: elementId },
+        data,
+      });
+      return this.toElementResponse(updated);
+    }
+
+    const last = await this.prisma.practiceElement.aggregate({
+      where: { materialId, block: dto.block },
+      _max: { orderIndex: true },
+    });
+    const created = await this.prisma.practiceElement.create({
+      data: {
+        id: randomUUID(),
+        materialId,
+        ...data,
+        orderIndex: (last._max.orderIndex ?? -1) + 1,
+      },
+    });
+    return this.toElementResponse(created);
+  }
+
+  /**
+   * Deleting a text leaves its questions in place, unbound.
+   *
+   * The alternative — taking the questions down with it — turns a mistyped title into lost
+   * work. The database's own rule already does this (`onDelete: SetNull`); this only says so
+   * out loud, and reports how many questions were freed so it is not a silent change.
+   */
+  async removeElement(
+    courseId: string,
+    moduleId: string,
+    materialId: string,
+    elementId: string,
+  ) {
+    await this.assertQuizMaterial(courseId, moduleId, materialId);
+    const existing = await this.prisma.practiceElement.findFirst({
+      where: { id: elementId, materialId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Матеріал для читання не знайдено');
+    }
+    const orphaned = await this.prisma.question.count({ where: { elementId } });
+    await this.prisma.practiceElement.delete({ where: { id: elementId } });
+    return { deleted: true, id: elementId, unbound_questions: orphaned };
+  }
+
+  /**
+   * Accepts a text only if it belongs to this material and this block.
+   *
+   * Silently dropping a wrong id would leave the teacher believing the question was bound;
+   * refusing says which of the two went wrong while it can still be corrected.
+   */
+  private async resolveElementId(
+    materialId: string,
+    block: PracticeBlock,
+    elementId?: string,
+  ): Promise<string | null> {
+    if (!elementId) return null;
+    const element = await this.prisma.practiceElement.findFirst({
+      where: { id: elementId, materialId, block },
+      select: { id: true },
+    });
+    if (!element) {
+      throw new BadRequestException(
+        'Текст не знайдено в цьому блоці практики',
+      );
+    }
+    return element.id;
+  }
+
+  private toElementResponse(element: {
+    id: string;
+    block: PracticeBlock;
+    kind: string;
+    title: string;
+    body: string | null;
+    audioUrl: string | null;
+    transcript: string | null;
+    sampleAnswer: string | null;
+    hints: string | null;
+    orderIndex: number;
+    _count?: { questions: number };
+  }) {
+    return {
+      id: element.id,
+      block: element.block,
+      kind: element.kind,
+      title: element.title,
+      body: element.body,
+      audio_url: element.audioUrl,
+      transcript: element.transcript,
+      sample_answer: element.sampleAnswer,
+      hints: element.hints,
+      order_index: element.orderIndex,
+      question_count: element._count?.questions ?? 0,
+    };
+  }
+
   /** Shapes only what the chosen type needs, so stale fields cannot linger. */
   private buildPayload(dto: SaveQuestionDto): Record<string, unknown> {
     if (
@@ -206,6 +363,8 @@ export class QuestionEditorService {
     points: number;
     skills: string[];
     orderIndex: number;
+    block: PracticeBlock;
+    elementId: string | null;
   }) {
     const payload = (question.payload ?? {}) as {
       options?: Array<{ id: string; text: string }>;
@@ -221,6 +380,8 @@ export class QuestionEditorService {
       points: question.points,
       skills: question.skills,
       order_index: question.orderIndex,
+      block: question.block,
+      element_id: question.elementId,
       options: payload.options ?? [],
       tokens: payload.tokens ?? [],
     };
