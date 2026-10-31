@@ -29,7 +29,7 @@ const byCatalogOrder = (a: CourseCardProps, b: CourseCardProps) =>
   (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
 
 /**
- * Splits the catalogue into its two tracks, dropping a section that has nothing in it —
+ * Splits the catalogue into its two tracks, dropping a section that has nothing in it -
  * a heading over an empty grid reads as something having gone wrong.
  */
 export const buildCatalogSections = (
@@ -58,7 +58,7 @@ export const buildCatalogSections = (
  * How a course's level range reads on a card's step.
  *
  * A course sitting at one level shows that level; one that spans a range shows where it
- * starts, because "від A2" is what a student needs to know before opening it — the top of
+ * starts, because "від A2" is what a student needs to know before opening it - the top of
  * the range says nothing useful about whether they can begin.
  */
 export const levelRangeLabel = (course: CourseCardProps): string => {
@@ -81,7 +81,7 @@ export const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1'] as const;
  *
  * The same rule the server filters by, so what comes back and what gets highlighted agree.
  * Comparing `level` alone meant a course spanning A2–B1 was returned under B1 but left
- * unmarked — the block said "look at B1" and then pointed at nothing.
+ * unmarked - the block said "look at B1" and then pointed at nothing.
  */
 export const coversLevel = (course: CourseCardProps, level: string): boolean => {
   const from = CEFR_ORDER.indexOf(

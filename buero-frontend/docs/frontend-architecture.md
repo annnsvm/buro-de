@@ -2,7 +2,7 @@
 
 ### 1.1. Призначення frontend-частини
 
-Frontend `buero-frontend` — це **SPA на React + TypeScript**, яка реалізує:
+Frontend `buero-frontend` - це **SPA на React + TypeScript**, яка реалізує:
 
 - **Landing / Home**: презентація платформи, пояснення цінності, CTA на Placement Test / trial.
 - **Onboarding & Placement Test**: запуск та проходження глобального Placement Test, показ результатів, активація trial.
@@ -17,7 +17,7 @@ Frontend `buero-frontend` — це **SPA на React + TypeScript**, яка ре�
 Фронтенд напряму інтегрується з такими backend-модулями (див. `docs/api-plan.md`, `docs/modules/*.md`):
 
 - **Auth**: логін, реєстрація, refresh, logout; робота з cookie (`access_token`, `refresh_token`).
-- **Users**: `GET/PATCH /api/users/me` — профіль поточного користувача; мова інтерфейсу, timezone, avatar.
+- **Users**: `GET/PATCH /api/users/me` - профіль поточного користувача; мова інтерфейсу, timezone, avatar.
 - **Placement Test**: `GET /api/placement-test/questions`, `POST /api/placement-test/submit`, `POST /api/placement-test/confirm-trial`.
 - **Courses**: `GET /api/courses`, `GET /api/courses/:id`, CRUD для вчителів.
 - **Course Materials**: `GET /api/courses/:courseId/materials`, `GET /api/courses/:courseId/materials/:id`.
@@ -39,7 +39,7 @@ Frontend `buero-frontend` — це **SPA на React + TypeScript**, яка ре�
 - **HTTP-клієнт:** `axios`.
 - **Styling:** Tailwind CSS (+ за потреби локальні CSS-модулі для складних layout’ів, але за замовчуванням Tailwind).
 - **i18n:** `react-i18next` (словники EN/DE).
-- **Тести:** Jest + React Testing Library; e2e — Playwright або Cypress (рекомендується Playwright).
+- **Тести:** Jest + React Testing Library; e2e - Playwright або Cypress (рекомендується Playwright).
 
 ### 2.2. TypeScript / tsconfig
 
@@ -78,10 +78,10 @@ Frontend `buero-frontend` — це **SPA на React + TypeScript**, яка ре�
 Один інстанс `axios` у `src/api/http.ts`:
 
 - `baseURL`: конфігурований через env (`VITE_API_BASE_URL`).
-- `withCredentials: true` — завжди, для роботи з cookie.
+- `withCredentials: true` - завжди, для роботи з cookie.
 - **Request interceptor**:
   - додає заголовки `Accept-Language` (з `users.language` або i18n-поточна мова).
-  - за потреби додає `Authorization: Bearer <accessToken>` якщо бекенд дозволяє дублювання токена в заголовку (але первинне джерело — cookie).
+  - за потреби додає `Authorization: Bearer <accessToken>` якщо бекенд дозволяє дублювання токена в заголовку (але первинне джерело - cookie).
 - **Response interceptor**:
   - при `401`:
     - один раз викликає `/auth/refresh` (через окремий HTTP-клієнт без циклічного перехоплення);
@@ -103,17 +103,17 @@ Frontend `buero-frontend` — це **SPA на React + TypeScript**, яка ре�
 
 ### 2.6. Стилі та Design Tokens
 
-**Tailwind CSS** (у проєкті — v4 з Vite):
+**Tailwind CSS** (у проєкті - v4 з Vite):
 
 - Токени визначені в `src/styles/index.css` через `@theme` (кольори, шрифти). Окремий `tailwind.config.js` у v4 не обов’язковий.
 - Кольори бренду: `--color-primary`, `--color-secondary`, `--color-background`, `--color-foreground`, `--color-muted` тощо (див. `index.css`).
 - Шрифти: `--font-sans` (Inter), `--font-heading` (Sora).
-- Spacing, borderRadius, boxShadow — стандартна шкала Tailwind або кастом у `@theme` за потреби.
+- Spacing, borderRadius, boxShadow - стандартна шкала Tailwind або кастом у `@theme` за потреби.
 
 **Design tokens** реалізовані в **`src/styles/index.css`** (Tailwind v4 `@theme`): колірна палітра з макету (Cinnabar, Torea Bay, neutrals), шрифти Inter та Sora, семантичні змінні (`--color-primary`, `--color-background`, `--font-heading` тощо). У цьому документі лише загальні принципи:
 
 - **Кольори:** primary (CTA), secondary, background, foreground, muted, border, error; hover-токени за потреби.
-- **Типографіка:** `font-sans` (основний текст), `font-heading` (заголовки); базовий розмір 14–16px; заголовки — `text-xl`–`text-3xl`.
+- **Типографіка:** `font-sans` (основний текст), `font-heading` (заголовки); базовий розмір 14–16px; заголовки - `text-xl`–`text-3xl`.
 - **Радіуси та тіні:** картки `rounded-xl`, `shadow-md`; модалки `rounded-2xl`, `shadow-lg`.
 
 ---
@@ -170,7 +170,7 @@ src/
 - Точка входу:
   - створює React root;
   - обгортає `App` у `Provider` (Redux), `PersistGate` (redux-persist);
-  - **не** використовує `BrowserRouter` — роутер підключається в `App` через `RouterProvider`.
+  - **не** використовує `BrowserRouter` - роутер підключається в `App` через `RouterProvider`.
 
 Приклад (поточна реалізація):
 
@@ -190,7 +190,7 @@ createRoot(rootElement).render(
 
 - Відповідає за:
   - підключення **React Router** через `RouterProvider` та один об’єкт `router` (див. §4 «Роутинг»);
-  - опційно — глобальний `AppErrorBoundary` навколо всього дерева.
+  - опційно - глобальний `AppErrorBoundary` навколо всього дерева.
 - Роути оголошуються **не** тут, а в `src/routes/index.tsx` (createBrowserRouter). Lazy-loading сторінок реалізовано через `React.lazy()` у конфігу роутера.
 
 ### 3.3. Layout: `SharedLayout` та `src/routes/index.tsx`
@@ -199,7 +199,7 @@ createRoot(rootElement).render(
   - Header (logo, навігація, CTA), Footer;
   - область `<main>` з `<Outlet />` для дочірніх роутів;
   - при mount можна викликати `fetchCurrentUser()` / refresh сесії.
-- Роутер визначено в **`src/routes/index.tsx`**: один батьківський маршрут з `element: <SharedLayout />` і `children` — усі сторінки. Таким чином layout один на весь застосунок, змінюється лише вміст `<Outlet />`.
+- Роутер визначено в **`src/routes/index.tsx`**: один батьківський маршрут з `element: <SharedLayout />` і `children` - усі сторінки. Таким чином layout один на весь застосунок, змінюється лише вміст `<Outlet />`.
 
 ### 3.4. `src/pages/*`
 
@@ -207,7 +207,7 @@ createRoot(rootElement).render(
   - `HomePage/HomePage.tsx`
   - `AssessmentPage/AssessmentPage.tsx`
   - `ResultsPage/ResultsPage.tsx`
-  - (auth — лише модалки, окремої AuthPage немає)
+  - (auth - лише модалки, окремої AuthPage немає)
   - `TrialDashboardPage/TrialDashboardPage.tsx`
   - `SubscribedDashboardPage/SubscribedDashboardPage.tsx`
   - `TeacherDirectoryPage/TeacherDirectoryPage.tsx`
@@ -220,28 +220,28 @@ createRoot(rootElement).render(
 Усередині:
 
 - лише **page-level компоненти** (композиція feature-компонентів, layout та ui).
-- стилізація — через Tailwind або, за потреби, локальний `.module.css` (але без бізнес-логіки).
+- стилізація - через Tailwind або, за потреби, локальний `.module.css` (але без бізнес-логіки).
 
 ### 3.5. `src/features/*`
 
-**Feature-based** підхід: кожна фіча — окрема папка з опційними підпапками `components/`, `redux/`, `api/`, `validation/`. У кожній фічі є `index.ts` з JSDoc (посилання на doc у `docs/frontend-features/`, перелік запланованих підпапок). Загальний barrel — `src/features/index.ts`: імпорт через `import { auth, landing, ... } from "@/features"`.
+**Feature-based** підхід: кожна фіча - окрема папка з опційними підпапками `components/`, `redux/`, `api/`, `validation/`. У кожній фічі є `index.ts` з JSDoc (посилання на doc у `docs/frontend-features/`, перелік запланованих підпапок). Загальний barrel - `src/features/index.ts`: імпорт через `import { auth, landing, ... } from "@/features"`.
 
-**Детальний опис:** див. **[docs/features-folder-guide.md](features-folder-guide.md)** — навіщо папка features, як з нею працювати, приклад фічі (auth), і чому Redux лишається окремо в `src/redux/`.
+**Детальний опис:** див. **[docs/features-folder-guide.md](features-folder-guide.md)** - навіщо папка features, як з нею працювати, приклад фічі (auth), і чому Redux лишається окремо в `src/redux/`.
 
 Перелік фіч:
 
-- `src/features/auth/` — `components/` (LoginForm, RegisterForm, ResetPasswordForm), `api/`, `validation/`. Redux (auth slice) — окремо в `src/redux/slices/auth/`.
-- `src/features/landing/` — компоненти лендингу (hero, why-buro, beyond-classroom тощо).
-- `src/features/placement-test/` — проходження тесту, прогрес-бар, summary.
-- `src/features/courses-catalog/` — фільтри, список курсів, картки.
-- `src/features/course-learning/` — sidebar, lesson content viewer, video/quiz/scenario renderers, notes.
-- `src/features/profile/` — profile overview, avatar upload, profile forms.
-- `src/features/subscriptions/` — subscription banners, статус, кнопки Checkout/Portal.
-- `src/features/lesson-requests/` — форма створення запиту, списки для студента/вчителя.
-- `src/features/progress-quizzes/` — відображення прогресу, progress bar, recommended-next widgets.
-- `src/features/account-settings/` — форми налаштувань акаунту (мова, timezone, пароль тощо).
+- `src/features/auth/` - `components/` (LoginForm, RegisterForm, ResetPasswordForm), `api/`, `validation/`. Redux (auth slice) - окремо в `src/redux/slices/auth/`.
+- `src/features/landing/` - компоненти лендингу (hero, why-buro, beyond-classroom тощо).
+- `src/features/placement-test/` - проходження тесту, прогрес-бар, summary.
+- `src/features/courses-catalog/` - фільтри, список курсів, картки.
+- `src/features/course-learning/` - sidebar, lesson content viewer, video/quiz/scenario renderers, notes.
+- `src/features/profile/` - profile overview, avatar upload, profile forms.
+- `src/features/subscriptions/` - subscription banners, статус, кнопки Checkout/Portal.
+- `src/features/lesson-requests/` - форма створення запиту, списки для студента/вчителя.
+- `src/features/progress-quizzes/` - відображення прогресу, progress bar, recommended-next widgets.
+- `src/features/account-settings/` - форми налаштувань акаунту (мова, timezone, пароль тощо).
 
-У features **не лежать**: глобальний layout (Header, Footer); базові UI-компоненти (Button, Input, Card, Modal); **Redux** — усі слайси лишаються в `src/redux/slices/`.
+У features **не лежать**: глобальний layout (Header, Footer); базові UI-компоненти (Button, Input, Card, Modal); **Redux** - усі слайси лишаються в `src/redux/slices/`.
 
 ### 3.6. `src/components/layout/*`
 
@@ -263,9 +263,9 @@ createRoot(rootElement).render(
 
 ### 3.8. `src/redux/*`
 
-- `store.ts` — конфігурація Redux store.
-- `persistConfig.ts` — конфіг `redux-persist` (whitelist/blacklist для slices).
-- Усі слайси лежать у **`src/redux/slices/`** (auth, user, placementTest, coursesCatalog, courseLearning, progressQuizzes, subscriptions, lessonRequests). `rootReducer.ts` імпортує редьюсери тільки звідти. Redux у фічах не використовується — стейт залишається окремо від папки `features/` (див. [docs/features-folder-guide.md](features-folder-guide.md)).
+- `store.ts` - конфігурація Redux store.
+- `persistConfig.ts` - конфіг `redux-persist` (whitelist/blacklist для slices).
+- Усі слайси лежать у **`src/redux/slices/`** (auth, user, placementTest, coursesCatalog, courseLearning, progressQuizzes, subscriptions, lessonRequests). `rootReducer.ts` імпортує редьюсери тільки звідти. Redux у фічах не використовується - стейт залишається окремо від папки `features/` (див. [docs/features-folder-guide.md](features-folder-guide.md)).
 
 ### 3.9. `src/hooks/*`
 
@@ -293,7 +293,7 @@ createRoot(rootElement).render(
 
 ### 3.13. `src/errors/*`
 
-- `AppErrorBoundary.tsx` — глобальний Error Boundary.
+- `AppErrorBoundary.tsx` - глобальний Error Boundary.
 - Локальні Error Boundaries:
   - `CoursePageErrorBoundary.tsx`, `ProfileErrorBoundary.tsx`, `CatalogErrorBoundary.tsx`.
 
@@ -314,18 +314,18 @@ createRoot(rootElement).render(
 ### 4.2. Як це працює зараз
 
 - **Де оголошується роутер:** `src/routes/index.tsx`. Експортується об’єкт `router` (результат `createBrowserRouter([...])`).
-- **Де підключається:** у `App.tsx` — `<RouterProvider router={router} />`. Історія й зміна URL керуються цим провайдером.
+- **Де підключається:** у `App.tsx` - `<RouterProvider router={router} />`. Історія й зміна URL керуються цим провайдером.
 - **Структура маршрутів:**
   - Один кореневий маршрут з `path: "/"`, `element: <Suspense><SharedLayout /></Suspense>`, `errorElement: <NotFoundPage />`.
-  - У `children` — усі сторінки: `index: true` (HomePage), `path: "assessment"`, `path: "courses/:courseId"` тощо. Окремої сторінки `/auth` немає; авторизація — лише модалки (Header/Footer посилають на `/#login`, `/#signup`). Константи шляхів у `src/helpers/routes.ts` (`ROUTES`, `getCoursePath(courseId)`).
+  - У `children` - усі сторінки: `index: true` (HomePage), `path: "assessment"`, `path: "courses/:courseId"` тощо. Окремої сторінки `/auth` немає; авторизація - лише модалки (Header/Footer посилають на `/#login`, `/#signup`). Константи шляхів у `src/helpers/routes.ts` (`ROUTES`, `getCoursePath(courseId)`).
   - `SharedLayout` рендерить Header, Footer і `<Outlet />`; у `<Outlet />` потрапляє відповідна дочірня сторінка.
-- **Guards:** для захищених маршрутів `element` обгорнуто в `<PrivateGuard>` (редирект на `/` з відкриттям login-модалки, якщо не залогінений); для публічних — `<PublicGuard>`. Реалізація guards у `src/components/guards/`.
+- **Guards:** для захищених маршрутів `element` обгорнуто в `<PrivateGuard>` (редирект на `/` з відкриттям login-модалки, якщо не залогінений); для публічних - `<PublicGuard>`. Реалізація guards у `src/components/guards/`.
 
 ### 4.3. Таблиця роутів
 
 | Route                   | Page                      | Role/Access                                   | Опис                                                                         | Guard                                              | ErrorBoundary                      |
 | ----------------------- | ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------- |
-| `/`                     | `HomePage`                | public                                        | Landing, hero, benefits, CTA на assessment/trial.                            | —                                                  | Global                             |
+| `/`                     | `HomePage`                | public                                        | Landing, hero, benefits, CTA на assessment/trial.                            | -                                                  | Global                             |
 | `/assessment`           | `AssessmentPage`          | authenticated (student) або public+soft-guard | Старт та проходження Placement Test.                                         | AuthGuard (redirect на `/` або inline login modal) | PlacementTest boundary (локальний) |
 | `/results`              | `ResultsPage`             | authenticated (student)                       | Показ рівня A1–B2, CTA на trial/dashboard/courses.                           | AuthGuard                                          | Global                             |
 | `/dashboard/trial`      | `TrialDashboardPage`      | student with trial                            | Дашборд триалу: прогрес placement, CTA до першого курсу, banner trial.       | ProtectedRoute + `requireTrial`                    | Dashboard boundary                 |
@@ -335,7 +335,7 @@ createRoot(rootElement).render(
 | `/courses`              | `CoursesCatalogPage`      | student with trial/subscription               | Каталог курсів з фільтрами, пошуком.                                         | ProtectedRoute + `requireContentAccess`            | Catalog boundary                   |
 | `/courses/:courseId`    | `CoursePage`              | student with trial/subscription               | Learning view: sidebar lessons, main content, progress.                      | ProtectedRoute + `requireContentAccess`            | CoursePage boundary                |
 | `/profile` або `/me`    | `UserProfilePage`         | authenticated                                 | Мій прогрес, курси, profile settings, avatar.                                | ProtectedRoute                                     | Profile boundary                   |
-| `*`                     | `NotFoundPage`            | public                                        | 404 з CTA на `/` або `/courses`.                                             | —                                                  | Global                             |
+| `*`                     | `NotFoundPage`            | public                                        | 404 з CTA на `/` або `/courses`.                                             | -                                                  | Global                             |
 
 ### 4.4. ProtectedRoute / Guards
 
@@ -354,9 +354,9 @@ createRoot(rootElement).render(
   - обгортає `App` на кореневому рівні.
   - показує fallback-екран з CTA «Reload» / «Go Home».
 - **Локальні Boundaries**:
-  - `CoursePageErrorBoundary` — на `/courses/:courseId`.
-  - `ProfileErrorBoundary` — на `/profile`.
-  - `CatalogErrorBoundary` — на `/courses`.
+  - `CoursePageErrorBoundary` - на `/courses/:courseId`.
+  - `ProfileErrorBoundary` - на `/profile`.
+  - `CatalogErrorBoundary` - на `/courses`.
 
 ---
 
@@ -381,7 +381,7 @@ flowchart LR
 - **Refresh**:
   - при старті застосунку `Layout` викликає `fetchCurrentUser`:
     - `GET /api/users/me` з cookie → якщо 200 → оновлює `user` slice;
-    - якщо 401 → axios-интерцептор запускає `/auth/refresh` → при успіху — повторення запиту, при фейлі — logout.
+    - якщо 401 → axios-интерцептор запускає `/auth/refresh` → при успіху - повторення запиту, при фейлі - logout.
 - **Logout**:
   - `POST /auth/logout` → бекенд прибирає/інвалідує cookie/refresh;
   - frontend чистить Redux/persist та редіректить на `/`.
@@ -419,14 +419,14 @@ flowchart LR
 - **Response**:
   - якщо `response.status === 401` і це **не** запит `/auth/login` чи `/auth/refresh`:
     - один раз пробує `POST /auth/refresh`.
-    - при успіху — повторює оригінальний запит.
-    - при помилці — викликає `auth/logout` + редірект.
+    - при успіху - повторює оригінальний запит.
+    - при помилці - викликає `auth/logout` + редірект.
 
 ### 6.2. Error handling
 
 - **Технічні помилки**:
   - глобальний toast/notification (наприклад, `react-hot-toast`).
-  - для критичних (неможливо завантажити CoursePage) — ErrorBoundary fallback.
+  - для критичних (неможливо завантажити CoursePage) - ErrorBoundary fallback.
 - **Валідаційні помилки форм**:
   - бекенд повертає деталізовані помилки полів;
   - adapter у `helpers/http.ts` мапить їх у формат RHF (`setError`).
@@ -451,7 +451,7 @@ flowchart LR
   - **Не** записуємо токени в `localStorage` або інше JS-доступне сховище.
 - **HTTP-клієнт**:
   - один axios-інстанс з `withCredentials: true`.
-  - при 401 — спроба `/auth/refresh`, потім logout/redirect.
+  - при 401 - спроба `/auth/refresh`, потім logout/redirect.
 - **UI-стан авторизації**:
   - Redux зберігає факт наявності сесії та snapshot користувача.
   - Detect session: успішний `GET /api/users/me` → «logged in».
@@ -462,7 +462,7 @@ flowchart LR
 
 ### 8.1. Ключові форми
 
-- Auth: login, register, (password reset — якщо буде у MVP).
+- Auth: login, register, (password reset - якщо буде у MVP).
 - Placement test: відповіді на питання, підтвердження trial.
 - Profile: оновлення імені (якщо є), language, timezone, avatar upload.
 - Account settings: мова, timezone, email preferences.
@@ -483,7 +483,7 @@ flowchart LR
 
 - **Errors**:
   - Показуються inline біля полів.
-  - Для складних форм — також summary-панель вгорі.
+  - Для складних форм - також summary-панель вгорі.
 - **Submit**:
   - кнопка дизейблиться при `isSubmitting`.
   - глобальний loading-spinner на критичних сабмітах (auth, placement submit).
@@ -502,7 +502,7 @@ flowchart LR
   - ключі на рівні features: `auth.login.title`, `courses.catalog.title`.
 - Вибір мови:
   - спочатку з `user.language` (якщо залогінений).
-  - інакше — з `localStorage` або `navigator.language`.
+  - інакше - з `localStorage` або `navigator.language`.
   - оновлення мови в профілі → збереження на бекенді + у i18n.
 
 ### 9.2. A11y
@@ -526,10 +526,10 @@ Tailwind breakpoints (`sm`, `md`, `lg`, `xl`):
   - `md`: 2 картки.
   - `lg+`: 3–4 картки.
 - **CoursePage**:
-  - desktop: ліворуч — fixed/sidebar з модулями/уроками; праворуч — контент.
+  - desktop: ліворуч - fixed/sidebar з модулями/уроками; праворуч - контент.
   - mobile: sidebar як drawer/slide-over; основний контент фул-вширину.
 - **Profile**:
-  - карточки прогресу розкладаються в сітку, але на mobile — один стовпчик.
+  - карточки прогресу розкладаються в сітку, але на mobile - один стовпчик.
 
 ---
 
@@ -553,4 +553,4 @@ Tailwind breakpoints (`sm`, `md`, `lg`, `xl`):
   - `refactor: extract course sidebar component`
   - `chore: configure tailwind and eslint`
 
-Коментарі та назви комітів — англійською; документація — українською з технічними термінами англійською.
+Коментарі та назви комітів - англійською; документація - українською з технічними термінами англійською.

@@ -19,6 +19,7 @@ import { PracticeModule } from './modules/practice/practice.module';
 import { WritingModule } from './modules/writing/writing.module';
 import { YoutubeModule } from './modules/youtube/youtube.module';
 import { VocabularyModule } from './modules/vocabulary/vocabulary.module';
+import { LessonNotesModule } from './modules/lesson-notes/lesson-notes.module';
 import { LessonRequestsModule } from './modules/lesson-requests/lesson-requests.module';
 import { ContactModule } from './modules/contact/contact.module';
 
@@ -68,6 +69,7 @@ import { ContactModule } from './modules/contact/contact.module';
     WritingModule,
     YoutubeModule,
     VocabularyModule,
+    LessonNotesModule,
     LessonRequestsModule,
     ContactModule,
   ],

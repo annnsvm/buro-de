@@ -39,7 +39,7 @@ export class CourseModulesController {
   @ApiOperation({
     summary: "Список модулів курсу",
     description:
-      "Список модулів курсу за order_index. Доступ: вчитель — завжди; студент — лише за наявності доступу до курсу.",
+      "Список модулів курсу за order_index. Доступ: вчитель - завжди; студент - лише за наявності доступу до курсу.",
   })
   @ApiParam({ name: "courseId", description: "UUID курсу" })
   @ApiResponse({ status: 200, description: "Список модулів" })
@@ -68,7 +68,7 @@ export class CourseModulesController {
   @ApiOperation({
     summary: "Один модуль по id",
     description:
-      "Один модуль. Доступ: вчитель — завжди; студент — лише за наявності доступу до курсу.",
+      "Один модуль. Доступ: вчитель - завжди; студент - лише за наявності доступу до курсу.",
   })
   @ApiParam({ name: "courseId", description: "UUID курсу" })
   @ApiParam({ name: "moduleId", description: "UUID модуля" })

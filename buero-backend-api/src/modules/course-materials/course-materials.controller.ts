@@ -9,11 +9,16 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -29,6 +34,7 @@ import type { UserWithoutPassword } from '../user/types/user-response.type';
 import { QuestionImportService } from '../exercises/import/question-import.service';
 import { ImportQuestionsDto } from '../exercises/import/import-questions.dto';
 import { QuestionEditorService } from '../exercises/question-editor.service';
+import { practiceAudioMulterOptions } from '../exercises/multer-practice-audio.config';
 import {
   ReorderQuestionsDto,
   SavePracticeElementDto,
@@ -53,7 +59,7 @@ export class CourseMaterialsController {
   @ApiOperation({
     summary: 'Список матеріалів модуля',
     description:
-      'Список матеріалів модуля. Доступ: вчитель — завжди; студент — лише за наявності доступу до курсу. 403 при відсутності доступу.',
+      'Список матеріалів модуля. Доступ: вчитель - завжди; студент - лише за наявності доступу до курсу. 403 при відсутності доступу.',
   })
   @ApiParam({ name: 'courseId', description: 'UUID курсу' })
   @ApiParam({ name: 'moduleId', description: 'UUID модуля' })
@@ -85,7 +91,7 @@ export class CourseMaterialsController {
   @ApiOperation({
     summary: 'Один матеріал по id',
     description:
-      'Один матеріал по id. Доступ: вчитель — завжди; студент — лише за наявності доступу до курсу. 403 при відсутності доступу.',
+      'Один матеріал по id. Доступ: вчитель - завжди; студент - лише за наявності доступу до курсу. 403 при відсутності доступу.',
   })
   @ApiParam({ name: 'courseId', description: 'UUID курсу' })
   @ApiParam({ name: 'moduleId', description: 'UUID модуля' })
@@ -121,7 +127,7 @@ export class CourseMaterialsController {
   @ApiOperation({
     summary: 'Питання квізу для редагування',
     description:
-      'Повертає питання разом із правильними відповідями — на відміну від ендпоінту для студента. Тільки для вчителів.',
+      'Повертає питання разом із правильними відповідями - на відміну від ендпоінту для студента. Тільки для вчителів.',
   })
   @ApiResponse({ status: 200, description: 'Список питань' })
   listQuestions(
@@ -236,13 +242,68 @@ export class CourseMaterialsController {
     );
   }
 
+  @Post(":id/elements/:elementId/audio")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
+  @UseInterceptors(FileInterceptor('file', practiceAudioMulterOptions))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Завантажити аудіо до блоку Hören',
+    description:
+      'MP3, OGG, WAV, M4A, AAC або WebM, до 15 МБ. Файл іде в Cloudinary, елемент зберігає лише адресу. ' +
+      'Повторне завантаження замінює адресу.',
+  })
+  @ApiResponse({ status: 400, description: 'Непідтримуваний формат або завеликий файл' })
+  uploadElementAudio(
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') materialId: string,
+    @Param('elementId') elementId: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.questionEditor.attachAudio(
+      courseId,
+      moduleId,
+      materialId,
+      elementId,
+      file,
+    );
+  }
+
+  @Post(":id/elements/audio-batch")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
+  @UseInterceptors(FilesInterceptor('files', 40, practiceAudioMulterOptions))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Завантажити всі аудіо блоку одразу',
+    description:
+      'Файли розкладаються по записах за іменем із колонки «Матеріал». ' +
+      'Відповідь каже, які зіставилися, які ні, і яких ще бракує.',
+  })
+  uploadElementAudioBatch(
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') materialId: string,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.questionEditor.attachAudioBatch(
+      courseId,
+      moduleId,
+      materialId,
+      files ?? [],
+    );
+  }
+
   @Delete(":id/elements/:elementId")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.teacher)
   @ApiBearerAuth('access_token')
   @ApiOperation({
     summary: 'Видалити текст або аудіо',
-    description: 'Питання залишаються — вони просто більше ні до чого не прив’язані.',
+    description: 'Питання залишаються - вони просто більше ні до чого не прив’язані.',
   })
   deleteElement(
     @Param('courseId') courseId: string,

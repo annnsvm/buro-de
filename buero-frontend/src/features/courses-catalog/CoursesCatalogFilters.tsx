@@ -6,7 +6,7 @@ import type { CoursesCatalogFiltersProps } from '@/types/features/courses-catalo
  * The bar that narrows the catalogue.
  *
  * Two controls, on the two questions a visitor actually has: what kind of course, and at
- * what level. They are different kinds of choice, so they look different — the kind is a
+ * what level. They are different kinds of choice, so they look different - the kind is a
  * segmented switch where exactly one option is always on, the level a row of chips that
  * can be cleared by pressing the one already chosen.
  *

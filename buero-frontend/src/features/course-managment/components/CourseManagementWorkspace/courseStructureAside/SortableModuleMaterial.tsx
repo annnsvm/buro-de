@@ -9,6 +9,8 @@ import { toMaterialSortableId } from './courseStructureDnd.ids';
 type SortableModuleMaterialProps = {
   moduleId: string;
   material: ModuleMaterialType;
+  /** 1 for a practice shown under its lesson; 0 for everything else. */
+  depth?: number;
   dragEnabled: boolean;
   onSelectMaterial: (moduleId: string, materialId: string) => void;
   onRequestDeleteMaterial?: (moduleId: string, materialId: string) => void;
@@ -17,6 +19,7 @@ type SortableModuleMaterialProps = {
 const SortableModuleMaterial = ({
   moduleId,
   material,
+  depth = 0,
   dragEnabled,
   onSelectMaterial,
   onRequestDeleteMaterial,
@@ -51,6 +54,8 @@ const SortableModuleMaterial = ({
       sortableStyle={{
         transform: CSS.Transform.toString(transform),
         transition,
+        /** Indented rather than badged: the shape of the list says what belongs to what. */
+        marginLeft: depth > 0 ? 20 : undefined,
       }}
       isDragging={isDragging}
       dragHandleProps={dragHandleProps}

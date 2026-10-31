@@ -10,7 +10,7 @@ type AssetImageProps = {
 
 /**
  * Loads a real asset when it exists. Until the file is added, the styled
- * fallback stays visible — drop a jpg at `src` and this switches automatically.
+ * fallback stays visible - drop a jpg at `src` and this switches automatically.
  */
 const AssetImage = ({
   src,

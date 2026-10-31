@@ -24,7 +24,9 @@ const element = (id: string): PracticeElement => ({
   kind: 'text',
   title: id,
   body: 'Text',
+  audio_url: null,
   has_transcript: false,
+  transcript: null,
 });
 
 describe('grouping a block’s questions by the text they are about', () => {

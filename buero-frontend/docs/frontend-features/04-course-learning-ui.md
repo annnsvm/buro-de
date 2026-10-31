@@ -25,7 +25,7 @@ Feature **Course Learning UI** реалізує сторінку `/courses/:cour
 - `CourseSidebar`:
   - список модулів/уроків на основі `course_materials`:
     - назва, тип, тривалість (якщо є), статус (completed/in-progress).
-  - підтримка прокрутки; на mobile — drawer.
+  - підтримка прокрутки; на mobile - drawer.
 - `LessonContent`:
   - рендерить контент поточного матеріалу:
     - `VideoLesson` (type = video, YouTube embed).
@@ -88,7 +88,7 @@ Thunks:
 - Якщо реалізується, `LessonNotes` використовує RHF або локальний state:
   - autosave через debounce:
     - `PATCH /api/notes/:courseMaterialId` (endpoint залежить від backend-дизайну).
-  - Валідація — максимально проста (обмеження довжини, заборона порожнього content за потреби).
+  - Валідація - максимально проста (обмеження довжини, заборона порожнього content за потреби).
 
 #### 4.2. Quiz/Scenario
 
@@ -101,11 +101,11 @@ Thunks:
 
 Використовуються модулі `Courses`, `Course Materials`, `Progress & Quizzes`:
 
-- `GET /api/courses/:courseId` — метадані курсу.
-- `GET /api/courses/:courseId/materials` — список `course_materials`.
-- `GET /api/courses/:courseId/materials/:id` — повні дані матеріалу (якщо потрібно).
-- `GET /api/courses/:courseId/progress` — прогрес користувача по курсу.
-- `POST /api/courses/:courseId/materials/:materialId/complete` — позначити матеріал завершеним.
+- `GET /api/courses/:courseId` - метадані курсу.
+- `GET /api/courses/:courseId/materials` - список `course_materials`.
+- `GET /api/courses/:courseId/materials/:id` - повні дані матеріалу (якщо потрібно).
+- `GET /api/courses/:courseId/progress` - прогрес користувача по курсу.
+- `POST /api/courses/:courseId/materials/:materialId/complete` - позначити матеріал завершеним.
 - Квіз/сценарій:
   - `POST /api/quiz/attempts`;
   - `POST /api/quiz/attempts/:attemptId/answers`;

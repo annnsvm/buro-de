@@ -6,7 +6,7 @@ type AnimatedProgressBarProps = {
   className?: string;
   trackClassName?: string;
   fillClassName?: string;
-  /** Delay before fill starts (ms) — helps when nested inside Reveal */
+  /** Delay before fill starts (ms) - helps when nested inside Reveal */
   delayMs?: number;
   durationMs?: number;
 };

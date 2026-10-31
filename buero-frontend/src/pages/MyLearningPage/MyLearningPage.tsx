@@ -21,7 +21,7 @@ import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
 import { useTranslation } from 'react-i18next';
 
 /**
- * The same four categories the catalogue offers, by the same ids — so the two pages
+ * The same four categories the catalogue offers, by the same ids - so the two pages
  * cannot drift apart, and so the labels come from the translations rather than being
  * written out again in English on a Ukrainian page.
  */

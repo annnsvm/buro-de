@@ -17,7 +17,7 @@ const readTokens = (payload: unknown): string[] => {
 
 /**
  * Word order is one of the hardest parts of German, and a sentence usually has more
- * than one correct arrangement — "Heute lerne ich Deutsch" and "Ich lerne heute
+ * than one correct arrangement - "Heute lerne ich Deutsch" and "Ich lerne heute
  * Deutsch" are both right. Each accepted order is therefore stored as its own sentence
  * and compared through the German matcher, which also absorbs spacing and the final
  * full stop.
@@ -36,7 +36,7 @@ export const orderingDefinition: ExerciseDefinition = {
 
     /**
      * The words have to be able to form one of the accepted sentences. Otherwise the
-     * exercise cannot be completed however the student arranges them — which is the
+     * exercise cannot be completed however the student arranges them - which is the
      * kind of mistake that is invisible until a learner is stuck on it.
      */
     if (tokens.length > 0 && acceptedAnswers.length > 0) {

@@ -9,6 +9,8 @@ import {
   fetchEditorQuestions,
   updateEditorElement,
   updateEditorQuestion,
+  uploadElementAudio,
+  uploadElementAudioBatch,
   type EditorElement,
   type EditorQuestion,
   type PracticeBlockName,
@@ -18,6 +20,10 @@ import {
 import type { QuizQuestionType } from '@/api/quizApi';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
 import PracticeTexts from './PracticeTexts';
+import PracticeAudios from './PracticeAudios';
+import PracticeWritings from './PracticeWritings';
+import PracticeSpeakings from './PracticeSpeakings';
+import { usePersistentDraft } from '@/hooks/usePersistentDraft';
 
 export type QuestionEditorProps = {
   courseId: string;
@@ -29,7 +35,7 @@ export type QuestionEditorProps = {
    */
   scoredByPoints: boolean;
   /**
-   * True for a practice, whose questions belong to one of four blocks. A quiz and a test
+   * True for a practice, whose questions belong to one of five blocks. A quiz and a test
    * have no blocks, so nothing about them is shown there.
    */
   hasBlocks?: boolean;
@@ -38,12 +44,24 @@ export type QuestionEditorProps = {
 const BLOCK_LABELS: Record<PracticeBlockName, string> = {
   grammatik: 'Grammatik',
   lesen: 'Lesen',
-  hoeren: 'Hören',
+  horen: 'Hören',
   sprechen: 'Sprechen',
+  schreiben: 'Schreiben',
 };
 
-/** Only a block whose questions are asked about something needs a text. */
+/** Which block's questions are asked about something, and what that something is. */
 const BLOCKS_WITH_TEXTS: PracticeBlockName[] = ['lesen'];
+const BLOCKS_WITH_AUDIO: PracticeBlockName[] = ['horen'];
+/**
+ * The two blocks that ask no questions at all.
+ *
+ * Writing is a rubric to be marked against; speaking is a prompt and the author's own answer.
+ * Both were invisible in this editor until they had a view of their own: the tab showed a
+ * question list, and an empty list of questions reads as an empty block even when nine
+ * speaking tasks are sitting in it.
+ */
+const BLOCKS_WITH_WRITING: PracticeBlockName[] = ['schreiben'];
+const BLOCKS_WITH_SPEAKING: PracticeBlockName[] = ['sprechen'];
 
 const TYPE_LABELS: Record<QuizQuestionType, string> = {
   single_choice: 'Один варіант',
@@ -103,12 +121,26 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 }) => {
   const [questions, setQuestions] = useState<EditorQuestion[]>([]);
   const [elements, setElements] = useState<EditorElement[]>([]);
-  const [draft, setDraft] = useState<EditorQuestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Which block is being worked on. A quiz has none, and everything stays in grammatik. */
   const [block, setBlock] = useState<PracticeBlockName>('grammatik');
+  /**
+   * A question being written survives this editor being closed and reopened.
+   *
+   * Scoped to the material and the block. A question carries the block it belongs to, and the
+   * form is drawn whenever there is a draft at all, so one key per block is what keeps a
+   * half-written Hoeren question from appearing under Grammatik.
+   */
+  const {
+    value: draft,
+    setValue: setDraft,
+    clear: forgetDraft,
+  } = usePersistentDraft<EditorQuestion | null>(
+    `question:${materialId}:${block}`,
+    null,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -161,6 +193,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         await createEditorQuestion(courseId, moduleId, materialId, payload);
       }
       setDraft(null);
+      /** Saved, so there is nothing left to protect. */
+      forgetDraft();
       await load();
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Не вдалося зберегти питання'));
@@ -202,6 +236,46 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     [courseId, moduleId, materialId, load],
   );
 
+  const uploadAudio = useCallback(
+    async (elementId: string, file: File) => {
+      setError(null);
+      try {
+        await uploadElementAudio(courseId, moduleId, materialId, elementId, file);
+        await load();
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Не вдалося завантажити аудіо'));
+      }
+    },
+    [courseId, moduleId, materialId, load],
+  );
+
+  /**
+   * The result is reported rather than swallowed: a file that matched nothing is nearly always
+   * a typo in one of the two names, and the author can only see that if it is said.
+   */
+  const uploadAudioBatch = useCallback(
+    async (files: File[]) => {
+      setError(null);
+      try {
+        const result = await uploadElementAudioBatch(courseId, moduleId, materialId, files);
+        await load();
+        const notes: string[] = [`Завантажено: ${result.uploaded}`];
+        if (result.unmatched.length) {
+          notes.push(`не зіставлено: ${result.unmatched.join(', ')}`);
+        }
+        if (result.still_missing.length) {
+          notes.push(`ще бракує: ${result.still_missing.join(', ')}`);
+        }
+        if (result.unmatched.length || result.still_missing.length) {
+          setError(notes.join('. '));
+        }
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Не вдалося завантажити аудіо'));
+      }
+    },
+    [courseId, moduleId, materialId, load],
+  );
+
   const removeElement = useCallback(
     async (elementId: string) => {
       setError(null);
@@ -232,15 +306,26 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       {hasBlocks ? (
         <div className="flex flex-wrap gap-2">
           {(Object.keys(BLOCK_LABELS) as PracticeBlockName[]).map((name) => {
-            const count = questions.filter((question) => question.block === name).length;
+            /**
+             * How much is in the block: its questions where it asks them, its tasks where it
+             * does not. Counting questions alone badged Schreiben and Sprechen 0 while the
+             * letters and recordings sat inside them - a plain untruth on the one tab whose
+             * contents are hardest to find any other way.
+             */
+            const asked = questions.filter((question) => question.block === name).length;
+            const count =
+              asked || elements.filter((element) => element.block === name).length;
             return (
               <button
                 key={name}
                 type="button"
-                onClick={() => {
-                  setBlock(name);
-                  setDraft(null);
-                }}
+                /**
+                 * Only the block changes. This used to discard the question being written,
+                 * which is the loss the author reported: one click on another block and a
+                 * typed-out question was gone. The draft key carries the block, so switching
+                 * now puts the other block's draft on screen and keeps this one waiting.
+                 */
+                onClick={() => setBlock(name)}
                 className={[
                   'rounded-full px-4 py-1.5 text-sm font-medium transition',
                   name === block
@@ -248,16 +333,64 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     : 'border border-[var(--color-border-default)] text-[var(--color-text-secondary)]',
                 ].join(' ')}
               >
-                {BLOCK_LABELS[name]} · {count}
+                {BLOCK_LABELS[name]}
+                {/* The count is a badge on the tab, not more words in its name. */}
+                <span
+                  className={[
+                    'ml-2 rounded-full px-2 py-0.5 text-xs tabular-nums',
+                    name === block
+                      ? 'bg-white/25'
+                      : 'bg-[var(--color-surface-section)] text-[var(--color-text-secondary)]',
+                  ].join(' ')}
+                >
+                  {count}
+                </span>
               </button>
             );
           })}
         </div>
       ) : null}
 
+      {hasBlocks && BLOCKS_WITH_AUDIO.includes(block) ? (
+        <PracticeAudios
+          block={block}
+          draftKey={`element:${materialId}:${block}`}
+          elements={blockElements}
+          saving={saving}
+          onSave={saveElement}
+          onDelete={removeElement}
+          onUploadAudio={uploadAudio}
+          onUploadBatch={uploadAudioBatch}
+          onAddQuestion={(elementId) => setDraft(blankQuestion(block, blockElements, elementId))}
+        />
+      ) : null}
+
+      {hasBlocks && BLOCKS_WITH_WRITING.includes(block) ? (
+        <PracticeWritings
+          block={block}
+          draftKey={`element:${materialId}:${block}`}
+          elements={blockElements}
+          saving={saving}
+          onSave={saveElement}
+          onDelete={removeElement}
+        />
+      ) : null}
+
+      {hasBlocks && BLOCKS_WITH_SPEAKING.includes(block) ? (
+        <PracticeSpeakings
+          block={block}
+          draftKey={`element:${materialId}:${block}`}
+          elements={blockElements}
+          saving={saving}
+          onSave={saveElement}
+          onDelete={removeElement}
+        />
+      ) : null}
+
       {hasBlocks && BLOCKS_WITH_TEXTS.includes(block) ? (
         <PracticeTexts
           block={block}
+          draftKey={`element:${materialId}:${block}`}
           elements={blockElements}
           saving={saving}
           onSave={saveElement}
@@ -290,7 +423,10 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           scoredByPoints={scoredByPoints}
           elements={blockElements}
           onChange={setDraft}
-          onCancel={() => setDraft(null)}
+          onCancel={() => {
+            setDraft(null);
+            forgetDraft();
+          }}
           onSave={() => void save()}
         />
       ) : null}
@@ -307,12 +443,18 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 onClick={() => setDraft(question)}
                 className="min-w-0 flex-1 text-left"
               >
-                <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase">
-                  {index + 1} · {TYPE_LABELS[question.type]}
-                  {scoredByPoints && question.points > 1 ? ` · ${question.points} бали` : ''}
+                <span className="flex flex-wrap items-center gap-x-3 text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-text-secondary)] uppercase">
+                  {/* Zero-padded, so a list of ten questions keeps one column. */}
+                  <span className="tabular-nums">{String(index + 1).padStart(2, '0')}</span>
+                  <span>{TYPE_LABELS[question.type]}</span>
+                  {scoredByPoints && question.points > 1 ? (
+                    <span className="rounded-full bg-[var(--color-dawn-pink-light)] px-2.5 py-0.5 text-[var(--color-burnt-siena-dark)]">
+                      {question.points} бали
+                    </span>
+                  ) : null}
                 </span>
                 <p className="mt-1 text-sm text-[var(--color-text-primary)]">
-                  {question.prompt || '—'}
+                  {question.prompt || '-'}
                 </p>
                 <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
                   Відповідь: {answerLabel(question)}
@@ -423,7 +565,7 @@ const QuestionForm: React.FC<{
 
       {isChoice ? (
         <fieldset className="space-y-2 text-sm">
-          <legend>Варіанти — позначте правильні</legend>
+          <legend>Варіанти - позначте правильні</legend>
           {draft.options.map((option, index) => {
             const key = option.id || `option-${index}`;
             const selected = draft.accepted_answers
@@ -478,7 +620,7 @@ const QuestionForm: React.FC<{
         </fieldset>
       ) : (
         <label className="block text-sm">
-          Правильні відповіді — кожна з нового рядка
+          Правильні відповіді - кожна з нового рядка
           <textarea
             value={draft.accepted_answers.join('\n')}
             onChange={(event) =>
@@ -495,7 +637,7 @@ const QuestionForm: React.FC<{
 
       {draft.type === 'ordering' ? (
         <label className="block text-sm">
-          Слова для впорядкування — через кому
+          Слова для впорядкування - через кому
           <input
             type="text"
             value={draft.tokens.join(', ')}
@@ -511,7 +653,7 @@ const QuestionForm: React.FC<{
       ) : null}
 
       <label className="block text-sm">
-        Пояснення — показується студенту після відповіді
+        Пояснення - показується студенту після відповіді
         <textarea
           value={draft.explanation ?? ''}
           onChange={(event) => onChange({ ...draft, explanation: event.target.value })}

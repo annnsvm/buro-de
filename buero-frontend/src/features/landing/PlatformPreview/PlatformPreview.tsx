@@ -37,7 +37,10 @@ const PlatformDashboard = () => {
           <p className="mt-2 font-[family-name:var(--font-heading)] text-[1.15rem] font-semibold">
             {t('landing.platformCourseName')}
           </p>
-          <p className="mt-1 text-[0.85rem] text-white/55">{t('landing.platformModule')}</p>
+          <p className="mt-1 flex flex-wrap items-baseline gap-x-2.5 text-[0.85rem]">
+            <span className="text-white/40">{t('landing.platformModuleNumber')}</span>
+            <span className="text-white/65">{t('landing.platformModuleTitle')}</span>
+          </p>
 
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between text-[0.8rem] text-white/60">
@@ -69,7 +72,7 @@ const PlatformDashboard = () => {
                   )}
                   <span className="truncate">{t(`landing.${lesson.titleKey}`)}</span>
                 </span>
-                <span className="shrink-0 tabular-nums text-white/45">{lesson.duration}</span>
+                <span className="shrink-0 text-white/45 tabular-nums">{lesson.duration}</span>
               </li>
             ))}
           </ul>
@@ -134,45 +137,45 @@ const PlatformPreview = ({ videoSrc }: PlatformPreviewProps) => {
 
         <div className="relative mx-auto mt-5 max-w-5xl overflow-hidden rounded-[24px] border border-[var(--opacity-neutral-darkest-15)] shadow-[0_24px_60px_rgba(1,1,1,0.12)] transition-transform duration-500 hover:-translate-y-1 sm:mt-6">
           <div className="relative aspect-[16/10] w-full bg-[var(--color-dawn-pink-base)] sm:aspect-video">
-              {videoSrc ? (
-                <video
-                  ref={videoRef}
-                  className="h-full w-full object-cover object-top"
-                  poster={POSTER_SRC}
-                  controls={playing}
-                  playsInline
-                  onEnded={() => setPlaying(false)}
-                >
-                  <source src={videoSrc} />
-                </video>
-              ) : (
-                <AssetImage
-                  src={POSTER_SRC}
-                  alt={t('landing.platformPreviewAlt')}
-                  className="absolute inset-0 h-full w-full object-cover object-top"
-                  loading="eager"
-                  fallback={<PlatformDashboard />}
-                />
-              )}
+            {videoSrc ? (
+              <video
+                ref={videoRef}
+                className="h-full w-full object-cover object-top"
+                poster={POSTER_SRC}
+                controls={playing}
+                playsInline
+                onEnded={() => setPlaying(false)}
+              >
+                <source src={videoSrc} />
+              </video>
+            ) : (
+              <AssetImage
+                src={POSTER_SRC}
+                alt={t('landing.platformPreviewAlt')}
+                className="absolute inset-0 h-full w-full object-cover object-top"
+                loading="eager"
+                fallback={<PlatformDashboard />}
+              />
+            )}
 
-              {!playing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-t from-black/45 via-black/20 to-black/10">
-                  <p className="rounded-full border border-white/30 bg-black/35 px-4 py-1 text-[0.75rem] font-semibold tracking-[0.14em] text-white uppercase backdrop-blur-[2px]">
-                    {t('landing.platformWalkthrough')}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handlePlay}
-                    disabled={!videoSrc}
-                    aria-label={
-                      videoSrc ? t('landing.platformPlay') : t('landing.platformComingSoon')
-                    }
-                    className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-burnt-siena-base)] text-white shadow-[0_8px_30px_rgba(231,110,80,0.45)] transition-transform duration-200 hover:scale-105 disabled:cursor-default sm:h-20 sm:w-20"
-                  >
-                    <Icon name={ICON_NAMES.PLAY_ARROW} size={32} color="var(--color-white)" />
-                  </button>
-                </div>
-              )}
+            {!playing && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-t from-black/45 via-black/20 to-black/10">
+                <p className="rounded-full border border-white/30 bg-black/35 px-4 py-1 text-[0.75rem] font-semibold tracking-[0.14em] text-white uppercase backdrop-blur-[2px]">
+                  {t('landing.platformWalkthrough')}
+                </p>
+                <button
+                  type="button"
+                  onClick={handlePlay}
+                  disabled={!videoSrc}
+                  aria-label={
+                    videoSrc ? t('landing.platformPlay') : t('landing.platformComingSoon')
+                  }
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-burnt-siena-base)] text-white shadow-[0_8px_30px_rgba(231,110,80,0.45)] transition-transform duration-200 hover:scale-105 disabled:cursor-default sm:h-20 sm:w-20"
+                >
+                  <Icon name={ICON_NAMES.PLAY_ARROW} size={32} color="var(--color-white)" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </Container>

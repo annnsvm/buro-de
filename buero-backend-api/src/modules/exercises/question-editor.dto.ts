@@ -42,8 +42,8 @@ export class SaveQuestionDto {
   @ApiProperty({
     type: [String],
     description:
-      'Для вибору — id правильних варіантів (для кількох правильних — один рядок з id через кому). ' +
-      'Для письмових — самі формулювання, кожне окремим рядком.',
+      'Для вибору - id правильних варіантів (для кількох правильних - один рядок з id через кому). ' +
+      'Для письмових - самі формулювання, кожне окремим рядком.',
   })
   @IsArray()
   @ArrayNotEmpty()
@@ -90,7 +90,7 @@ export class SaveQuestionDto {
   block?: PracticeBlock;
 
   @ApiPropertyOptional({
-    description: 'Id тексту або аудіо, до якого це питання. Порожнє — питання саме по собі.',
+    description: 'Id тексту або аудіо, до якого це питання. Порожнє - питання саме по собі.',
   })
   @IsOptional()
   @IsString()
@@ -112,12 +112,22 @@ export class SavePracticeElementDto {
   @IsEnum(PracticeElementKind)
   kind!: PracticeElementKind;
 
-  @ApiProperty({ example: 'Eine E-Mail aus dem Büro' })
+  @ApiPropertyOptional({
+    description:
+      'Коротка назва - для списків і заголовків, не саме завдання. Якщо не вказана, ' +
+      'береться перше речення завдання.',
+    example: 'Eine E-Mail aus dem Büro',
+  })
+  @IsOptional()
   @IsString()
   @MaxLength(300)
-  title!: string;
+  title?: string;
 
-  @ApiPropertyOptional({ description: 'Сам текст. Для аудіо — порожнє.' })
+  @ApiPropertyOptional({
+    description:
+      'Саме завдання або текст: для читання - текст, для письма й говоріння - умова. ' +
+      'Для аудіо порожнє.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(20000)
@@ -140,6 +150,33 @@ export class SavePracticeElementDto {
   @IsString()
   @MaxLength(4000)
   hints?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Критерії оцінювання листа - по одному рядку, у порядку автора. Студент бачить їх до ' +
+      'того, як почне писати, перевірка оцінює саме за ними, і результат цитує їх назад.',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(1000, { each: true })
+  criteria?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Скільки речень має бути в тілі листа - від. Рахується, а не оцінюється.',
+    example: 6,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  min_sentences?: number;
+
+  @ApiPropertyOptional({ description: 'Скільки речень має бути - до.', example: 8 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  max_sentences?: number;
 }
 
 export class ReorderQuestionsDto {

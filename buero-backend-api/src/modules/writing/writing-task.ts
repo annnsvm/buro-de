@@ -13,7 +13,7 @@ export const writingTask = z.object({
   task: z.string().min(1),
   /**
    * The length the body must fall within. Criterion 1 is settled against these by counting,
-   * never by the grader — a mark that gates the next module should not rest on the model having
+   * never by the grader - a mark that gates the next module should not rest on the model having
    * counted sentences correctly.
    */
   minSentences: z.number().int().min(1),
@@ -52,11 +52,11 @@ export const parseWritingTask = (content: unknown): WritingTask => {
   return parsed.data;
 };
 
-/** The module 4 letter, as authored — the shape a teacher fills in. */
+/** The module 4 letter, as authored - the shape a teacher fills in. */
 export const MODULE_4_LETTER: WritingTask = {
   task:
     'Ви захворіли. На 10:00 у вас була нарада, яку тепер треба скасувати або перенести. ' +
-    'Напишіть листа керівникові — 6–8 речень у тілі листа (Betreff, звертання та формула ' +
+    'Напишіть листа керівникові - 6–8 речень у тілі листа (Betreff, звертання та формула ' +
     'прощання не рахуються).',
   minSentences: 6,
   maxSentences: 8,

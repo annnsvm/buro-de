@@ -20,8 +20,8 @@ const TeacherDirectoryPage = lazy(
 );
 const AccountSettingsPage = lazy(() => import('../pages/AccountSettingsPage/AccountSettingsPage'));
 /**
- * These three were the only pages imported eagerly, which put the whole course player —
- * the YouTube helpers, the exercise renderers, the quiz panel — into the bundle that an
+ * These three were the only pages imported eagerly, which put the whole course player -
+ * the YouTube helpers, the exercise renderers, the quiz panel - into the bundle that an
  * anonymous visitor downloads to read the landing page.
  */
 const CoursesCatalogPage = lazy(() => import('../pages/CoursesCatalogPage/CoursesCatalogPage'));

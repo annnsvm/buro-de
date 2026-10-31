@@ -13,7 +13,7 @@ describe('fetchLastQuizAttempt', () => {
   /**
    * The case a student meets on the very first visit to a newly added quiz: no attempt
    * exists, and the server answers with an empty body rather than the four characters
-   * "null". That does not arrive as null, so it has to be recognised by shape — missing
+   * "null". That does not arrive as null, so it has to be recognised by shape - missing
    * that turned a blank quiz into "Cannot use 'in' operator to search for 'outdated'".
    */
   it('reads an empty body as no attempt', async () => {

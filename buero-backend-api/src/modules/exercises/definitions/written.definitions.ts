@@ -23,7 +23,7 @@ const gradeWritten = (question: GradableQuestion, answer: RawAnswer) => {
   return { correct: match.correct, quality: match.quality };
 };
 
-/** One word into a gap — the GAP exercises in the authored content. */
+/** One word into a gap - the GAP exercises in the authored content. */
 export const fillBlankDefinition: ExerciseDefinition = {
   type: QuestionType.fill_blank,
   validatePayload: validateWritten,
@@ -31,7 +31,7 @@ export const fillBlankDefinition: ExerciseDefinition = {
   describeAcceptedAnswers: (question) => question.acceptedAnswers,
 };
 
-/** A whole sentence — the TEXT exercises. */
+/** A whole sentence - the TEXT exercises. */
 export const textInputDefinition: ExerciseDefinition = {
   type: QuestionType.text_input,
   validatePayload: validateWritten,

@@ -4,11 +4,11 @@
  * Three limits, each answering a different way the bill could run away, and each decided here
  * rather than in the service so they can be reasoned about and tested without a database:
  *
- *   - **per task** — three tries, then a day's wait. This is as much about learning as money: a
+ *   - **per task** - three tries, then a day's wait. This is as much about learning as money: a
  *     student who can submit endlessly stops writing and starts guessing what the grader wants.
- *   - **per day, across every task** — stops one person working through ten tasks three times
+ *   - **per day, across every task** - stops one person working through ten tasks three times
  *     each in an afternoon.
- *   - **per month, across everyone** — the last defence. When it trips the task does not break;
+ *   - **per month, across everyone** - the last defence. When it trips the task does not break;
  *     it falls back to the self-check against the model answer, which is how the speaking task
  *     already works. Degrading is better than emptying the card.
  *

@@ -8,7 +8,7 @@ import { mapApiModulesToCourseStructure } from '@/pages/CoursePage/coursePageMap
  * Turning a module's flat material list into lessons with their practice underneath.
  *
  * The nesting is a property of the material rather than a new level of hierarchy, which is what
- * let it arrive without moving any existing row — so the important cases here are the ones where
+ * let it arrive without moving any existing row - so the important cases here are the ones where
  * a parent is absent or a lesson has none.
  */
 const material = (
@@ -85,7 +85,7 @@ describe('the order a student walks through', () => {
 describe('what the student sidebar is given', () => {
   /**
    * The nesting is drawn from `parentMaterialId`, so a mapper that quietly drops it leaves the
-   * student with a flat list while the teacher sees the tree — which is exactly what happened.
+   * student with a flat list while the teacher sees the tree - which is exactly what happened.
    */
   it('keeps the lesson link and the blocks when mapping for the sidebar', () => {
     const mapped = mapApiModulesToCourseStructure([

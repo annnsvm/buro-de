@@ -3,7 +3,7 @@
  *
  * The guiding rule is that in a language exercise the small difference is usually the
  * lesson. `arbeiten` for `arbeitet` is one character out, but it is the infinitive
- * instead of the conjugated form — exactly the mistake a gap-fill about verb endings
+ * instead of the conjugated form - exactly the mistake a gap-fill about verb endings
  * exists to catch. Accepting it quietly teaches the error, so there is deliberately no
  * tolerance for a near-miss spelling.
  *

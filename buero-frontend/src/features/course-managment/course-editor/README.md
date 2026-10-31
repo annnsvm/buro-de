@@ -1,6 +1,6 @@
 # Course editor (teacher)
 
-Логіка та UI-блоки для екрана створення / редагування курсу. **Композиція сторінки** — у `pages/CourseManagmentPage/CourseManagmentPage.tsx`.
+Логіка та UI-блоки для екрана створення / редагування курсу. **Композиція сторінки** - у `pages/CourseManagmentPage/CourseManagmentPage.tsx`.
 
 ## Хуки (`hooks/`)
 
@@ -22,6 +22,6 @@
 | `courseMaterialApiPayload.helpers.ts` | Контент матеріалу для API |
 | `mapApiCourseToCourseEditorForm.helpers.ts` | Мапінг відповіді API → форма |
 
-`utils/parseApiErrorMessage.ts` — текст помилок з API.
+`utils/parseApiErrorMessage.ts` - текст помилок з API.
 
 **Компоненти:** `components/`. Спільні блоки: `components/CourseManagementWorkspace/`.

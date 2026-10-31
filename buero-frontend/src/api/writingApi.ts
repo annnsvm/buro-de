@@ -16,7 +16,7 @@ export type WritingBest = {
 };
 
 /**
- * The task as the student meets it — condition, criteria and how many goes are left.
+ * The task as the student meets it - condition, criteria and how many goes are left.
  *
  * The criteria arrive before anything is written, on purpose: being marked against a list you
  * were never shown is what makes automatic grading feel arbitrary.
@@ -67,6 +67,46 @@ export type WritingSubmitResponse =
       self_check: boolean;
       model_answer: string | null;
     };
+
+/**
+ * One writing task of a practice's Schreiben block.
+ *
+ * The same shape as a writing material's task, with the id of the task itself, because a block
+ * may hold more than one and each keeps its own attempts.
+ */
+export type PracticeWritingTask = WritingTaskResponse & {
+  element_id: string;
+  title: string | null;
+};
+
+export type PracticeWritingResponse = {
+  tasks: PracticeWritingTask[];
+  /**
+   * Tasks that cannot be marked yet - no rubric, or no length to count against. Named rather
+   * than hidden: one unfinished task must not take the block down, and it must not vanish.
+   */
+  unusable: Array<{ element_id: string; title: string; reason: string }>;
+};
+
+export const fetchPracticeWritingTasks = async (
+  materialId: string,
+): Promise<PracticeWritingResponse> => {
+  const { data } = await apiInstance.get<PracticeWritingResponse>(
+    API_ENDPOINTS.writing.practiceTasks(materialId),
+  );
+  return data;
+};
+
+export const submitPracticeWriting = async (
+  elementId: string,
+  text: string,
+): Promise<WritingSubmitResponse> => {
+  const { data } = await apiInstance.post<WritingSubmitResponse>(
+    API_ENDPOINTS.writing.submitPractice(elementId),
+    { text },
+  );
+  return data;
+};
 
 export const fetchWritingTask = async (
   materialId: string,

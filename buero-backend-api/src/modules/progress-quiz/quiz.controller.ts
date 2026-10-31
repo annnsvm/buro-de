@@ -44,7 +44,7 @@ export class QuizController {
     summary: "Питання квізу",
     description:
       "Питання матеріалу в тому вигляді, в якому їх бачить студент: id, тип, текст, варіанти або слова для впорядкування. " +
-      "Правильні відповіді та пояснення не повертаються — пояснення приходить у відповіді на submit, після того як студент відповів.",
+      "Правильні відповіді та пояснення не повертаються - пояснення приходить у відповіді на submit, після того як студент відповів.",
   })
   @ApiParam({ name: "materialId", description: "UUID матеріалу типу quiz" })
   @ApiResponse({ status: 200, description: "Масив питань" })
@@ -153,7 +153,7 @@ export class QuizController {
   @ApiOperation({
     summary: "Відправити всі відповіді квізу та завершити спробу",
     description:
-      "Приймає масив усіх відповідей, перевіряє по content матеріалу, зберігає в quiz_attempts, рахує score, завершує спробу та оновлює course_progress. Повертає attempt, score, total, correct, results (по кожному питанню). 400 — невалідний block_index/question_id або спроба вже завершена.",
+      "Приймає масив усіх відповідей, перевіряє по content матеріалу, зберігає в quiz_attempts, рахує score, завершує спробу та оновлює course_progress. Повертає attempt, score, total, correct, results (по кожному питанню). 400 - невалідний block_index/question_id або спроба вже завершена.",
   })
   @ApiParam({ name: "attemptId", description: "UUID спроби" })
   @ApiBody({ type: SubmitQuizDto })

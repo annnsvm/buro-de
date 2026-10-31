@@ -13,7 +13,7 @@ const byOrder = (a: CourseMaterial, b: CourseMaterial) =>
  * Arranges a module's flat list of materials into lessons with their practice underneath.
  *
  * One level deep, and deliberately so: a lesson is a video, and a practice hangs off it. There is
- * no lesson entity and none is needed — nesting is a property of the material, which is why this
+ * no lesson entity and none is needed - nesting is a property of the material, which is why this
  * arrived without moving a single row.
  *
  * A practice whose parent is missing from the list is not dropped. It could be orphaned because

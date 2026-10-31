@@ -1,4 +1,4 @@
-// Buero.de — Database Schema (docs/architecture.md §3, §4, §8)
+// Buero.de - Database Schema (docs/architecture.md §3, §4, §8)
 // NestJS backend, Prisma ORM, PostgreSQL
 
 generator client {
@@ -68,7 +68,7 @@ enum VocabularyCategory {
 /// `practice` is the check after a lesson: every answer is marked the moment it is
 /// given, with the explanation, because the point is to learn. `test` is the check
 /// after a module: nothing is revealed until everything has been answered, and the
-/// answer key stays hidden unless the student passed — otherwise a retake would just
+/// answer key stays hidden unless the student passed - otherwise a retake would just
 /// be copying, since the questions are a fixed set rather than drawn from a pool.
 enum QuizMode {
   practice
@@ -85,6 +85,8 @@ enum PracticeBlock {
   lesen
   horen
   sprechen
+  /// A letter the student writes, checked against the author's own rubric.
+  schreiben
 }
 
 /// What a practice element is. `text` is something to read, and the two that follow it arrive
@@ -93,6 +95,8 @@ enum PracticeElementKind {
   text
   audio
   rec
+  /// A writing task: the prompt, the rubric it is graded against, and a model answer.
+  write
 }
 
 enum QuestionType {
@@ -148,6 +152,8 @@ model User {
   courseProgress          CourseProgress[]
   quizAttempts            QuizAttempt[]
   writingSubmissions      WritingSubmission[]
+  speakingRecordings      SpeakingRecording[]
+  lessonNotes             LessonNote[]
   lessonRequestsAsStudent LessonRequest[]    @relation("LessonRequestStudent")
   lessonRequestsAsTeacher LessonRequest[]    @relation("LessonRequestTeacher")
   placementResults        PlacementResult[]
@@ -230,7 +236,7 @@ model Course {
   tags             String[]       @default([])
   /// Where the course starts on the CEFR ladder.
   level            Level?
-  /// The highest level the course reaches, when it spans more than one — an integration
+  /// The highest level the course reaches, when it spans more than one - an integration
   /// course may run from A2 to B1. Null means it sits at `level` alone. Together the two
   /// describe a range, which is what the catalogue draws and filters on.
   levelTo          Level?         @map("level_to")
@@ -280,7 +286,7 @@ model CourseMaterial {
   quizMode   QuizMode?          @map("quiz_mode")
   /// Percent needed to pass, for a test. Null means there is nothing to fail.
   passingScore Int?             @map("passing_score")
-  /// The material this one hangs under in the lesson list — a practice under its video.
+  /// The material this one hangs under in the lesson list - a practice under its video.
   ///
   /// Nullable, and that is the point: a practice with no parent simply sits in the module
   /// as quizzes always have. Nothing needs moving for the nesting to arrive, and a lesson
@@ -299,6 +305,7 @@ model CourseMaterial {
   writingSubmissions WritingSubmission[]
   attachments    MaterialAttachment[]
   questions      Question[]
+  lessonNotes    LessonNote[]
   practiceElements PracticeElement[]
 
   @@index([moduleId])
@@ -442,7 +449,7 @@ model CourseProgress {
 /// Every row is a paid call, so this table is also the meter: the attempt limits, the daily cap
 /// and the monthly breaker are all counted from it rather than from a separate counter that
 /// could drift away from what was actually spent. A row is written only when the model was
-/// asked — a submission turned away by the free length check leaves no trace and costs the
+/// asked - a submission turned away by the free length check leaves no trace and costs the
 /// student nothing.
 model WritingSubmission {
   id               String   @id @default(uuid())
@@ -460,12 +467,20 @@ model WritingSubmission {
   inputTokens      Int      @map("input_tokens")
   outputTokens     Int      @map("output_tokens")
   createdAt        DateTime @default(now()) @map("created_at")
+  /// Set when the letter answers a writing task inside a practice block rather than a
+  /// writing material of its own. A practice may hold more than one, so the attempt window
+  /// has to be per task; counting by material alone would let one letter spend another's
+  /// attempts.
+  practiceElementId String? @map("practice_element_id")
 
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseMaterial CourseMaterial @relation(fields: [courseMaterialId], references: [id], onDelete: Cascade)
+  practiceElement PracticeElement? @relation(fields: [practiceElementId], references: [id], onDelete: Cascade)
 
   /// Serves both the attempt window for one task and reading the best result back.
   @@index([userId, courseMaterialId, createdAt])
+  /// The attempt window for one task of a practice block.
+  @@index([userId, practiceElementId, createdAt])
   /// The daily cap across every task.
   @@index([userId, createdAt])
   /// The monthly breaker, counted across everyone.
@@ -477,7 +492,31 @@ model WritingSubmission {
 /// prompt to speak from.
 ///
 /// Separate from `Question` because several questions share one of these, and because it has a
-/// life of its own — a text is read, an audio is played, and neither is answered.
+/// life of its own - a text is read, an audio is played, and neither is answered.
+/// What a student recorded for a speaking task.
+///
+/// Speaking is marked by the student themselves - they record, listen, and compare against the
+/// author's own answer. Nothing here is a score, because no score would be honest: what is
+/// kept is that the task was answered, which is what the module test needs and what lets a
+/// student hear their own earlier attempt.
+model SpeakingRecording {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  practiceElementId String   @map("practice_element_id")
+  /// Where the recording lives. The file goes to Cloudinary, as every other upload does.
+  audioUrl          String   @map("audio_url")
+  /// How long it runs, so an empty recording can be told from a real one without playing it.
+  durationSeconds   Int?     @map("duration_seconds")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  element PracticeElement @relation(fields: [practiceElementId], references: [id], onDelete: Cascade)
+
+  /// One per task per student: re-recording replaces what was there.
+  @@unique([userId, practiceElementId])
+  @@map("speaking_recordings")
+}
+
 model PracticeElement {
   id         String              @id @default(uuid())
   materialId String              @map("material_id")
@@ -489,17 +528,31 @@ model PracticeElement {
   body       String?
   /// Where the mp3 lives once the listening block arrives.
   audioUrl   String?             @map("audio_url")
+  /// The file the author's CSV named, before anyone has uploaded it. A recording arrives in
+  /// two halves - the row that describes it and the file itself - and this is how the second
+  /// half finds the first.
+  audioFileName String?          @map("audio_file_name")
   /// Opened only after every question about this audio has been answered.
   transcript String?
   /// For a speaking prompt: a full-marks answer, and the words to lean on.
   sampleAnswer String?           @map("sample_answer")
   hints      String?
+  /// For a writing task: the rubric, one sentence per criterion, in the author's order.
+  /// It is shown to the student before they write, sent to the grader, and quoted back in
+  /// the result, so all three read the same words. Empty for every other kind.
+  criteria   String[]            @default([])
+  /// The length the body of the letter must fall within. Counted rather than judged, so a
+  /// mark never rests on the grader having counted sentences correctly.
+  minSentences Int?              @map("min_sentences")
+  maxSentences Int?              @map("max_sentences")
   orderIndex Int                 @default(0) @map("order_index")
   createdAt  DateTime            @default(now()) @map("created_at")
   updatedAt  DateTime            @updatedAt @map("updated_at")
 
   material  CourseMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
   questions Question[]
+  submissions WritingSubmission[]
+  recordings  SpeakingRecording[]
 
   @@index([materialId, block, orderIndex])
   @@map("practice_elements")
@@ -510,7 +563,7 @@ model QuizAttempt {
   userId           String    @map("user_id")
   courseMaterialId String    @map("course_material_id")
   /// Which block of a practice this sitting is. Null for a quiz or a test, which are
-  /// answered whole — and null on every attempt made before practices had blocks.
+  /// answered whole - and null on every attempt made before practices had blocks.
   block            PracticeBlock?
   score            Decimal?  @db.Decimal(5, 2)
   answersSnapshot  Json?     @map("answers_snapshot") // JSONB for resume
@@ -570,6 +623,31 @@ model UserVocabularyEntry {
   @@map("user_vocabulary_entries")
 }
 
+/// What a student writes down for themselves while working through a lesson.
+///
+/// Theirs, not the author's: nothing here is marked, shown to anyone else or counted towards
+/// progress. It is kept on the server rather than in the browser because a note is worth keeping
+/// for as long as the course is - someone returning to a lesson half a year later, on another
+/// machine, must find what they wrote.
+model LessonNote {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  courseMaterialId String   @map("course_material_id")
+  text             String
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Follows the lesson, the way every other per-material record does. A note whose lesson is
+  /// gone has no page left to be read on.
+  material CourseMaterial @relation(fields: [courseMaterialId], references: [id], onDelete: Cascade)
+
+  /// One note per lesson per student, so saving is an upsert and never piles up revisions.
+  @@unique([userId, courseMaterialId])
+  @@index([userId, updatedAt])
+  @@map("lesson_notes")
+}
+
 // ─── Placement Test ────────────────────────────────────────────────────────
 
 model PlacementQuestion {
@@ -598,7 +676,7 @@ model PlacementResult {
 /// One question of a quiz material.
 ///
 /// Questions used to live as untyped JSON inside CourseMaterial.content, which made it
-/// impossible to ask "which questions about the dative has this student failed" — the
+/// impossible to ask "which questions about the dative has this student failed" - the
 /// query every review queue, error breakdown and per-topic report needs. The row's id
 /// is the id the question already had in that JSON, so answers submitted by the browser
 /// keep working unchanged.
@@ -625,9 +703,9 @@ model Question {
   /// existed is grammar practice, so that is the default and nothing had to be migrated.
   block           PracticeBlock @default(grammatik)
   /// The text or audio this question is about. Null for grammar practice, which asks about
-  /// nothing but the lesson — which is why no existing question had to be touched.
+  /// nothing but the lesson - which is why no existing question had to be touched.
   elementId       String?       @map("element_id")
-  /// The section of the test this task belongs to, verbatim from the author's file —
+  /// The section of the test this task belongs to, verbatim from the author's file -
   /// e.g. "ЧАСТИНА 2 · dass і das". A failed test is reported part by part, so the
   /// student is told which topic let them down rather than only a number.
   partTitle       String?      @map("part_title")

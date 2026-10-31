@@ -29,7 +29,7 @@ export type ApiCourseMaterial = {
   content?: Record<string, unknown> | null;
   /**
    * On a quiz material: the practice after a lesson, or the test after a module. The
-   * player needs it to know where finishing leads — the next lesson, or the next module.
+   * player needs it to know where finishing leads - the next lesson, or the next module.
    */
   quizMode?: 'practice' | 'test' | null;
   /** On a practice: the lesson it hangs under. */
@@ -200,7 +200,7 @@ export const flattenMaterialsInOrder = (course: ApiCourseWithTree): FlatMaterial
  * Which lesson the course should open at.
  *
  * The address bar decides, so a refresh, the back button and a bookmark all land where
- * the student was. When it names nothing — a first visit — or names a lesson that is
+ * the student was. When it names nothing - a first visit - or names a lesson that is
  * not part of this course for this student, whether because the link is stale or the
  * module is not unlocked, the course resumes at the first lesson not yet finished
  * instead. Opening at lesson one every time made a returning student scroll back to
@@ -235,7 +235,7 @@ export type NextStepKind = 'lesson' | 'practice' | 'test' | 'writing';
  * Names the step that follows.
  *
  * Telling a student they are going "to the next lesson" when the next thing is the module test
- * is the kind of small lie that makes an interface feel careless — and here it matters, because
+ * is the kind of small lie that makes an interface feel careless - and here it matters, because
  * a test is a step they may want to prepare for rather than walk into.
  */
 export const nextStepKind = (material: ApiCourseMaterial | undefined): NextStepKind => {
@@ -264,7 +264,7 @@ export const findNextMaterialId = (
  *
  * Where a module test leads. Moving on from a test is a bigger step than moving to the
  * next lesson, and the next thing in order may still be inside the module just finished
- * — so the module boundary is what this follows, not position alone.
+ * - so the module boundary is what this follows, not position alone.
  */
 export const findNextModuleFirstMaterialId = (
   flat: FlatMaterialRef[],

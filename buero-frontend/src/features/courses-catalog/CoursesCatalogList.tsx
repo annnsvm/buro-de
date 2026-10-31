@@ -22,7 +22,7 @@ type CoursesGridProps = {
  *
  * One flat grid presented every course as an equally plausible place to begin, which is
  * the hardest version of the only question a visitor has. Language courses are now shown
- * as a route in order, and integration guides as a separate set — so the page answers
+ * as a route in order, and integration guides as a separate set - so the page answers
  * "in what order" before it is asked.
  *
  * The recommendation is drawn as a ring around the card rather than inside it: the card

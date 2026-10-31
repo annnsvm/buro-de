@@ -15,7 +15,7 @@ const inputClass =
  *
  * The criteria are written here rather than in code, because every module brings its own. They
  * are used three times over, word for word: shown to the student before they write, sent to the
- * grader, and quoted back beside the mark. That is why they are free text and not a fixed list —
+ * grader, and quoted back beside the mark. That is why they are free text and not a fixed list -
  * a criterion is a sentence the teacher wrote, not an option from a menu.
  *
  * The first criterion is the one about length and the letter's formulas. It is always decided by
@@ -52,7 +52,7 @@ const WritingTaskFields: React.FC<WritingTaskFieldsProps> = ({
 
       <div className="flex flex-wrap items-end gap-4 text-sm">
         <label className="block">
-          Речень у тілі — від
+          Речень у тілі - від
           <input
             type="number"
             min={1}
@@ -78,19 +78,19 @@ const WritingTaskFields: React.FC<WritingTaskFieldsProps> = ({
           />
         </label>
         <p className="basis-full text-xs text-[var(--color-text-secondary)]">
-          Коротший лист повертається студентові з проханням дописати — спроба не зараховується і
+          Коротший лист повертається студентові з проханням дописати - спроба не зараховується і
           перевірка не оплачується.
         </p>
       </div>
 
       <div className="space-y-2">
         <p className="text-sm font-medium text-[var(--color-text-primary)]">
-          Критерії — по одному балу за кожен
+          Критерії - по одному балу за кожен
         </p>
         {draft.criteria.map((criterion, index) => (
           <label key={index} className="block text-sm">
             <span className="text-xs text-[var(--color-text-secondary)]">
-              {index === 0 ? '1 — обсяг і формули листа (перевіряється підрахунком)' : index + 1}
+              {index === 0 ? '1 - обсяг і формули листа (перевіряється підрахунком)' : index + 1}
             </span>
             <textarea
               value={criterion}
@@ -133,7 +133,7 @@ const WritingTaskFields: React.FC<WritingTaskFieldsProps> = ({
         {/* Shown only if the monthly budget runs out, so the task degrades to self-marking
             instead of breaking. Never shown while checking works. */}
         <span className="mt-1 block text-xs text-[var(--color-text-secondary)]">
-          Показується студентові лише якщо автоматична перевірка тимчасово недоступна — тоді він
+          Показується студентові лише якщо автоматична перевірка тимчасово недоступна - тоді він
           звіряється зі зразком сам. Поки перевірка працює, зразок не видно.
         </span>
       </label>

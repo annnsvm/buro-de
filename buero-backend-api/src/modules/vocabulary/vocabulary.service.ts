@@ -10,7 +10,7 @@ import { UpdateVocabularyDto } from './dto/update-vocabulary.dto';
 
 /**
  * A student's own word list. Every query is scoped by userId, so one account can
- * never read or change another's words — the former global table had no owner and
+ * never read or change another's words - the former global table had no owner and
  * was visible to everybody.
  */
 @Injectable()

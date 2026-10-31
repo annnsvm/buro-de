@@ -13,7 +13,7 @@ import { QuizService } from "./quiz.service";
  *
  * This is the rule that broke the moment a reading text was added to a lesson that already
  * had grammar questions. The practice then held eight Grammatik questions and three Lesen
- * ones, but an attempt was still measured against all eleven — so answering Grammatik in
+ * ones, but an attempt was still measured against all eleven - so answering Grammatik in
  * full never completed the sitting, no result was ever shown, and returning to the block
  * was told the quiz had changed and had to be done again.
  */
@@ -35,7 +35,7 @@ describe("a sitting of one practice block", () => {
     orderIndex: 0,
   });
 
-  /** Eight questions of grammar and three about a text — one practice, two blocks. */
+  /** Eight questions of grammar and three about a text - one practice, two blocks. */
   const GRAMMATIK = Array.from({ length: 8 }, (_, i) =>
     question(`g${i}`, PracticeBlock.grammatik),
   );
@@ -207,7 +207,7 @@ describe("a sitting of one practice block", () => {
     });
 
     /**
-     * Sittings recorded before blocks existed answered what was then the whole practice —
+     * Sittings recorded before blocks existed answered what was then the whole practice -
      * all of Grammatik. They belong to Grammatik, and the student must not be told their
      * work is out of date because the column that would have said so did not exist yet.
      */
@@ -231,7 +231,7 @@ describe("a sitting of one practice block", () => {
 
     /**
      * And it belongs to the block it answered, and to no other. Opening Lesen for the first
-     * time must find it empty — not be told to redo work that was never about Lesen.
+     * time must find it empty - not be told to redo work that was never about Lesen.
      */
     it("leaves another block untouched by that old sitting", async () => {
       prisma.quizAttempt.findMany.mockResolvedValue([
@@ -263,7 +263,7 @@ describe("a sitting of one practice block", () => {
       expect(last).toMatchObject({ outdated: true });
     });
 
-    /** A block never started is empty, not out of date — there is nothing to redo. */
+    /** A block never started is empty, not out of date - there is nothing to redo. */
     it("does not offer another block's sitting as this one's", async () => {
       prisma.quizAttempt.findMany.mockResolvedValue([]);
       const last = await service.getLastAttempt(

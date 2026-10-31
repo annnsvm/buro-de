@@ -28,7 +28,7 @@ export class CreateCourseMaterialDto {
   title!: string;
 
   @ApiProperty({
-    description: 'Вміст: для video — JSON з youtube_video_id; для scenario — JSON з нодами/гілками; інші — текст або JSON',
+    description: 'Вміст: для video - JSON з youtube_video_id; для scenario - JSON з нодами/гілками; інші - текст або JSON',
     example: { youtube_video_id: 'dQw4w9WgXcQ' },
   })
   @IsNotEmpty()
@@ -38,8 +38,8 @@ export class CreateCourseMaterialDto {
   @ApiPropertyOptional({
     enum: QuizMode,
     description:
-      'Лише для type = quiz. practice — перевірка після уроку: кожна відповідь позначається одразу разом із поясненням. ' +
-      'test — підсумковий тест модуля: перевірка цілком, а правильні відповіді показуються лише після успішної здачі.',
+      'Лише для type = quiz. practice - перевірка після уроку: кожна відповідь позначається одразу разом із поясненням. ' +
+      'test - підсумковий тест модуля: перевірка цілком, а правильні відповіді показуються лише після успішної здачі.',
   })
   @IsOptional()
   @IsEnum(QuizMode)
@@ -57,7 +57,7 @@ export class CreateCourseMaterialDto {
 
   @ApiPropertyOptional({
     description:
-      'Матеріал, під яким цей показується у списку уроків — практика під своїм відео. ' +
+      'Матеріал, під яким цей показується у списку уроків - практика під своїм відео. ' +
       'Без нього матеріал стоїть у модулі сам по собі, як завжди стояли квізи.',
   })
   @IsOptional()

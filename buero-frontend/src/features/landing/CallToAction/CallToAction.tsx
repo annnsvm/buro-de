@@ -35,8 +35,11 @@ const CallToAction: React.FC<CallToActionProps> = ({
             </div>
 
             <article className="pointer-events-none absolute right-[-8%] bottom-[-10%] w-[68%] max-w-[260px] rotate-[7deg] rounded-[24px] border border-white/25 bg-white/15 p-4 text-white backdrop-blur-md sm:right-[-3%] sm:bottom-[-6%] sm:w-[40%] sm:max-w-[380px] sm:p-6">
-              <p className="text-[11px] font-bold tracking-[0.12em] text-[var(--color-accent-primary)] uppercase">
-                {t('landing.ctaCardLanguage')}
+              <p className="flex flex-wrap items-center gap-x-3 text-[11px] font-bold tracking-[0.12em] uppercase">
+                <span className="text-[var(--color-accent-primary)]">
+                  {t('landing.ctaCardLanguageName')}
+                </span>
+                <span className="text-white/50">{t('landing.ctaCardLanguageLessons')}</span>
               </p>
               <div className="mt-3 h-1 w-16 rounded-full bg-[var(--color-accent-primary)]/80" />
               <p className="mt-2 font-[family-name:var(--font-heading)] text-6xl leading-none font-bold tracking-[-0.06em] text-white/90 sm:text-7xl">

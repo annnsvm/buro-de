@@ -25,14 +25,14 @@ export class ImportQuestionsDto {
   @ApiProperty({
     enum: QuizMode,
     description:
-      'practice — з файлу створюється по квізу на кожен урок із колонки «Урок». ' +
-      'test — увесь файл стає одним підсумковим тестом модуля.',
+      'practice - з файлу створюється по квізу на кожен урок із колонки «Урок». ' +
+      'test - увесь файл стає одним підсумковим тестом модуля.',
   })
   @IsEnum(QuizMode)
   mode!: QuizMode;
 
   @ApiPropertyOptional({
-    description: 'true — лише показати, що буде створено, нічого не змінюючи.',
+    description: 'true - лише показати, що буде створено, нічого не змінюючи.',
     default: true,
   })
   @IsOptional()
@@ -48,7 +48,7 @@ export class ImportQuestionsDto {
 
   @ApiPropertyOptional({
     description:
-      'true — додати до правильних відповідей ті формулювання, які згадані в поясненні як прийнятні. ' +
+      'true - додати до правильних відповідей ті формулювання, які згадані в поясненні як прийнятні. ' +
       'За замовчуванням вони лише показуються у попередньому перегляді.',
   })
   @IsOptional()

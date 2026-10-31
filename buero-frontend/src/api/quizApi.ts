@@ -40,7 +40,7 @@ export type QuizQuestion = {
  * author never wrote.
  */
 /**
- * Something a block's questions are asked about. The student keeps it in view while answering —
+ * Something a block's questions are asked about. The student keeps it in view while answering -
  * a reading task where the text scrolls away is a memory test.
  */
 export type PracticeElement = {
@@ -48,7 +48,12 @@ export type PracticeElement = {
   kind: 'text' | 'audio' | 'rec';
   title: string;
   body: string | null;
+  /** Where the recording is, for a listening task. */
+  audio_url: string | null;
+  /** Whether one exists at all - said before it is open, so nothing is promised falsely. */
   has_transcript: boolean;
+  /** Only once every question about this recording has been answered; null until then. */
+  transcript: string | null;
 };
 
 export type QuizQuestionsResponse = {
@@ -57,7 +62,7 @@ export type QuizQuestionsResponse = {
   passing_score: number | null;
   /** What the whole test is worth, e.g. 25. Null for a practice quiz. */
   total_points: number | null;
-  /** The same threshold in points, e.g. 15 — the way the test is written. */
+  /** The same threshold in points, e.g. 15 - the way the test is written. */
   passing_points: number | null;
   /** Empty unless a practice block was asked for. */
   elements: PracticeElement[];
@@ -182,7 +187,7 @@ export type QuizPartResult = {
   total_points: number;
   correct: number;
   total: number;
-  /** True when more than half the part's points were lost — the author's own rule. */
+  /** True when more than half the part's points were lost - the author's own rule. */
   weak: boolean;
 };
 
@@ -191,8 +196,8 @@ export type OutdatedQuizAttempt = { outdated: true };
 
 /**
  * A student who has never taken this quiz has no attempt, and the server says so by
- * returning nothing at all. An empty HTTP body does not arrive as `null` — axios hands
- * over an empty string — so "no attempt yet" has to be recognised by shape rather than
+ * returning nothing at all. An empty HTTP body does not arrive as `null` - axios hands
+ * over an empty string - so "no attempt yet" has to be recognised by shape rather than
  * trusted to be nullish. Missing that turned the very first visit to a newly added quiz
  * into an error message instead of a blank quiz.
  */

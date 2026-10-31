@@ -31,7 +31,7 @@ describe("Auth (e2e)", () => {
     await app.close();
   });
 
-  it("POST /api/auth/register — 200 verification_required, no auth cookies", async () => {
+  it("POST /api/auth/register - 200 verification_required, no auth cookies", async () => {
     const res = await request(app.getHttpServer())
       .post("/api/auth/register")
       .send({
@@ -48,7 +48,7 @@ describe("Auth (e2e)", () => {
     expect(cookies.some((c) => c.startsWith("access_token="))).toBe(false);
   });
 
-  it("POST /api/auth/verify-registration — 201 cookies after valid code, 400 after wrong code", async () => {
+  it("POST /api/auth/verify-registration - 201 cookies after valid code, 400 after wrong code", async () => {
     const em = email();
     const started = await request(app.getHttpServer())
       .post("/api/auth/register")
@@ -77,7 +77,7 @@ describe("Auth (e2e)", () => {
     expect(cookies.some((c) => c.startsWith("refresh_token="))).toBe(true);
   });
 
-  it("POST /api/auth/register — 409 duplicate email after verification", async () => {
+  it("POST /api/auth/register - 409 duplicate email after verification", async () => {
     const em = email();
     await registerVerified(app, {
       email: em,
@@ -97,7 +97,7 @@ describe("Auth (e2e)", () => {
       .expect(409);
   });
 
-  it("POST /api/auth/login — 200 (cookies), 401 wrong password", async () => {
+  it("POST /api/auth/login - 200 (cookies), 401 wrong password", async () => {
     const em = email();
     await registerVerified(app, {
       email: em,
@@ -120,7 +120,7 @@ describe("Auth (e2e)", () => {
       .expect(401);
   });
 
-  it("POST /api/auth/refresh — 200 with refresh cookie, 401 without", async () => {
+  it("POST /api/auth/refresh - 200 with refresh cookie, 401 without", async () => {
     const em = email();
     const reg = await registerVerified(app, {
       email: em,
@@ -147,7 +147,7 @@ describe("Auth (e2e)", () => {
       .expect(401);
   });
 
-  it("POST /api/auth/logout — 200, cookies cleared", async () => {
+  it("POST /api/auth/logout - 200, cookies cleared", async () => {
     const em = email();
     const reg = await registerVerified(app, {
       email: em,
@@ -172,7 +172,7 @@ describe("Auth (e2e)", () => {
     ).toBe(true);
   });
 
-  it("POST /api/auth/change-password — 401 wrong current, 200 then login with new password", async () => {
+  it("POST /api/auth/change-password - 401 wrong current, 200 then login with new password", async () => {
     const em = email();
     const reg = await registerVerified(app, {
       email: em,
@@ -222,7 +222,7 @@ describe("Auth (e2e)", () => {
       .expect(200);
   });
 
-  it("GET /api/users/me — 401 without JWT cookie", async () => {
+  it("GET /api/users/me - 401 without JWT cookie", async () => {
     await request(app.getHttpServer()).get("/api/users/me").expect(401);
   });
 });

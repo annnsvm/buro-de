@@ -19,6 +19,7 @@ import LessonAttachments from '@/features/course-learning/MaterialWindow/LessonA
 import type { MaterialAttachment } from '@/types/features/courseManagment/MaterialAttachment.types';
 import { getExerciseRenderer } from '@/features/course-learning/exercises/exerciseRenderers';
 import ReadingText from '@/features/course-learning/QuizPanel/ReadingText';
+import ListeningAudio from '@/features/course-learning/QuizPanel/ListeningAudio';
 import { groupByElement } from '@/features/course-learning/QuizPanel/groupByElement';
 import {
   isAnswered,
@@ -30,7 +31,7 @@ export type QuizResultSummary = {
   total: number;
   /** This attempt. */
   percent: number;
-  /** The highest across all attempts — what actually counts as the result. */
+  /** The highest across all attempts - what actually counts as the result. */
   bestPercent: number;
   /** False when the result was restored on opening rather than just earned. */
   justFinished: boolean;
@@ -47,7 +48,7 @@ export type QuizPanelProps = {
   onQuizResult?: (result: QuizResultSummary | null) => void;
   /**
    * Where to go once this is finished. A practice quiz leads to the next lesson, a
-   * module test to the next module — and until now neither led anywhere: the only way
+   * module test to the next module - and until now neither led anywhere: the only way
    * on from a finished quiz was the sidebar, which is a dead end the student has to
    * work out for themselves.
    */
@@ -107,14 +108,14 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
   /**
    * How the test went part by part. This is the answer to "what now" after a failed
-   * test — without it a student is told only a number and left to guess where to go
+   * test - without it a student is told only a number and left to guess where to go
    * back to. Empty for a practice quiz, which is one lesson already.
    */
   const [parts, setParts] = useState<QuizPartResult[]>([]);
   const showPoints = mode === 'test' && totalPoints != null;
   /**
    * A lesson quiz leads to the next lesson; a module test to the next module. The wording
-   * has to say which, because the two are steps of a very different size — and a block of a
+   * has to say which, because the two are steps of a very different size - and a block of a
    * practice says where it really goes, which is back to the practice, not out of the lesson.
    */
   const moveOnLabel =
@@ -278,7 +279,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
 
   /**
    * A test is checked in one go. Nothing has been marked until now, so this is the
-   * first moment the student learns anything — and if they did not pass, the answer
+   * first moment the student learns anything - and if they did not pass, the answer
    * key is deliberately not part of what comes back.
    */
   const submitTest = useCallback(async () => {
@@ -382,85 +383,107 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           {t('quiz.noQuestions')}
         </p>
       ) : (
-        groups.map((group) => (
-          /**
-           * A text and its questions are one unit on the page: the text sticks to the top of
-           * the group so it is still there at the last question, and stops following once the
-           * next group begins.
-           */
-          <section key={group.element?.id ?? `plain-${group.questions[0].question.id}`}>
-            {group.element ? <ReadingText element={group.element} /> : null}
+        /**
+         * The groups need air between them, and more of it than the questions inside a group
+         * have between themselves.
+         *
+         * Rendered as bare siblings before, each group's recording carried only a bottom
+         * margin - so the second player sat flush against the last question of the first one,
+         * and where one recording's questions ended and the next began was anybody's guess.
+         * A new recording is a larger boundary than a new question, so the gap is larger too.
+         */
+        <div className="mt-6 space-y-14">
+          {groups.map((group) => (
+            /**
+             * A text and its questions are one unit on the page: the text sticks to the top of
+             * the group so it is still there at the last question, and stops following once
+             * the next group begins.
+             */
+            <section
+              key={group.element?.id ?? `plain-${group.questions[0].question.id}`}
+              data-group={group.element?.id ?? 'plain'}
+            >
+              {/* A text is read and an audio is heard, so each gets the surface it needs. */}
+              {group.element?.kind === 'audio' ? (
+                <ListeningAudio element={group.element} />
+              ) : group.element ? (
+                <ReadingText element={group.element} />
+              ) : null}
 
-            <ol className="mt-6 list-none space-y-8 p-0">
-              {group.questions.map(({ question, position }) => {
-                const Renderer = getExerciseRenderer(question.type);
-                const given = feedback[question.id];
-                const locked = Boolean(given) || checking === question.id || submitting;
-                const needsConfirm =
-                  mode === 'practice' &&
-                  question.type !== 'single_choice' &&
-                  !given &&
-                  isAnswered(drafts[question.id]);
+              <ol className="mt-6 list-none space-y-8 p-0">
+                {group.questions.map(({ question, position }) => {
+                  const Renderer = getExerciseRenderer(question.type);
+                  const given = feedback[question.id];
+                  const locked = Boolean(given) || checking === question.id || submitting;
+                  const needsConfirm =
+                    mode === 'practice' &&
+                    question.type !== 'single_choice' &&
+                    !given &&
+                    isAnswered(drafts[question.id]);
 
-                return (
-                  <li
-                    key={question.id}
-                    className={[
-                      'scroll-mt-20 rounded-2xl border-l-4 p-4 transition-colors sm:p-6',
-                      given
-                        ? given.correct
-                          ? 'border-[var(--color-success)] bg-[var(--color-success-soft)]'
-                          : 'border-[var(--color-error)] bg-[var(--color-error-soft)]'
-                        : 'border-transparent bg-[var(--color-surface-section)]',
-                    ].join(' ')}
-                  >
-                    <p className="text-xs font-bold tracking-wider text-[var(--color-text-secondary)] uppercase">
-                      {t('quiz.questionPosition', { current: position, total })}
-                      {/**
-                       * Only where a weight actually differs from the rest. A task worth
-                       * double should say so before it is answered, not once the points
-                       * are already lost.
-                       */}
-                      {showPoints && question.points > 1
-                        ? ` · ${t('quiz.questionPoints', { count: question.points })}`
-                        : ''}
-                    </p>
-                    <p className="mt-2 text-base font-bold text-[var(--color-text-primary)]">
-                      {question.prompt}
-                    </p>
+                  return (
+                    <li
+                      key={question.id}
+                      className={[
+                        'scroll-mt-20 rounded-2xl border-l-4 p-4 transition-colors sm:p-6',
+                        given
+                          ? given.correct
+                            ? 'border-[var(--color-success)] bg-[var(--color-success-soft)]'
+                            : 'border-[var(--color-error)] bg-[var(--color-error-soft)]'
+                          : 'border-transparent bg-[var(--color-surface-section)]',
+                      ].join(' ')}
+                    >
+                      <p className="flex flex-wrap items-center gap-x-3 text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-text-secondary)] uppercase">
+                        <span>{t('quiz.questionPosition', { current: position, total })}</span>
+                        {/**
+                         * Only where a weight actually differs from the rest. A task worth
+                         * double should say so before it is answered, not once the points are
+                         * already lost - and it is its own mark, so it reads as a property of
+                         * the task rather than as more of the same sentence.
+                         */}
+                        {showPoints && question.points > 1 ? (
+                          <span className="rounded-full bg-[var(--color-dawn-pink-light)] px-2.5 py-0.5 text-[var(--color-burnt-siena-dark)]">
+                            {t('quiz.questionPoints', { count: question.points })}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="mt-2 text-base font-bold text-[var(--color-text-primary)]">
+                        {question.prompt}
+                      </p>
 
-                    <div className="mt-4">
-                      {Renderer ? (
-                        <Renderer
-                          question={question}
-                          answer={drafts[question.id] ?? ''}
-                          onChange={(value) => setDraft(question.id, value)}
-                          disabled={locked}
-                        />
-                      ) : (
-                        <p className="text-sm text-[var(--color-error)]">
-                          {t('quiz.unsupportedType')}
-                        </p>
-                      )}
-                    </div>
+                      <div className="mt-4">
+                        {Renderer ? (
+                          <Renderer
+                            question={question}
+                            answer={drafts[question.id] ?? ''}
+                            onChange={(value) => setDraft(question.id, value)}
+                            disabled={locked}
+                          />
+                        ) : (
+                          <p className="text-sm text-[var(--color-error)]">
+                            {t('quiz.unsupportedType')}
+                          </p>
+                        )}
+                      </div>
 
-                    {needsConfirm ? (
-                      <button
-                        type="button"
-                        onClick={() => void check(question)}
-                        className="mt-4 inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                      >
-                        {t('quiz.checkAnswer')}
-                      </button>
-                    ) : null}
+                      {needsConfirm ? (
+                        <button
+                          type="button"
+                          onClick={() => void check(question)}
+                          className="mt-4 inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                        >
+                          {t('quiz.checkAnswer')}
+                        </button>
+                      ) : null}
 
-                    {given ? <QuestionFeedback given={given} /> : null}
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-        ))
+                      {given ? <QuestionFeedback given={given} /> : null}
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          ))}
+        </div>
       )}
 
       <LessonAttachments

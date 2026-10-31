@@ -84,7 +84,7 @@ const CourseDetailsSection: React.FC<CourseDetailsSectionProps> = ({
             disabled={disabled}
             triggerClassName="w-full"
           />
-          {/* Only set it for a course that really spans a range — leaving it empty is the
+          {/* Only set it for a course that really spans a range - leaving it empty is the
               ordinary case, and filling it in with the same level says nothing. */}
           <p className="text-xs text-[var(--color-text-secondary)]">
             Leave empty unless the course covers several levels. A course from A2 to B1 is

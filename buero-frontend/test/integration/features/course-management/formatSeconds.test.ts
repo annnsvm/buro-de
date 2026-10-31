@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { formatSeconds } from '@/features/course-managment/helpers/formatSeconds';
 
 /**
- * The duration the player reports, written the way a teacher would have typed it — the same
+ * The duration the player reports, written the way a teacher would have typed it - the same
  * field accepts both, so the two have to agree.
  */
 describe('formatSeconds', () => {

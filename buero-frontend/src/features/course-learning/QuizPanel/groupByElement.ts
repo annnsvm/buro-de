@@ -15,7 +15,7 @@ export type QuestionGroup = {
  * Splits a block's questions into the stretches that belong to one text or recording.
  *
  * The server sends the questions already in order, so a group is simply a run of neighbours
- * with the same `element_id` — no sorting, no regrouping of questions the author chose to
+ * with the same `element_id` - no sorting, no regrouping of questions the author chose to
  * separate. Questions with no element (all of Grammatik, and any question the author left
  * unbound) form their own runs and are shown exactly as before.
  *

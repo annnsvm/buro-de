@@ -2,15 +2,7 @@ import axios from 'axios';
 import { apiInstance } from '@/api/apiInstance';
 import { API_ENDPOINTS } from '@/api/apiEndpoints';
 import type { MaterialAttachment } from '@/types/features/courseManagment/MaterialAttachment.types';
-
-const stripJsonContentType = [
-  (data: unknown, headers: { delete?: (k: string) => void }) => {
-    if (headers && typeof headers.delete === 'function') {
-      headers.delete('Content-Type');
-    }
-    return data;
-  },
-];
+import { stripJsonContentType } from '@/api/multipart';
 
 export const fetchAttachments = async (
   courseId: string,

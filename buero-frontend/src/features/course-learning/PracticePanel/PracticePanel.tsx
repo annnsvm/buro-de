@@ -10,6 +10,8 @@ import QuizPanel from '@/features/course-learning/QuizPanel/QuizPanel';
 import LessonAttachments from '@/features/course-learning/MaterialWindow/LessonAttachments';
 import type { MaterialAttachment } from '@/types/features/courseManagment/MaterialAttachment.types';
 import PracticeHub from './PracticeHub';
+import PracticeSpeakingBlock from './PracticeSpeakingBlock';
+import PracticeWritingBlock from './PracticeWritingBlock';
 
 export type PracticePanelProps = {
   courseMaterialId: string;
@@ -25,7 +27,7 @@ export type PracticePanelProps = {
 /**
  * The practice of one lesson: a hub of blocks the student picks from.
  *
- * The order is theirs, not ours — the cards say what each block is and how far through it they
+ * The order is theirs, not ours - the cards say what each block is and how far through it they
  * are, and any of them can be started first. A lesson's practice is one sitting broken into
  * parts, not a queue.
  */
@@ -99,16 +101,34 @@ const PracticePanel: React.FC<PracticePanelProps> = ({
         >
           {t('practice.backToHub')}
         </button>
-        <QuizPanel
-          key={openBlock}
-          courseMaterialId={courseMaterialId}
-          block={openBlock}
-          courseId={courseId}
-          moduleId={moduleId}
-          quizMaterialTitle={t(`practice.blocks.${openBlock}.title`)}
-          onMoveOn={closeBlock}
-          moveOnLabel={t('practice.toHub')}
-        />
+        {/**
+         * Writing is not a set of questions, so it is not the question player.
+         *
+         * It is one letter marked against the author's own rubric, and the screen for that
+         * already exists as a material of its own - the block shows that same screen rather
+         * than a second, slightly different one.
+         */}
+        {openBlock === 'schreiben' ? (
+          <PracticeWritingBlock courseMaterialId={courseMaterialId} />
+        ) : openBlock === 'sprechen' ? (
+          /**
+           * Speaking asks no questions either: the student records, listens to themselves and
+           * compares that against the author's own answer. There is no score, because marking
+           * spoken German automatically is not a judgement this platform can make honestly.
+           */
+          <PracticeSpeakingBlock courseMaterialId={courseMaterialId} />
+        ) : (
+          <QuizPanel
+            key={openBlock}
+            courseMaterialId={courseMaterialId}
+            block={openBlock}
+            courseId={courseId}
+            moduleId={moduleId}
+            quizMaterialTitle={t(`practice.blocks.${openBlock}.title`)}
+            onMoveOn={closeBlock}
+            moveOnLabel={t('practice.toHub')}
+          />
+        )}
       </div>
     );
   }

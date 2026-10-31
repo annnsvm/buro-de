@@ -9,7 +9,7 @@ import { QuizService } from "./quiz.service";
  *
  * Two rules meet here and used to contradict each other: a test below its threshold is
  * not finished, and a student who failed still deserves to be told why. Before, the
- * opposite of both held — a failed test was ticked off as done, and came back with
+ * opposite of both held - a failed test was ticked off as done, and came back with
  * nothing but red marks.
  */
 describe("QuizService.submitQuiz", () => {
@@ -227,7 +227,7 @@ describe("QuizService.submitQuiz", () => {
   describe("a practice quiz", () => {
     beforeEach(() => setUp(QuizMode.practice, null));
 
-    it("is done however it went — there is nothing to fail", async () => {
+    it("is done however it went - there is nothing to fail", async () => {
       await failing();
 
       expect(prisma.courseProgress.upsert).toHaveBeenCalled();

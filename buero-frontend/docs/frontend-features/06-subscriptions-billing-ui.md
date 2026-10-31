@@ -64,7 +64,7 @@ Thunks:
 
 - `fetchSubscriptionStatus` → `GET /api/subscriptions/me`.
 - `fetchPaymentsHistory` → `GET /api/payments/me`.
-- `createCheckoutSession` → `POST /api/subscriptions/checkout` (результат — URL для редіректу).
+- `createCheckoutSession` → `POST /api/subscriptions/checkout` (результат - URL для редіректу).
 - `createPortalSession` → `POST /api/subscriptions/portal`.
 
 #### 3.2. Persist
@@ -75,7 +75,7 @@ Thunks:
 
 ### 4. Форми та валідація
 
-Суттєвих форм немає — основна взаємодія:
+Суттєвих форм немає - основна взаємодія:
 
 - кнопки запуску Checkout/Portal;
 - фільтри/пагінація в `PaymentsHistoryTable` (простий input/selector).
@@ -103,8 +103,8 @@ Frontend повинен враховувати, що фактичні оновл
 ### 6. Error Handling & Skeletons
 
 - **Skeletons**:
-  - `SkeletonSubscriptionCard` — поки чекаємо `GET /api/subscriptions/me`.
-  - `SkeletonPaymentsTable` — поки чекаємо `GET /api/payments/me`.
+  - `SkeletonSubscriptionCard` - поки чекаємо `GET /api/subscriptions/me`.
+  - `SkeletonPaymentsTable` - поки чекаємо `GET /api/payments/me`.
 - **Errors**:
   - помилки при завантаженні статусу:
     - показ повідомлення «Unable to load subscription status» + кнопка retry;

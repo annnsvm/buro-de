@@ -66,7 +66,7 @@ describe('the next module after a test', () => {
 describe('naming the step that follows', () => {
   /**
    * Telling a student they are going "to the next lesson" when the module test is what comes
-   * next is the kind of small inaccuracy that makes an interface feel careless — and a test is
+   * next is the kind of small inaccuracy that makes an interface feel careless - and a test is
    * a step they may want to approach deliberately.
    */
   it('names a practice, a test and a lesson differently', () => {

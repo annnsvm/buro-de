@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { usePersistentDraft } from '@/hooks/usePersistentDraft';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { EditorElement, PracticeBlockName, SaveElementPayload } from '@/api/questionEditorApi';
 
@@ -8,6 +9,8 @@ export type PracticeTextsProps = {
   saving: boolean;
   onSave: (elementId: string | null, payload: SaveElementPayload) => Promise<void>;
   onDelete: (elementId: string) => Promise<void>;
+  /** Where to keep the half-written form. Omitting it discards it on unmount, as before. */
+  draftKey?: string | null;
   /** Opens the question form already pointed at this text. */
   onAddQuestion: (elementId: string) => void;
 };
@@ -19,7 +22,7 @@ type Draft = { id: string | null; title: string; body: string };
  *
  * A text and its questions are added in that order, and the panel says so: a text on its own
  * is never shown to anyone, so each one carries the count of questions about it and the way to
- * add the next. The text being edited replaces its own row rather than appearing above it —
+ * add the next. The text being edited replaces its own row rather than appearing above it -
  * showing the same text twice, once in a form and once in a list, read as two different things.
  */
 const PracticeTexts: React.FC<PracticeTextsProps> = ({
@@ -28,14 +31,28 @@ const PracticeTexts: React.FC<PracticeTextsProps> = ({
   saving,
   onSave,
   onDelete,
+  draftKey = null,
   onAddQuestion,
 }) => {
-  const [draft, setDraft] = useState<Draft | null>(null);
+  /**
+   * The half-written task survives leaving this editor.
+   *
+   * Switching to another block unmounts this component, which used to destroy everything typed
+   * into the form. A rubric runs to several paragraphs, so losing it to a stray click cost real
+   * work - and the author had no way of knowing a click would cost anything.
+   */
+  const {
+    value: draft,
+    setValue: setDraft,
+    clear: forgetDraft,
+  } = usePersistentDraft<Draft | null>(draftKey, null);
 
   const submit = async () => {
     if (!draft) return;
     await onSave(draft.id, { block, kind: 'text', title: draft.title, body: draft.body });
     setDraft(null);
+    /** Saved, so there is nothing left to protect. */
+    forgetDraft();
   };
 
   const form = (
@@ -44,7 +61,7 @@ const PracticeTexts: React.FC<PracticeTextsProps> = ({
         {draft?.id ? 'Редагування тексту' : 'Новий текст'}
       </p>
       <label className="block text-sm">
-        Заголовок — його студент бачить над текстом
+        Заголовок - його студент бачить над текстом
         <input
           type="text"
           value={draft?.title ?? ''}
@@ -55,7 +72,7 @@ const PracticeTexts: React.FC<PracticeTextsProps> = ({
         />
       </label>
       <label className="block text-sm">
-        Текст — його студент читає, відповідаючи на питання
+        Текст - його студент читає, відповідаючи на питання
         <textarea
           value={draft?.body ?? ''}
           onChange={(event) =>
@@ -76,7 +93,10 @@ const PracticeTexts: React.FC<PracticeTextsProps> = ({
         </button>
         <button
           type="button"
-          onClick={() => setDraft(null)}
+          onClick={() => {
+            setDraft(null);
+            forgetDraft();
+          }}
           className="rounded-full border border-[var(--color-border-default)] px-5 py-2 text-sm"
         >
           Скасувати
@@ -123,7 +143,7 @@ const PracticeTexts: React.FC<PracticeTextsProps> = ({
                     {element.title}
                   </p>
                   <p className="mt-0.5 line-clamp-2 text-xs text-[var(--color-text-secondary)]">
-                    {element.body || '—'}
+                    {element.body || '-'}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-1">
@@ -154,7 +174,7 @@ const PracticeTexts: React.FC<PracticeTextsProps> = ({
 
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                 {/**
-                 * A text no question points at is never shown to a student — nothing on the
+                 * A text no question points at is never shown to a student - nothing on the
                  * lesson page would reveal that, so it is said here instead.
                  */}
                 <p
@@ -166,7 +186,7 @@ const PracticeTexts: React.FC<PracticeTextsProps> = ({
                   ].join(' ')}
                 >
                   {element.question_count === 0
-                    ? 'Питань про цей текст ще немає — студент його не побачить'
+                    ? 'Питань про цей текст ще немає - студент його не побачить'
                     : `Питань про цей текст: ${element.question_count}`}
                 </p>
                 <button
@@ -184,7 +204,7 @@ const PracticeTexts: React.FC<PracticeTextsProps> = ({
 
       {elements.length === 0 && !draft ? (
         <p className="mt-3 text-xs text-[var(--color-text-secondary)]">
-          Текстів ще немає. Натисніть «Додати текст» — і тоді до нього можна буде додавати питання.
+          Текстів ще немає. Натисніть «Додати текст» - і тоді до нього можна буде додавати питання.
         </p>
       ) : null}
     </section>

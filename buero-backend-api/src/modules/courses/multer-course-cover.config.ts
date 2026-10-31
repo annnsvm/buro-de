@@ -9,7 +9,7 @@ export const COURSE_COVER_MIME_TYPES = [
   "image/webp",
 ] as const;
 
-/** Максимальний розмір файлу — 5 MB */
+/** Максимальний розмір файлу - 5 MB */
 export const COURSE_COVER_MAX_BYTES = 5 * 1024 * 1024;
 
 export const courseCoverMulterOptions: MulterOptions = {

@@ -10,7 +10,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 — requires **local backend** (`buero-backend-api`, port 3000).
+Open http://localhost:5173 - requires **local backend** (`buero-backend-api`, port 3000).
 
 Full workflow: [docs/local-development.md](../docs/local-development.md)
 

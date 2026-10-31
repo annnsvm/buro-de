@@ -11,7 +11,7 @@ import type { CourseMaterialVideoFieldsProps } from '@/types/features/courseMana
  *
  * The title and the thumbnail come from YouTube through our own server; the length comes from the
  * player, which is the only thing that knows it without an API key. All three are only ever
- * suggestions — every field stays editable, and nothing here can stop the form being saved if
+ * suggestions - every field stays editable, and nothing here can stop the form being saved if
  * YouTube is slow, private or unreachable.
  */
 const CourseMaterialVideoFields: React.FC<
@@ -36,7 +36,7 @@ const CourseMaterialVideoFields: React.FC<
     if (id && id !== youtubeVideoId.trim()) onYoutubeVideoIdChange(id);
   };
 
-  /** Fills the title only when it is still empty — never overwrites what the teacher wrote. */
+  /** Fills the title only when it is still empty - never overwrites what the teacher wrote. */
   const suggestTitle = useCallback(
     (title: string | null) => {
       if (title) onYoutubeTitleFound?.(title);
@@ -73,7 +73,7 @@ const CourseMaterialVideoFields: React.FC<
 
   /**
    * A hidden player, purely to be asked how long the video is. It also proves the id plays at
-   * all — a video that will not load here would not have loaded for a student either.
+   * all - a video that will not load here would not have loaded for a student either.
    */
   useEffect(() => {
     if (!resolvedId || !playerHost.current) return;
@@ -95,7 +95,7 @@ const CourseMaterialVideoFields: React.FC<
         });
       })
       .catch(() => {
-        /* No player, no automatic length — the field is still there to type into. */
+        /* No player, no automatic length - the field is still there to type into. */
       });
 
     return () => {
@@ -135,7 +135,7 @@ const CourseMaterialVideoFields: React.FC<
             <p className="font-medium text-[var(--color-text-primary)]">
               {looking
                 ? 'Шукаємо відео…'
-                : (preview?.title ?? 'Відео не знайдено — перевірте посилання')}
+                : (preview?.title ?? 'Відео не знайдено - перевірте посилання')}
             </p>
             {preview?.authorName ? (
               <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">

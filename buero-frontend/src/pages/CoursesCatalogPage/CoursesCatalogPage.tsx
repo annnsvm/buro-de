@@ -144,7 +144,7 @@ const CoursesCatalogPage: FC = () => {
    * The level narrows the list here rather than on the server.
    *
    * Asking the server would return only the courses at that level, and the chips are built
-   * from what the list contains — so choosing A2 would leave A2 as the only chip and no way
+   * from what the list contains - so choosing A2 would leave A2 as the only chip and no way
    * back to the others. Narrowing after the fetch keeps every chip on screen. The catalogue
    * is served whole today; when it is paginated the chips will need a facet of their own.
    */

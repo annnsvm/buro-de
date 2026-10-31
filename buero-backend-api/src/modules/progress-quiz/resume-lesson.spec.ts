@@ -8,7 +8,7 @@ import { ProgressService } from "./progress.service";
  *
  * `course_progress` holds only what has been finished, so the newest row is the lesson the
  * student just left behind. Offering that one sent them back into a lesson they had already
- * done, while opening the course itself landed on the next one — two different answers to
+ * done, while opening the course itself landed on the next one - two different answers to
  * "where did I stop".
  */
 describe("ProgressService resume lesson", () => {

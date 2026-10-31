@@ -260,7 +260,7 @@ export class WayForPayService {
     return parsed.url;
   }
 
-  /** CHECK_STATUS — джерело правди, коли callback ще не дійшов. */
+  /** CHECK_STATUS - джерело правди, коли callback ще не дійшов. */
   async checkStatus(
     orderReference: string,
   ): Promise<WayForPayCheckStatusResponse> {

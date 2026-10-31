@@ -32,7 +32,7 @@ Feature **User Profile UI** реалізує сторінку `/profile` (або
   - список курсів, де користувач має прогрес:
     - назва, % завершення, CTA «Continue».
 - `ProfileSettingsSection`:
-  - прості поля (що не перетинаються з AccountSettings) — наприклад displayName/short bio.
+  - прості поля (що не перетинаються з AccountSettings) - наприклад displayName/short bio.
 - `AvatarUploader`:
   - завантаження/обрізка аватарки, прев’ю, валідація розміру/типу файлу.
 - `ProfileSubscriptionSummary`:
@@ -100,7 +100,7 @@ Persist:
 - `GET /api/users/me`:
   - для ініціалізації профілю.
 - `PATCH /api/users/me`:
-  - оновлення полів профілю (language/timezone — паралельно використовуються AccountSettings).
+  - оновлення полів профілю (language/timezone - паралельно використовуються AccountSettings).
 - `GET /api/progress/me`:
   - загальний прогрес та курси користувача.
 - `GET /api/subscriptions/me`:

@@ -1,8 +1,8 @@
-# Design Colors — семантичні кольори
+# Design Colors - семантичні кольори
 
 У проєкті використовується **двошаровий підхід**:
-1. **Primitive** — базові кольори палітри (Neutrals, Burnt Siena, Dawn Pink, Cod Gray, Soapstone).
-2. **Semantic** — рольові токени (text-primary, surface-background, accent-primary тощо).
+1. **Primitive** - базові кольори палітри (Neutrals, Burnt Siena, Dawn Pink, Cod Gray, Soapstone).
+2. **Semantic** - рольові токени (text-primary, surface-background, accent-primary тощо).
 
 Кожен семантичний токен описує **призначення** кольору в інтерфейсі.
 
@@ -57,12 +57,12 @@
 ## Де визначено
 
 - **Тема:** `src/styles/index.css` (блок `@theme`).
-- Primitive-кольори — базові; семантичні токени посилаються на них.
-- Aliases (`--color-primary`, `--color-background`, `--color-white`) — для зворотної сумісності.
+- Primitive-кольори - базові; семантичні токени посилаються на них.
+- Aliases (`--color-primary`, `--color-background`, `--color-white`) - для зворотної сумісності.
 
 ## Використання в Tailwind CSS
 
-Токени оголошені в `@theme` з префіксом `--color-*`, тому Tailwind автоматично генерує утиліти: **текст** — `text-*`, **фон** — `bg-*`, **бордер** — `border-*`, **ring** — `ring-*` тощо. Ім’я класу = частина після `--color-` (наприклад, `--color-text-primary` → `text-primary` не вийде, бо клас буде `text-text-primary`). Нижче — два способи використання.
+Токени оголошені в `@theme` з префіксом `--color-*`, тому Tailwind автоматично генерує утиліти: **текст** - `text-*`, **фон** - `bg-*`, **бордер** - `border-*`, **ring** - `ring-*` тощо. Ім’я класу = частина після `--color-` (наприклад, `--color-text-primary` → `text-primary` не вийде, бо клас буде `text-text-primary`). Нижче - два способи використання.
 
 ### 1. Утиліти з теми (рекомендовано)
 
@@ -71,10 +71,10 @@
 | Токен                        | Текст                 | Фон                     | Бордер                  | Ring                  |
 | ---------------------------- | --------------------- | ----------------------- | ----------------------- | --------------------- |
 | `--color-text-primary`       | `text-text-primary`   | `bg-text-primary`       | `border-text-primary`   | `ring-text-primary`   |
-| `--color-text-secondary`     | `text-text-secondary` | —                       | —                       | —                     |
-| `--color-surface-background` | —                     | `bg-surface-background` | —                       | —                     |
-| `--color-surface-section`    | —                     | `bg-surface-section`    | —                       | —                     |
-| `--color-border-default`     | —                     | —                       | `border-border-default` | —                     |
+| `--color-text-secondary`     | `text-text-secondary` | -                       | -                       | -                     |
+| `--color-surface-background` | -                     | `bg-surface-background` | -                       | -                     |
+| `--color-surface-section`    | -                     | `bg-surface-section`    | -                       | -                     |
+| `--color-border-default`     | -                     | -                       | `border-border-default` | -                     |
 | `--color-accent-primary`     | `text-accent-primary` | `bg-accent-primary`     | `border-accent-primary` | `ring-accent-primary` |
 
 **Приклади класів:**
@@ -116,7 +116,7 @@
 </div>
 ```
 
-У Tailwind це записується як `[var(--color-...)]` — у квадратних дужках будь-який CSS-вираз.
+У Tailwind це записується як `[var(--color-...)]` - у квадратних дужках будь-який CSS-вираз.
 
 ### 3. Підсумок по категоріях
 
