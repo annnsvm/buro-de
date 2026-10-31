@@ -54,7 +54,7 @@ Feature **Account Settings UI** відповідає за:
 - RHF + Zod:
   - `language`: enum (`'en' | 'de'`).
   - `timezone`: string, але перевіряється проти списку підтримуваних значень (IANA).
-  - інші поля — згідно дозволених backend-правил (див. `docs/modules/01-users.md`).
+  - інші поля - згідно дозволених backend-правил (див. `docs/modules/01-users.md`).
 - UX:
   - `Save changes` кнопка, disabled при `isSubmitting`.
   - на успіх:
@@ -72,14 +72,14 @@ Feature **Account Settings UI** відповідає за:
     - `users.language`;
     - `student_profiles.timezone` або `teacher_profiles.*` (залежно від ролі).
 
-Frontend не розділяє це на кілька endpoint’ів — деривація за роллю виконується бекендом.
+Frontend не розділяє це на кілька endpoint’ів - деривація за роллю виконується бекендом.
 
 ---
 
 ### 6. Error Handling & Skeletons
 
 - **Skeletons**:
-  - `SkeletonSettingsForm` — поки чекаємо `GET /api/users/me`.
+  - `SkeletonSettingsForm` - поки чекаємо `GET /api/users/me`.
 - **Errors**:
   - валідаційні:
     - мапляться у RHF (`setError`) за назвами полів.

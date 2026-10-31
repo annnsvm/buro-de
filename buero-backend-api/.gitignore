@@ -47,5 +47,5 @@ docker-compose.yml
 
 /src/generated/prisma
 
-# Build output from a one-off boot check — never belongs in the repository.
+# Build output from a one-off boot check - never belongs in the repository.
 /dist-boot

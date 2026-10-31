@@ -225,7 +225,7 @@ export class CourseMaterialService {
   /**
    * Access to a material is not access to its answer key: a student who paid for the
    * course must still not be able to read `correct` out of the response. Teachers
-   * author the quizzes, so they keep it — the editor needs it to pre-select options.
+   * author the quizzes, so they keep it - the editor needs it to pre-select options.
    * An absent role means an internal lookup that never reaches a client.
    */
   private toLearnerMaterial<T extends { content?: unknown }>(

@@ -112,14 +112,14 @@ export function buildVerificationEmail(opts: {
   const title =
     locale === "uk" ? "Підтвердь свою email-адресу" : "Confirm your email address";
   const subject =
-    locale === "uk" ? "Код підтвердження — Büro.de" : "Your Büro.de verification code";
+    locale === "uk" ? "Код підтвердження - Büro.de" : "Your Büro.de verification code";
   const intro =
     locale === "uk"
       ? `Привіт, ${name}! Щоб завершити реєстрацію на Büro.de, введи цей код:`
       : `Hi ${name}! To finish creating your Büro.de account, enter this code:`;
   const valid =
     locale === "uk"
-      ? "Код дійсний 15 хвилин. Якщо ти не реєструвався — просто ігноруй цей лист."
+      ? "Код дійсний 15 хвилин. Якщо ти не реєструвався - просто ігноруй цей лист."
       : "This code is valid for 15 minutes. If you did not try to sign up, ignore this email.";
   const footerNote =
     locale === "uk"
@@ -158,12 +158,12 @@ export function buildWelcomeEmail(opts: {
   const subject =
     locale === "uk"
       ? "Вітаємо! Ти з нами на Büro.de"
-      : "Welcome — you have joined Büro.de";
+      : "Welcome - you have joined Büro.de";
   const hello = locale === "uk" ? `Привіт, ${name}!` : `Hi ${name}!`;
   const body =
     locale === "uk"
-      ? "Реєстрацію підтверджено. Раді, що ти приєднався до платформи — тепер можна обирати курс і починати вчитися німецьку."
-      : "Your registration is confirmed. Welcome to the platform — you can now pick a course and start learning German.";
+      ? "Реєстрацію підтверджено. Раді, що ти приєднався до платформи - тепер можна обирати курс і починати вчитися німецьку."
+      : "Your registration is confirmed. Welcome to the platform - you can now pick a course and start learning German.";
   const next =
     locale === "uk"
       ? "Заходь на сайт, коли буде зручно, і продовжуй з того місця, де зупинився."

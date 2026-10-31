@@ -11,7 +11,7 @@ export class SubmitWritingDto {
   /**
    * A hard ceiling before anything is read. The task asks for six to eight sentences, so
    * anything past a few thousand characters is either a mistake or an attempt to run the bill
-   * up — and refusing it here costs nothing.
+   * up - and refusing it here costs nothing.
    */
   @MaxLength(5000)
   text!: string;

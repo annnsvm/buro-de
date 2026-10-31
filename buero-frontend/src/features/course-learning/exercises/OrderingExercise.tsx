@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { ExerciseRendererProps } from './exercise.types';
 
 /**
- * Putting the words of a sentence in order — the exercise that drills German word
+ * Putting the words of a sentence in order - the exercise that drills German word
  * order, which is where most learners of the language struggle.
  *
  * Words are tapped into place rather than dragged: tapping works the same with a

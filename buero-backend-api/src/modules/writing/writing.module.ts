@@ -8,7 +8,7 @@ import { WritingService } from './writing.service';
 
 /**
  * `AuthModule` and `UserModule` are here because the controller's guards depend on them. Leaving
- * them out compiles and passes every unit test, then fails at boot — the dependency graph is
+ * them out compiles and passes every unit test, then fails at boot - the dependency graph is
  * only built when the application starts.
  */
 @Module({

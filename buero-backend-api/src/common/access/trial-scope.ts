@@ -6,7 +6,7 @@ import { PrismaService } from "../../prisma/prisma.service";
  * Module 0 carries the "how to study on this course" instructions and module 1 is
  * the first real teaching module, so a trial has to cover both to be worth anything.
  *
- * The rule is positional on purpose — nothing has to be flagged per course — which
+ * The rule is positional on purpose - nothing has to be flagged per course - which
  * also means reordering modules silently moves the free boundary. That is the whole
  * reason this number and the lookup live in one place instead of being repeated in
  * every service that enforces access.
@@ -29,7 +29,7 @@ export const getTrialModuleIds = async (
 
 /**
  * A trial does not expire. Registering is the only thing it asks for, and after that
- * the opening modules stay open indefinitely — it is a standing free tier, not a
+ * the opening modules stay open indefinitely - it is a standing free tier, not a
  * countdown to a purchase. Nothing reads user_course_access.trial_ends_at any more;
  * the column is left in place in case a time-limited promotion is ever wanted.
  */

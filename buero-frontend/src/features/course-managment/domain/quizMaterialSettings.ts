@@ -8,7 +8,7 @@ import type { CreateCourseMaterialModalValues } from '@/types/features/courseMan
  * they apply whether the questions came from a CSV import or were typed in one by one.
  *
  * A practice quiz sends no threshold. Its result is the share of questions answered
- * right, and there is nothing to pass or fail — carrying a percentage there would put a
+ * right, and there is nothing to pass or fail - carrying a percentage there would put a
  * threshold on a lesson check that is meant to be taken as many times as it takes.
  */
 export const quizMaterialSettings = (

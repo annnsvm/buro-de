@@ -44,7 +44,7 @@ import {
 /**
  * The lesson is carried as a query parameter rather than a path segment. It gives the
  * same refresh, back button and bookmark behaviour without touching the route table,
- * and the module need not appear in the address at all — a lesson already knows which
+ * and the module need not appear in the address at all - a lesson already knows which
  * module it belongs to.
  */
 const LESSON_PARAM = 'lesson';
@@ -166,7 +166,7 @@ const CoursePage: React.FC = () => {
 
   /**
    * Writes that fallback into the address as soon as the course is known, replacing the
-   * entry rather than adding one — arriving at a course should not put a step in the
+   * entry rather than adding one - arriving at a course should not put a step in the
    * history that the back button has to walk through.
    *
    * It also pins the lesson down. Left unpinned, finishing a video would change where
@@ -209,7 +209,7 @@ const CoursePage: React.FC = () => {
 
   /**
    * A practice opens on its hub of blocks; a quiz and the module test go straight to their
-   * questions. Both end up in the same question panel — the hub is a step in front of it.
+   * questions. Both end up in the same question panel - the hub is a step in front of it.
    */
   const isPracticeSelected = Boolean(
     selectedMaterial && String(selectedMaterial.type).toLowerCase() === 'practice',
@@ -290,7 +290,7 @@ const CoursePage: React.FC = () => {
    * The next step through the course, whatever kind of material it is.
    *
    * This used to look for the next *video*, so "next lesson" stepped straight over the
-   * quiz that belongs to the lesson just watched — the student was carried past the
+   * quiz that belongs to the lesson just watched - the student was carried past the
    * practice without being shown it.
    */
   const nextMaterialId = useMemo(

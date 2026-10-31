@@ -2,7 +2,7 @@
 
 ### 1. Призначення feature
 
-Landing (`/`, **HomePage**) — перша точка входу для нового користувача:
+Landing (`/`, **HomePage**) - перша точка входу для нового користувача:
 
 - пояснює цінність платформи;
 - демонструє ключові benefits та метрики («Your progress always visible»);
@@ -19,7 +19,7 @@ Landing (`/`, **HomePage**) — перша точка входу для ново
 
 #### 2.2. Layout-компоненти
 
-- `LayoutShell` (`routes/layout.tsx`) — глобальний shell з Header/Footer.
+- `LayoutShell` (`routes/layout.tsx`) - глобальний shell з Header/Footer.
 - `Header`:
   - logo, навігація (`Home`, `Courses`, `Dashboard`), language switch (EN/DE), auth-buttons (`Sign in` / `Get started`).
 - `Footer`:
@@ -57,7 +57,7 @@ Landing (`/`, **HomePage**) — перша точка входу для ново
     - якщо гість → `Start assessment` відкриває auth-flow.
     - якщо студент без level → `Start assessment`.
     - якщо студент із level, але без trial/pідписки → `Go to dashboard`.
-  - `subscriptions` — для показу банера (trial vs active subscription).
+  - `subscriptions` - для показу банера (trial vs active subscription).
 
 #### 3.2. Persist
 
@@ -73,10 +73,10 @@ Landing (`/`, **HomePage**) — перша точка входу для ново
 
 Landing не містить критичних форм, окрім:
 
-- підписка на newsletter (опційно) — RHF + проста email-валидація;
+- підписка на newsletter (опційно) - RHF + проста email-валидація;
 - прості контактні форми (якщо будуть).
 
-У MVP ці форми можуть бути відсутні; основний фокус — CTA-кнопки, що ведуть у assessment/auth.
+У MVP ці форми можуть бути відсутні; основний фокус - CTA-кнопки, що ведуть у assessment/auth.
 
 ---
 
@@ -87,7 +87,7 @@ Landing у MVP може:
 - працювати повністю статично (без API);
 - або (опційно) підвантажувати:
   - testimonials з бекенду (якщо є окремий модуль);
-  - агреговані метрики прогресу (наприклад, середній % завершення курсів) — **опційно**.
+  - агреговані метрики прогресу (наприклад, середній % завершення курсів) - **опційно**.
 
 Конкретні endpoints для цих даних не визначені в backend-модулях, тому для MVP фронтенд може використовувати статичні дані/конфіг.
 
@@ -100,7 +100,7 @@ Landing у MVP може:
     - `HeroSection` може рендеритись одразу (в основному статичний).
     - `MetricsSection`/`TestimonialsSection` показують skeleton, поки дані завантажуються.
 - **Errors**:
-  - Якщо помилка при завантаженні testimonials/metrics — fallback до статичного контенту або приховування секції.
+  - Якщо помилка при завантаженні testimonials/metrics - fallback до статичного контенту або приховування секції.
   - Глобальний error-трекер не зупиняє рендер Landing.
 
 Error Boundary окремо для Landing не потрібен; достатньо глобального `AppErrorBoundary`.

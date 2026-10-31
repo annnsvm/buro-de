@@ -63,7 +63,7 @@ export class SubscriptionsService {
         "You already have access to this course via subscription",
       );
     }
-    // trial (активний або минулий) не блокує купівлю — після оплати доступ стане purchase
+    // trial (активний або минулий) не блокує купівлю - після оплати доступ стане purchase
 
     const price = course.price != null ? Number(course.price) : null;
     if (price == null || !Number.isFinite(price) || price <= 0) {
@@ -105,7 +105,7 @@ export class SubscriptionsService {
 
       return { url, order_reference: orderReference };
     } catch (err) {
-      // Платіжна сторінка не створилась — pending-запис лише заважатиме наступній спробі
+      // Платіжна сторінка не створилась - pending-запис лише заважатиме наступній спробі
       await this.prisma.payment.delete({ where: { id: payment.id } });
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(

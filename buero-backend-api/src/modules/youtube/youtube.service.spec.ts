@@ -6,7 +6,7 @@ import { YoutubeService } from './youtube.service';
  *
  * The whole point of this is to save typing, so nothing here may ever stop the form working: a
  * video that does not exist, a YouTube that is slow or down, a reply in a shape we did not
- * expect — each has to come back as "nothing found" rather than as an error.
+ * expect - each has to come back as "nothing found" rather than as an error.
  */
 describe('YoutubeService', () => {
   let service: YoutubeService;
@@ -26,14 +26,14 @@ describe('YoutubeService', () => {
   describe('a video that exists', () => {
     it('returns its title and thumbnail', async () => {
       replyWith({
-        title: 'Deutsch A2.1 — Lektion 1',
+        title: 'Deutsch A2.1 - Lektion 1',
         thumbnail_url: 'https://i.ytimg.com/vi/x/hqdefault.jpg',
         author_name: 'Büro.de',
       });
 
       await expect(service.getPreview(VALID_ID)).resolves.toEqual({
         found: true,
-        title: 'Deutsch A2.1 — Lektion 1',
+        title: 'Deutsch A2.1 - Lektion 1',
         thumbnailUrl: 'https://i.ytimg.com/vi/x/hqdefault.jpg',
         authorName: 'Büro.de',
       });

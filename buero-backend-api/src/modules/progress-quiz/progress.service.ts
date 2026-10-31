@@ -81,7 +81,7 @@ export class ProgressService {
    * student worked in most recently.
    *
    * `course_progress` records only what has been *completed*, so the newest row is the
-   * lesson they just left behind — not the one to go back to. Offering it sent the student
+   * lesson they just left behind - not the one to go back to. Offering it sent the student
    * to a lesson they had already done, and the card counted it as where they were.
    *
    * The rule matches what the course page does when it is opened without a lesson named,
@@ -177,7 +177,7 @@ export class ProgressService {
      * Structural checks below only prove the material belongs to the course. Without this
      * call any authenticated student could mark materials of a course they never bought,
      * inflating their own progress. Uses the module-level check so it matches what the
-     * material listing allows — on trial that is the opening modules only.
+     * material listing allows - on trial that is the opening modules only.
      */
     await this.courseMaterialService.assertCanAccessModule(
       userId,

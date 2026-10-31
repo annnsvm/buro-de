@@ -40,7 +40,7 @@ export const encouragementFor = (total: number, done: number): Encouragement => 
 };
 
 /**
- * The opening line names the number in words — "чотири короткі блоки", not "4 блоки".
+ * The opening line names the number in words - "чотири короткі блоки", not "4 блоки".
  *
  * Only this one message does. It is the invitation, and a numeral there reads like a count of
  * work; the later lines are progress reports, where a digit is exactly right. A practice never

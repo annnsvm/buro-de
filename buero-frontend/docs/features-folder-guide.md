@@ -1,19 +1,19 @@
-# Папка `src/features/` — навіщо вона і як з нею працювати
+# Папка `src/features/` - навіщо вона і як з нею працювати
 
 ## 1. Навіщо потрібна папка features
 
-- **Одна фіча — одне місце.** Усе, що стосується авторизації (форми логіну, API, валідація), лежить у `features/auth/`. Так легше знайти код і змінювати одну область без розкиду по проєкту.
+- **Одна фіча - одне місце.** Усе, що стосується авторизації (форми логіну, API, валідація), лежить у `features/auth/`. Так легше знайти код і змінювати одну область без розкиду по проєкту.
 - **Чіткі межі.** Сторінки (`pages/`) лише збирають готові блоки з `features/` та `components/layout`, `components/ui`. Бізнес-логіка й доменні компоненти живуть у features.
 - **Масштабування.** Нову фічу (наприклад, notifications) додаємо як окрему папку `features/notifications/` без ламання існуючого коду.
-- **Імпорти.** Є один barrel-файл `src/features/index.ts` — імпорт через `import { auth, landing } from "@/features"` або з `src/features`.
+- **Імпорти.** Є один barrel-файл `src/features/index.ts` - імпорт через `import { auth, landing } from "@/features"` або з `src/features`.
 
-У **features не кладуть**: глобальний layout (Header, Footer), загальні UI-компоненти (Button, Input, Card), а також **Redux** — усі слайси та стейт залишаються в `src/redux/` (окремо від фіч).
+У **features не кладуть**: глобальний layout (Header, Footer), загальні UI-компоненти (Button, Input, Card), а також **Redux** - усі слайси та стейт залишаються в `src/redux/` (окремо від фіч).
 
 ---
 
 ## 2. Структура однієї фічі
 
-Кожна фіча — це папка з опційними підпапками **без redux** (Redux окремо в `src/redux/slices/`):
+Кожна фіча - це папка з опційними підпапками **без redux** (Redux окремо в `src/redux/slices/`):
 
 ```text
 src/features/
@@ -31,7 +31,7 @@ src/features/
   ...
 ```
 
-У кожному `index.ts` — JSDoc з посиланням на відповідний документ у `docs/frontend-features/` і перелік запланованих підпапок. Це нагадування, що саме має жити в цій фічі; поступово туди додаються реальні файли.
+У кожному `index.ts` - JSDoc з посиланням на відповідний документ у `docs/frontend-features/` і перелік запланованих підпапок. Це нагадування, що саме має жити в цій фічі; поступово туди додаються реальні файли.
 
 ---
 
@@ -116,7 +116,7 @@ export { RegisterForm } from './components/RegisterForm';
 export { loginSchema, registerSchema } from './validation/authSchemas';
 ```
 
-**Модалки** (Sign In, Sign Up, Reset password) імпортують компоненти фічі; стейт (auth slice) — з Redux:
+**Модалки** (Sign In, Sign Up, Reset password) імпортують компоненти фічі; стейт (auth slice) - з Redux:
 
 ```tsx
 import { LoginForm, RegisterForm } from '@/features/auth';
@@ -130,7 +130,7 @@ import { selectIsAuthenticated } from '@/redux/slices/auth';
 
 ## 6. Документація по фічах
 
-Опис кожної фічі (сторінки, форми, API) — у файлах:
+Опис кожної фічі (сторінки, форми, API) - у файлах:
 
 - `docs/frontend-features/00-landing-ui.md`
 - `docs/frontend-features/01-auth-ui.md`

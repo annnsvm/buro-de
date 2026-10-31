@@ -47,7 +47,7 @@ type ReadableModules = "all" | ReadonlySet<string>;
 /**
  * The catalogue query, in one place.
  *
- * This was spelled out twice — once where it is built and once where it is run — and the
+ * This was spelled out twice - once where it is built and once where it is run - and the
  * second copy fell behind, so conditions added to the first were handed over without
  * being type-checked at all.
  */
@@ -128,7 +128,7 @@ export class CourseService {
       /**
        * A course covers a level when the level falls inside its range.
        *
-       * Matching `level` exactly would hide a course that spans two — an integration
+       * Matching `level` exactly would hide a course that spans two - an integration
        * course running from A2 to B1 belongs under both, and under an exact match it
        * appeared under neither of them but one. Prisma cannot compare enum values, so
        * the range is turned into the two sets of levels that bracket it.
@@ -170,7 +170,7 @@ export class CourseService {
        * Selecting everything *except* a tag.
        *
        * The catalogue's "language courses" filter used to look for a `Language` tag, so
-       * it depended on every language course having been tagged by hand — and most had
+       * it depended on every language course having been tagged by hand - and most had
        * not, which is why it returned one course out of three. Defined as the opposite of
        * the integration tag instead, it cannot fall out of date: a new course counts as a
        * language course unless it is explicitly tagged otherwise.
@@ -320,7 +320,7 @@ export class CourseService {
   ): Record<string, unknown> {
     const { content, attachments, ...rest } = material;
     /**
-     * Duration is showcase data, not paid content — the catalog and the lesson list
+     * Duration is showcase data, not paid content - the catalog and the lesson list
      * show it for locked lessons too. Lift it out before `content` is dropped.
      */
     const base = {
@@ -333,7 +333,7 @@ export class CourseService {
     }
     /**
      * Teachers author the quizzes, and the material editor pre-selects the right
-     * options from `correct` — stripping it for them would blank the answer key on
+     * options from `correct` - stripping it for them would blank the answer key on
      * the next save. Everyone else gets the content without the key.
      */
     return {
@@ -728,7 +728,7 @@ export class CourseService {
     };
   }
 
-  /** Один SQL замість двох Prisma-запитів — критично при remote Render DB. */
+  /** Один SQL замість двох Prisma-запитів - критично при remote Render DB. */
   private async countLessonsByCourseIds(): Promise<{
     lessons: Map<string, number>;
     videos: Map<string, number>;

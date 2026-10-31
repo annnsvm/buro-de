@@ -74,7 +74,7 @@ describe('progress on the my-learning course list', () => {
 
   /**
    * Progress is read separately from the courses, so it can be missing while the list
-   * itself is fine. The cards must still work — losing the bars is not losing the page.
+   * itself is fine. The cards must still work - losing the bars is not losing the page.
    */
   it('still lists the courses when no progress is known', async () => {
     await i18nReady;

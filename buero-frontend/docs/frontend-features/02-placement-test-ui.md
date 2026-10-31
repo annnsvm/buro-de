@@ -10,12 +10,12 @@ Feature **Placement Test UI** реалізує проходження **одно
 
 #### 2.1. Сторінки
 
-- `pages/AssessmentPage/AssessmentPage.tsx` — основний інтерфейс тесту.
-- `pages/ResultsPage/ResultsPage.tsx` — екран результатів тесту + CTA для trial/курсів.
+- `pages/AssessmentPage/AssessmentPage.tsx` - основний інтерфейс тесту.
+- `pages/ResultsPage/ResultsPage.tsx` - екран результатів тесту + CTA для trial/курсів.
 
 #### 2.2. Feature-компоненти (`src/features/placement-test/`)
 
-- `PlacementIntro` — вступний блок (пояснення, час проходження, кнопка «Start test»).
+- `PlacementIntro` - вступний блок (пояснення, час проходження, кнопка «Start test»).
 - `PlacementQuestionList` або `PlacementQuestionStepper`:
   - відображає питання по одному або блоками.
 - `PlacementProgressBar`:
@@ -56,7 +56,7 @@ Thunks:
 #### 3.2. Persist
 
 - Можна (опційно) зберігати проміжні `answers` у persist, щоб при випадковому перезавантаженні не втрачати прогрес.
-- Результат тесту (`resultLevel`) не обов’язково зберігати — бекенд оновлює `student_profiles.level`, інформація доступна через `user` slice.
+- Результат тесту (`resultLevel`) не обов’язково зберігати - бекенд оновлює `student_profiles.level`, інформація доступна через `user` slice.
 
 ---
 
@@ -109,11 +109,11 @@ Frontend послідовно:
     - показ `AssessmentSkeleton` (кілька сірих карток).
 - **Errors**:
   - `GET /questions`:
-    - на помилку — повідомлення + CTA «Retry».
+    - на помилку - повідомлення + CTA «Retry».
   - `POST /submit`:
     - показує Alert, але не скидає відповіді; користувач може повторити.
   - `POST /confirm-trial`:
-    - у разі помилки — показати toast і запропонувати повтор.
+    - у разі помилки - показати toast і запропонувати повтор.
 
 Для `AssessmentPage` можна мати легкий локальний Error Boundary, але достатньо глобального.
 

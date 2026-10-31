@@ -7,7 +7,7 @@ import {
 
 /**
  * Which line the hub shows under the cards. Two of the author's rules overlap, and the tests
- * pin down which one wins — that is the only part of this worth getting wrong.
+ * pin down which one wins - that is the only part of this worth getting wrong.
  */
 describe('encouragement under the block cards', () => {
   it('says nothing at all for a practice of one block until it is finished', () => {
@@ -36,7 +36,7 @@ describe('encouragement under the block cards', () => {
       expect(encouragementFor(4, 2)).toEqual({ key: 'halfway', count: 2 });
     });
 
-    /** With three blocks, two left means one done — so the gentler line, not "halfway". */
+    /** With three blocks, two left means one done - so the gentler line, not "halfway". */
     it('is a good start when only one of three is done', () => {
       expect(encouragementFor(3, 1)).toEqual({ key: 'goodStart', count: 2 });
     });

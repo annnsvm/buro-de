@@ -27,12 +27,12 @@ export type WhereToStartProps = {
 };
 
 /**
- * "Where do I start?" — the question the catalogue exists to answer.
+ * "Where do I start?" - the question the catalogue exists to answer.
  *
  * Three taps, no grading, no account. It ends by pointing at a course to *begin free*
  * rather than to buy: the trial is permanent and covers the first two modules, so a person
  * who has just admitted they do not know their level can find out at no cost. That is also
- * why this does not need to be accurate — only pointed in the right direction. If it is a
+ * why this does not need to be accurate - only pointed in the right direction. If it is a
  * level out, the course itself says so within a lesson, for free.
  *
  * Deliberately not a placement test. It asks about the person, grades nothing, and gates

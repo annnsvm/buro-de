@@ -62,7 +62,7 @@ const CourseLearningSidebar: React.FC<CourseLearningSidebarProps> = ({
   /**
    * On a trial the server unlocks the opening modules (module 0 with the course
    * instructions plus the first teaching module). Show every module the caller may
-   * actually study — the ones that are not in lockedModuleIds — and reserve the
+   * actually study - the ones that are not in lockedModuleIds - and reserve the
    * blurred teaser for the first module still behind the paywall.
    */
   const displayModules = useMemo(() => {

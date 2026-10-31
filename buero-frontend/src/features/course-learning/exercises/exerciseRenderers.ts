@@ -6,7 +6,7 @@ import WrittenExercise from './WrittenExercise';
 import type { ExerciseRendererProps } from './exercise.types';
 
 /**
- * The one place that maps a question type to the component that draws it — the mirror
+ * The one place that maps a question type to the component that draws it - the mirror
  * of the exercise registry on the server. A new kind of exercise is a new component
  * and a line here, instead of another branch inside the quiz player.
  */

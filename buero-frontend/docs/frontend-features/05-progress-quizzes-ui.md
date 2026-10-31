@@ -93,7 +93,7 @@ Thunks:
   - обов’язковий вибір відповіді для кожного питання перед переходом до наступного блоку/сабмітом.
 - При відповіді:
   - Використання **покрокової відправки**:
-    - при натисканні «Next»/«Submit answer» — `submitQuizAnswer`.
+    - при натисканні «Next»/«Submit answer» - `submitQuizAnswer`.
 
 #### 4.2. Scenario
 
@@ -112,13 +112,13 @@ Thunks:
 
 Згідно з модулем `Progress & Quizzes`:
 
-- `GET /api/progress/me` — загальний прогрес.
-- `GET /api/courses/:courseId/progress` — прогрес по курсу.
-- `GET /api/progress/recommended-next` — рекомендований наступний курс/крок.
-- `POST /api/quiz/attempts` — почати спробу.
-- `POST /api/quiz/attempts/:attemptId/answers` — надіслати відповідь/блок.
-- `POST /api/quiz/attempts/:attemptId/complete` — завершити квіз.
-- `GET /api/quiz/attempts/:attemptId` — відновити спробу.
+- `GET /api/progress/me` - загальний прогрес.
+- `GET /api/courses/:courseId/progress` - прогрес по курсу.
+- `GET /api/progress/recommended-next` - рекомендований наступний курс/крок.
+- `POST /api/quiz/attempts` - почати спробу.
+- `POST /api/quiz/attempts/:attemptId/answers` - надіслати відповідь/блок.
+- `POST /api/quiz/attempts/:attemptId/complete` - завершити квіз.
+- `GET /api/quiz/attempts/:attemptId` - відновити спробу.
 
 ---
 

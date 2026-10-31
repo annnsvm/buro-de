@@ -14,7 +14,7 @@
 
 1. Користувач заходить на `/` (**HomePage**).
 2. Бачить hero, ключові benefits, секцію «Your progress always visible», testimonials.
-3. Натискає **CTA**: «Start assessment» / «Start free trial» (для нових — assessment).
+3. Натискає **CTA**: «Start assessment» / «Start free trial» (для нових - assessment).
 4. Якщо неавторизований:
    - або відкривається модалка login/register;
    - або відкриття login-модалки з поверненням після успіху.
@@ -155,9 +155,9 @@ flowchart LR
 1. Користувач переходить на `/courses/:courseId`.
 2. Frontend перевіряє доступ (`requireContentAccess`).
 3. Frontend завантажує:
-   - `GET /api/courses/:courseId` — метадані курсу;
-   - `GET /api/courses/:courseId/materials` — список матеріалів (modules/lessons);
-   - `GET /api/courses/:courseId/progress` — прогрес користувача по курсу.
+   - `GET /api/courses/:courseId` - метадані курсу;
+   - `GET /api/courses/:courseId/materials` - список матеріалів (modules/lessons);
+   - `GET /api/courses/:courseId/progress` - прогрес користувача по курсу.
 4. Відображається layout:
    - **Sidebar**: список модулів/уроків (назва, тривалість, статус).
    - **Main area**: поточний матеріал:
@@ -170,9 +170,9 @@ flowchart LR
    - `POST /api/courses/:courseId/materials/:materialId/complete` (Progress & Quizzes).
    - оновлюється прогрес у Redux.
 7. Для квізів/сценаріїв:
-   - при старті спроби — `POST /api/quiz/attempts`;
-   - кожна відповідь — `POST /api/quiz/attempts/:attemptId/answers`;
-   - завершення — `POST /api/quiz/attempts/:attemptId/complete`.
+   - при старті спроби - `POST /api/quiz/attempts`;
+   - кожна відповідь - `POST /api/quiz/attempts/:attemptId/answers`;
+   - завершення - `POST /api/quiz/attempts/:attemptId/complete`.
 8. Нотатки (якщо реалізовані):
    - autosave через debounce: `PATCH /api/notes/:courseMaterialId`.
 
@@ -213,8 +213,8 @@ flowchart LR
 1. Користувач заходить на `/profile` (**UserProfilePage**).
 2. `ProtectedRoute` перевіряє, що користувач авторизований.
 3. Страница завантажує:
-   - `GET /api/users/me` — профіль (level, language, timezone, avatar).
-   - `GET /api/progress/me` — сумарний прогрес.
+   - `GET /api/users/me` - профіль (level, language, timezone, avatar).
+   - `GET /api/progress/me` - сумарний прогрес.
    - `GET /api/courses` (за потреби) або окремий список `my courses`.
 4. Відображення:
    - **Overview**: поточний рівень, streak, загальний % завершених матеріалів.

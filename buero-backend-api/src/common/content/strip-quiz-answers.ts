@@ -6,8 +6,8 @@
  * stored score meaningless. This is shared by every endpoint that returns a
  * material so the rule cannot drift between them.
  *
- * Handles both shapes the grader accepts — flat `{ questions: [...] }` and the
- * legacy `{ blocks: [{ questions: [...] }] }` — and both key conventions in the
+ * Handles both shapes the grader accepts - flat `{ questions: [...] }` and the
+ * legacy `{ blocks: [{ questions: [...] }] }` - and both key conventions in the
  * repository (`correct` at runtime, `correctAnswer` in the seed).
  */
 export const stripQuizAnswers = (content: unknown): unknown => {

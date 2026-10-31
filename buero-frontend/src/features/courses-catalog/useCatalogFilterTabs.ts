@@ -7,11 +7,11 @@ import { useTranslation } from 'react-i18next';
  * There were seven. Four of them were broken against the actual data: "Culture & Life"
  * and "Advanced" matched a tag and a level no course had, so both always returned an
  * empty screen; "Beginner" matched a tag every course carried, so it duplicated "All
- * courses" — and included a B1 course. A filter that empties the page teaches the
+ * courses" - and included a B1 course. A filter that empties the page teaches the
  * visitor that there are no courses.
  *
  * Levels are deliberately not here. They belong to the `level` column rather than to the
- * tags, and they are only worth offering once there are several courses at each level —
+ * tags, and they are only worth offering once there are several courses at each level -
  * at which point they come back as levels, not as tags called "beginner".
  */
 const BASE_FILTER_IDS = ['all', 'language', 'integration'] as const;

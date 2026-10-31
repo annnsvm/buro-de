@@ -12,7 +12,7 @@ import { v2 as cloudinary } from "cloudinary";
 export type UploadImageOptions = {
   /** Папка в Cloudinary Media Library, напр. courses */
   folder: string;
-  /** public_id (напр. courseId) — при overwrite повторне завантаження замінює ресурс */
+  /** public_id (напр. courseId) - при overwrite повторне завантаження замінює ресурс */
   publicId: string;
 };
 

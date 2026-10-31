@@ -46,7 +46,7 @@ export type MyProgressResponse = {
 /**
  * Progress across every course at once, for the list a student picks from.
  *
- * A course with nothing finished yet is simply absent, which reads as nought — asking
+ * A course with nothing finished yet is simply absent, which reads as nought - asking
  * per course would mean one request per card.
  */
 export const fetchMyProgress = async (): Promise<MyProgressResponse> => {

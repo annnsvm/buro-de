@@ -11,8 +11,8 @@ import { QuizMode } from "src/generated/prisma/enums";
  * which is not what a practice quiz is for. A question's `points` are ignored here.
  *
  * A **module test** counts points, because the test is authored with weights. The A2.1
- * module 4 test is twenty-three tasks worth twenty-five points — two of them are worth
- * two points each — and its admission rule is written as "at least 15 of 25". Scored by
+ * module 4 test is twenty-three tasks worth twenty-five points - two of them are worth
+ * two points each - and its admission rule is written as "at least 15 of 25". Scored by
  * question count, a student who failed only the two heavy tasks would read as 21 of 23
  * (91%) when the author's own scale says 21 of 25 (84%). The threshold would then be
  * measuring something the author never wrote.
@@ -84,7 +84,7 @@ export const scoreAttempt = (
  * One section of a test, as the author divided it up.
  *
  * A single percentage tells a student they failed but not what to do about it. The
- * authored files already split a test into parts — "ЧАСТИНА 2 · dass і das" — and end
+ * authored files already split a test into parts - "ЧАСТИНА 2 · dass і das" - and end
  * with a table saying which lesson to revisit when a part goes badly. This carries that
  * same table, computed from the attempt.
  */
@@ -98,7 +98,7 @@ export type PartResult = {
   total: number;
   /**
    * The author's own rule for "go back over this": more than half the points of the
-   * part were lost. Half exactly is not weak — it is the losing of *more* than half
+   * part were lost. Half exactly is not weak - it is the losing of *more* than half
    * that the instruction names.
    */
   weak: boolean;
@@ -114,7 +114,7 @@ export type PartedQuestion = GradedQuestion & {
  *
  * Only for a test. A practice quiz follows a single lesson, so splitting it would
  * divide one topic into pieces that mean nothing on their own. Questions with no part
- * recorded — anything imported before parts were kept — produce no breakdown at all
+ * recorded - anything imported before parts were kept - produce no breakdown at all
  * rather than one bucket called "other", which would read as a real section.
  */
 export const summariseParts = (
@@ -165,7 +165,7 @@ export const summariseParts = (
 
 /**
  * The passing threshold expressed in points, so a test can state its rule the way its
- * author wrote it — "at least 15 of 25" rather than "at least 60%".
+ * author wrote it - "at least 15 of 25" rather than "at least 60%".
  *
  * Derived from the percentage rather than stored separately: two numbers that must
  * agree, kept in two places, eventually stop agreeing. Rounded up, so the points shown

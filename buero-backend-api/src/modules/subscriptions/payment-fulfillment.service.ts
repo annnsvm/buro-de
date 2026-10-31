@@ -29,7 +29,7 @@ export class PaymentFulfillmentService {
 
   /**
    * Догортає платежі, які WayForPay підтвердив уже після того, як студент пішов
-   * зі сторінки успіху (callback міг не дійти — напр. на локальному оточенні).
+   * зі сторінки успіху (callback міг не дійти - напр. на локальному оточенні).
    * Ніколи не кидає помилку: список курсів має відкриватись і без WayForPay.
    */
   async reconcilePendingForUser(userId: string): Promise<void> {

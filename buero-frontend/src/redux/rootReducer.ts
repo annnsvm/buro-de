@@ -38,7 +38,7 @@ const SESSION_END_ACTIONS = new Set(['auth/logout', 'auth/logout/fulfilled']);
 /**
  * Ending a session drops every slice back to its initial state.
  *
- * Signing out used to leave the previous account's data in memory — most visibly the
+ * Signing out used to leave the previous account's data in memory - most visibly the
  * word list, which stayed on screen until the next student's own words arrived from
  * the server. Resetting centrally means a new slice cannot forget to clean up after
  * itself, which is how that bug happened in the first place.

@@ -32,11 +32,11 @@ describe("Users /me (e2e)", () => {
     await app.close();
   });
 
-  it("GET /api/users/me — 401 без cookie", async () => {
+  it("GET /api/users/me - 401 без cookie", async () => {
     await request(app.getHttpServer()).get("/api/users/me").expect(401);
   });
 
-  it("GET /api/users/me — 200 з user/profile, без password_hash", async () => {
+  it("GET /api/users/me - 200 з user/profile, без password_hash", async () => {
     const em = email();
     const reg = await registerVerified(app, {
       email: em,
@@ -62,7 +62,7 @@ describe("Users /me (e2e)", () => {
     expect(res.body.user.email).toBe(em.toLowerCase());
   });
 
-  it("PATCH /api/users/me — 200 з валідним cookie, тіло без пароля", async () => {
+  it("PATCH /api/users/me - 200 з валідним cookie, тіло без пароля", async () => {
     const em = email();
     const reg = await registerVerified(app, {
       email: em,

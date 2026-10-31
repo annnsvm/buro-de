@@ -58,7 +58,7 @@ export class ListCoursesQueryDto {
   @ApiPropertyOptional({
     enum: PublicationStatus,
     description:
-      "Фільтр публікації (manage): all — усі, published — тільки опубліковані, unpublished — тільки неопубліковані",
+      "Фільтр публікації (manage): all - усі, published - тільки опубліковані, unpublished - тільки неопубліковані",
   })
   @IsOptional()
   @IsEnum(PublicationStatus)

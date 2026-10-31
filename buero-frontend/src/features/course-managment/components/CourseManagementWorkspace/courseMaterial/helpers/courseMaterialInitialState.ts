@@ -11,13 +11,13 @@ export const createLocalId = (prefix: string) =>
 
 /**
  * What a module test needs by default: 60% is the threshold the A2.1 tests are written
- * to — 15 points of 25. It is only a starting value; the author sets it per test.
+ * to - 15 points of 25. It is only a starting value; the author sets it per test.
  */
 export const DEFAULT_PASSING_SCORE = 60;
 
 /**
- * A new writing task starts with the shape of the module 4 letter — the length rule and six
- * criteria — because that is the form every one of these tasks takes. The teacher rewrites the
+ * A new writing task starts with the shape of the module 4 letter - the length rule and six
+ * criteria - because that is the form every one of these tasks takes. The teacher rewrites the
  * sentences; they do not have to work out how many boxes to make.
  */
 export const emptyWritingTask = (): WritingTaskDraft => ({

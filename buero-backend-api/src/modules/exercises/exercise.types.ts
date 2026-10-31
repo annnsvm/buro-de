@@ -25,7 +25,7 @@ export type GradableQuestion = {
  * Everything type-specific about one kind of exercise lives in one of these.
  *
  * Adding a type should mean adding a definition and a renderer, not editing the quiz
- * service, the controller and the player — which is what the previous design required,
+ * service, the controller and the player - which is what the previous design required,
  * and why the platform still supported exactly one kind of question while the authored
  * content already used four.
  */
@@ -36,7 +36,7 @@ export type ExerciseDefinition = {
   grade(question: GradableQuestion, answer: RawAnswer): GradeResult;
   /**
    * The answer key as a person reads it. Choice questions store option ids, and one
-   * multi-choice answer is a comma-joined set of them — encodings that belong to the
+   * multi-choice answer is a comma-joined set of them - encodings that belong to the
    * server and must never reach a student's screen.
    */
   describeAcceptedAnswers(question: GradableQuestion): string[];

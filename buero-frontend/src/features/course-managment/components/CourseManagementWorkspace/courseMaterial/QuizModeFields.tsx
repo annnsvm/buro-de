@@ -15,8 +15,8 @@ export type QuizModeFieldsProps = {
  * It has to be made here rather than inferred later, because the two are counted
  * differently and a student meets the difference immediately: a practice quiz marks
  * each answer as it comes and scores questions, a test marks nothing until the end and
- * scores the points the author gave each task. Choosing it by accident — which is what
- * happened while the mode could only be set by the CSV import — means a module test
+ * scores the points the author gave each task. Choosing it by accident - which is what
+ * happened while the mode could only be set by the CSV import - means a module test
  * that hands out its answer key, or a lesson quiz that refuses to say anything until
  * the last question.
  */
@@ -44,7 +44,7 @@ const QuizModeFields: React.FC<QuizModeFieldsProps> = ({
       <span>
         <span className="font-medium text-[var(--color-text-primary)]">Квіз уроку</span>
         <span className="block text-xs text-[var(--color-text-secondary)]">
-          Кожна відповідь перевіряється одразу, разом із поясненням. Результат — відсоток
+          Кожна відповідь перевіряється одразу, разом із поясненням. Результат - відсоток
           правильних відповідей, бали питань не враховуються. Спроб скільки завгодно.
         </span>
       </span>
@@ -88,7 +88,7 @@ const QuizModeFields: React.FC<QuizModeFieldsProps> = ({
         % балів
         <span className="basis-full text-xs text-[var(--color-text-secondary)]">
           Відсоток, а не бали: тест можна доповнити питанням, і поріг залишиться тим самим.
-          Для тесту на 25 балів 60% — це 15 балів.
+          Для тесту на 25 балів 60% - це 15 балів.
         </span>
       </label>
     ) : null}

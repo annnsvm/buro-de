@@ -11,7 +11,7 @@ export type ReadingTextProps = {
  *
  * Sticky rather than simply placed above them: a reading task where the text scrolls out of sight
  * stops testing reading and starts testing memory. On a narrow screen it can be folded away, for
- * the moment when the student has read it and wants the questions to fill the screen — their
+ * the moment when the student has read it and wants the questions to fill the screen - their
  * choice, and it opens again in one tap.
  */
 const ReadingText: React.FC<ReadingTextProps> = ({ element }) => {

@@ -104,7 +104,7 @@ export class CoursesController {
     required: false,
     enum: PublicationStatus,
     description:
-      "all — усі, published — тільки опубліковані, unpublished — тільки неопубліковані. За замовчуванням all.",
+      "all - усі, published - тільки опубліковані, unpublished - тільки неопубліковані. За замовчуванням all.",
   })
   @ApiResponse({
     status: 200,
@@ -145,9 +145,9 @@ export class CoursesController {
       "Структура курсу (модулі + матеріали) з поетапним доступом до вмісту. JWT опційний. " +
       "Завжди повертаються id, title, type, order_index та duration матеріалу. " +
       "Поле content і attachments приходять лише для доступних модулів: " +
-      "вчителю — усі; після купівлі чи підписки — усі; на trial — лише вступні модулі (0 і 1); " +
-      "гостю та після закінчення trial — жодного (content: null, locked: true). " +
-      "Правильні відповіді на квізи не повертаються нікому — перевірка виконується на сервері. " +
+      "вчителю - усі; після купівлі чи підписки - усі; на trial - лише вступні модулі (0 і 1); " +
+      "гостю та після закінчення trial - жодного (content: null, locked: true). " +
+      "Правильні відповіді на квізи не повертаються нікому - перевірка виконується на сервері. " +
       "Неопубліковані курси видно лише вчителю (інакше 404). " +
       "За наявності доступу у відповіді також my_access.",
   })
@@ -262,7 +262,7 @@ export class CoursesController {
   @ApiOperation({
     summary: "Змінити порядок курсів у каталозі",
     description:
-      "Тільки для вчителів. Body: items — масив { id, order_index }. Оновлює order_index для кожного курсу.",
+      "Тільки для вчителів. Body: items - масив { id, order_index }. Оновлює order_index для кожного курсу.",
   })
   @ApiBody({ type: ReorderCoursesDto })
   @ApiResponse({ status: 200, description: "Порядок оновлено" })

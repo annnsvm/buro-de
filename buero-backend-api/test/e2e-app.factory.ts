@@ -9,7 +9,7 @@ import { json, text, urlencoded } from "express";
 
 /**
  * Частковий мок WayForPay для e2e (без мережевих викликів).
- * Підпис і статуси лишаються справжніми — підміняються лише HTTP-методи.
+ * Підпис і статуси лишаються справжніми - підміняються лише HTTP-методи.
  */
 export type E2eWayForPayMock = Partial<
   Pick<WayForPayService, "createPaymentPageUrl" | "checkStatus">
@@ -19,7 +19,7 @@ export type E2eWayForPayMock = Partial<
  * Bootstrap як у main.ts (body parsers + cookies + prefix + validation).
  * `E2E_TEST=true` у setup-e2e-env.ts вимикає Throttler.
  *
- * @param options.wayForPayMock — підміняє мережеві методи глобального WayForPayService.
+ * @param options.wayForPayMock - підміняє мережеві методи глобального WayForPayService.
  */
 export async function createE2eApp(options?: {
   wayForPayMock?: E2eWayForPayMock;

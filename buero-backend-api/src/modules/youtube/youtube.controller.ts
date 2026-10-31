@@ -20,7 +20,7 @@ export class YoutubeController {
     summary: 'Назва та обкладинка відео',
     description:
       'Дані з YouTube без ключа API, щоб не вводити назву руками. Якщо відео не знайдено, ' +
-      'повертається found: false — це не помилка, назву завжди можна написати самому.',
+      'повертається found: false - це не помилка, назву завжди можна написати самому.',
   })
   @ApiParam({ name: 'videoId', description: 'Ідентифікатор відео YouTube' })
   @ApiResponse({ status: 200, description: 'Назва й обкладинка або found: false' })

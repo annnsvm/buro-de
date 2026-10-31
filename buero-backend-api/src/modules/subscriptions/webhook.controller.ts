@@ -50,7 +50,7 @@ export class WebhookController {
       orderReference = payload.orderReference;
       status = payload.transactionStatus;
     } catch {
-      // Тіла може не бути взагалі — тоді покладаємось на query-параметри.
+      // Тіла може не бути взагалі - тоді покладаємось на query-параметри.
     }
 
     orderReference ??= this.firstQueryValue(req, "orderReference");

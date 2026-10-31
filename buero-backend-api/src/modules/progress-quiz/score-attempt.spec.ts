@@ -50,7 +50,7 @@ describe("scoring an attempt", () => {
     });
 
     it("puts the admission threshold exactly where the author put it", () => {
-      // "щонайменше 15 балів із 25" — ten one-point tasks failed leaves 15.
+      // "щонайменше 15 балів із 25" - ten one-point tasks failed leaves 15.
       const wrong = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       const scored = scoreAttempt(QuizMode.test, moduleFourTest(wrong));
       expect(scored.earnedPoints).toBe(15);
@@ -134,7 +134,7 @@ describe("breaking a test down by part", () => {
       expect(part.weak).toBe(true);
     });
 
-    it("leaves a part at exactly half alone — half is not more than half", () => {
+    it("leaves a part at exactly half alone - half is not more than half", () => {
       const [part] = summariseParts(QuizMode.test, [
         task("Частина 1", 1, true),
         task("Частина 1", 1, false),

@@ -18,7 +18,7 @@ Feature **Lesson Requests UI** реалізує простий механізм 
 - (Опційно) `/teachers`:
   - сторінка з каталогом вчителів та CTA «Request a lesson» (відкриває форму).
 - Teacher view:
-  - може бути частиною `/profile` (якщо user.role = `teacher`) — вкладка «Student lesson requests».
+  - може бути частиною `/profile` (якщо user.role = `teacher`) - вкладка «Student lesson requests».
 
 #### 2.2. Feature-компоненти (`src/features/lesson-requests/`)
 
@@ -87,14 +87,14 @@ Thunks:
 
 Згідно з модулем `Lesson Requests`:
 
-- `POST /api/lesson-requests` — створити запит (student).
+- `POST /api/lesson-requests` - створити запит (student).
 - `GET /api/lesson-requests/me`:
-  - для студента — його запити;
-  - для вчителя — запити, доступні йому (pending + accepted).
-- `PATCH /api/lesson-requests/:id/accept` — вчитель приймає.
-- `PATCH /api/lesson-requests/:id/reject` — вчитель відхиляє.
-- `PATCH /api/lesson-requests/:id/complete` — відмітка completed.
-- `PATCH /api/lesson-requests/:id/cancel` — відмітка rejected після прийняття.
+  - для студента - його запити;
+  - для вчителя - запити, доступні йому (pending + accepted).
+- `PATCH /api/lesson-requests/:id/accept` - вчитель приймає.
+- `PATCH /api/lesson-requests/:id/reject` - вчитель відхиляє.
+- `PATCH /api/lesson-requests/:id/complete` - відмітка completed.
+- `PATCH /api/lesson-requests/:id/cancel` - відмітка rejected після прийняття.
 
 ---
 
@@ -105,11 +105,11 @@ Thunks:
     - показ кількох `SkeletonRequestCard` до завантаження.
 - **Errors**:
   - при створенні запиту:
-    - помилки форми (валідація) — inline;
-    - помилки сервера — toast «Unable to send request».
+    - помилки форми (валідація) - inline;
+    - помилки сервера - toast «Unable to send request».
   - при діях вчителя:
     - toast при успішній зміні статусу;
-    - у разі конфлікту (наприклад, інший вчитель уже прийняв запит) — відмальовка списку за останніми даними.
+    - у разі конфлікту (наприклад, інший вчитель уже прийняв запит) - відмальовка списку за останніми даними.
 
 ---
 

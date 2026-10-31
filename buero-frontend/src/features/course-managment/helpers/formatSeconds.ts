@@ -1,5 +1,5 @@
 /**
- * Seconds as the lesson list shows them — "9:05", or "1:02:30" once an hour is passed.
+ * Seconds as the lesson list shows them - "9:05", or "1:02:30" once an hour is passed.
  *
  * The duration is typed as text elsewhere in the form, so this has to produce exactly the shape a
  * teacher would have typed: no leading zero on the first number, two digits on the rest.

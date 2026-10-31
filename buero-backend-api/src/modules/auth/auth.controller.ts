@@ -50,7 +50,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Код надіслано, потрібна перевірка email" })
   @ApiResponse({ status: 400, description: "Невалідні дані (email, пароль, role)" })
   @ApiResponse({ status: 409, description: "Email вже зареєстрований" })
-  @ApiResponse({ status: 429, description: "Too Many Requests — перевищено ліміт спроб" })
+  @ApiResponse({ status: 429, description: "Too Many Requests - перевищено ліміт спроб" })
   async register(@Body() dto: RegisterDto) {
     return this.registrationService.startRegistration(dto);
   }
@@ -102,7 +102,7 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 200, description: "Успішний вхід, токени в cookie" })
   @ApiResponse({ status: 401, description: "Невірний email або пароль" })
-  @ApiResponse({ status: 429, description: "Too Many Requests — перевищено ліміт спроб" })
+  @ApiResponse({ status: 429, description: "Too Many Requests - перевищено ліміт спроб" })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.userService.findUserByEmailWithPassword(dto.email);
     if (!user) throw new UnauthorizedException("Invalid credentials");

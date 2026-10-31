@@ -40,5 +40,5 @@ if (testDatabaseUrl === process.env.DATABASE_URL) {
   );
 }
 
-// Everything downstream — Prisma included — reads DATABASE_URL.
+// Everything downstream - Prisma included - reads DATABASE_URL.
 process.env.DATABASE_URL = testDatabaseUrl;
