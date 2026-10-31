@@ -1,4 +1,5 @@
-import { PracticeBlock, QuestionType } from '../../../generated/prisma/enums';
+import { PracticeBlock, PracticeElementKind, QuestionType } from '../../../generated/prisma/enums';
+import { shortLabel } from '../short-label';
 
 /**
  * Reads the CSV the course author writes her questions in.
@@ -26,18 +27,76 @@ export const parseBlock = (raw: string): PracticeBlock | null => {
     return PracticeBlock.horen;
   }
   if (value === 'sprechen') return PracticeBlock.sprechen;
+  if (value === 'schreiben') return PracticeBlock.schreiben;
   return null;
 };
 
-/** A text to read, an audio to listen to, or a prompt to speak from. */
+/**
+ * The length a letter's body must fall within, as the author writes it in `Матеріал`.
+ *
+ * `6-8` is the form the files use; a dash of any width is accepted, because a spreadsheet will
+ * happily turn a hyphen into an en dash without being asked. A single number means exactly that
+ * many.
+ */
+export const parseSentenceRange = (
+  raw: string,
+): { min: number; max: number } | null => {
+  const value = raw.trim();
+  if (!value) return null;
+  const range = /^(\d{1,2})\s*[-–—]\s*(\d{1,2})$/.exec(value);
+  if (range) {
+    const min = Number(range[1]);
+    const max = Number(range[2]);
+    /** A range the wrong way round is a typo, not an instruction to swap it silently. */
+    return min >= 1 && max >= min ? { min, max } : null;
+  }
+  const single = /^(\d{1,2})$/.exec(value);
+  if (single && Number(single[1]) >= 1) {
+    return { min: Number(single[1]), max: Number(single[1]) };
+  }
+  return null;
+};
+
+/** A text to read, a recording to listen to, a prompt to speak from, or a letter to write. */
 export type ParsedElement = {
   id: string;
   group: string;
   block: PracticeBlock;
-  kind: 'text';
+  kind: PracticeElementKind;
   /** The heading above it, from the `Питання` column. */
   title: string;
+  /** The text itself, for something to read. Empty for the other three. */
   body: string;
+  /**
+   * What is said in the recording, from `Пояснення` - an audio has no explanation of its own,
+   * and the student only sees this once every question about it is answered.
+   */
+  transcript: string | null;
+  /** A full-marks answer: the model letter, or what a good spoken answer sounds like. */
+  sampleAnswer: string | null;
+  /** The phrases to lean on, from `Пояснення` on a speaking row. */
+  hints: string | null;
+  /**
+   * The rubric a letter is marked against, one criterion per line of `Пояснення`.
+   *
+   * It is the author's own sentences, and the same ones are shown to the student before they
+   * write, sent to the grader, and quoted back beside the mark - so a letter can never lose a
+   * point against a rule nobody was shown. Empty for every kind but `write`.
+   */
+  criteria: string[];
+  /**
+   * How long the body of the letter must be, from `Матеріал` written as `6-8`.
+   *
+   * Counted rather than judged: whether a student wrote six sentences is a fact, and a mark
+   * that gates the next module should not rest on the grader having counted them.
+   */
+  minSentences: number | null;
+  maxSentences: number | null;
+  /**
+   * The mp3 the row asks for, by name. A CSV cannot carry the file, so the import records what
+   * it was promised and the editor says which recordings are still missing.
+   */
+  audioFileName: string | null;
 };
 
 export type ParsedQuestion = {
@@ -54,7 +113,7 @@ export type ParsedQuestion = {
   reviewLesson: string | null;
   block: PracticeBlock;
   /**
-   * The text or audio this question is about — the nearest one above it in the same lesson and
+   * The text or audio this question is about - the nearest one above it in the same lesson and
    * block, as the author's files are laid out.
    */
   elementId: string | null;
@@ -250,7 +309,7 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
   const explanationIdx = columnIndex('Пояснення');
   /**
    * Optional, and absent from the files written so far. When the author adds it, a
-   * student who was weak on a part is told which lesson to go back over — the mapping
+   * student who was weak on a part is told which lesson to go back over - the mapping
    * they already write by hand at the foot of a test.
    */
   const reviewIdx = ['Урок для повторення', 'Повторити', 'Урок для повторення:']
@@ -289,7 +348,9 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
       problems.push({
         row: rowNumber,
         id,
-        message: `unknown block "${cell(blockIdx)}" (expected Grammatik, Lesen, Hören or Sprechen)`,
+        message:
+          `unknown block "${cell(blockIdx)}" ` +
+          `(expected Grammatik, Lesen, Hören, Sprechen or Schreiben)`,
       });
       return;
     }
@@ -304,24 +365,116 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
      * is no longer how a new file should say which it means: `READ` says so outright, and a
      * row that says `READ` is a text whether or not the reader guesses right.
      */
-    if (typeLabel === 'READ' || (typeLabel === 'TEXT' && material)) {
-      /** A text with nothing in it is the one way `READ` can be wrong, so it is reported. */
-      if (!material) {
-        problems.push({
-          row: rowNumber,
-          id,
-          message: 'READ row has no text in the "Матеріал" column',
-        });
+    /**
+     * The four rows that describe something rather than ask about it.
+     *
+     * Each carries its material in the column that suits it: a text to read is the material
+     * itself, a recording names its file and puts what is said in `Пояснення`, and a speaking
+     * or writing task puts a model answer in `Правильна відповідь` and its prompts beside it.
+     * `TEXT` with a filled `Матеріал` is the older spelling of `READ`, kept for module 4.
+     */
+    const elementKind: PracticeElementKind | null =
+      typeLabel === 'READ' || (typeLabel === 'TEXT' && material)
+        ? PracticeElementKind.text
+        : typeLabel === 'AUDIO'
+          ? PracticeElementKind.audio
+          : typeLabel === 'REC'
+            ? PracticeElementKind.rec
+            : typeLabel === 'WRITE'
+              ? PracticeElementKind.write
+              : null;
+
+    if (elementKind) {
+      const explanation = cell(explanationIdx);
+      const writing = elementKind === PracticeElementKind.write;
+      /**
+       * A letter's rubric: one criterion per line of `Пояснення`, in the author's order.
+       *
+       * Lines rather than another column because a rubric runs to six or seven sentences and
+       * there are only four answer columns. The file already carries multi-line fields, so
+       * this is a shape the author is writing anyway.
+       */
+      const criteria = writing
+        ? explanation
+            .split(/\r?\n/)
+            .map((line) => line.replace(/^\s*(?:\d+[.)]|[-–—•])\s*/, '').trim())
+            .filter(Boolean)
+        : [];
+      const range = writing ? parseSentenceRange(material) : null;
+
+      /** Each kind has what it cannot do without, and a missing one is reported, not guessed. */
+      const missing =
+        elementKind === PracticeElementKind.text && !material
+          ? 'READ row has no text in the "Матеріал" column'
+          : elementKind === PracticeElementKind.audio && !material
+            ? 'AUDIO row names no file in the "Матеріал" column'
+            : !cell(promptIdx)
+              ? `${typeLabel} row has no task in the "Питання" column`
+              : /**
+                 * A letter with no rubric cannot be marked, and a letter marked against a
+                 * rubric nobody wrote would be marked against the grader's own taste. Two
+                 * criteria is the least the grader accepts.
+                 */
+                writing && criteria.length < 2
+                ? 'WRITE row needs at least two criteria, one per line of the ' +
+                  '"Пояснення" column'
+                : writing && criteria.length > 10
+                  ? `WRITE row has ${criteria.length} criteria in the "Пояснення" column ` +
+                    '(at most 10)'
+                  : /**
+                     * The length criterion is settled by counting, so the count has to be
+                     * written down. Guessing a default would mark every letter against a
+                     * length the author never chose.
+                     */
+                    writing && !range
+                    ? 'WRITE row needs the sentence range in the "Матеріал" column, ' +
+                      'written as 6-8'
+                    : writing && !correct
+                      ? 'WRITE row has no model answer in the "Правильна відповідь" column'
+                      : null;
+      if (missing) {
+        problems.push({ row: rowNumber, id, message: missing });
         return;
       }
+
       seenIds.add(id);
+      /** The two kinds that are a prompt rather than something to read or play. */
+      const spoken = elementKind === PracticeElementKind.rec || writing;
+
       const element: ParsedElement = {
         id,
         group,
         block,
-        kind: 'text',
-        title: cell(promptIdx),
-        body: material,
+        kind: elementKind,
+        /**
+         * A short name for lists and headings. A CSV has one column for the task, so for a
+         * speaking or writing prompt the name is taken from its first sentence - the author
+         * has already written the thing out and should not have to name it as well.
+         */
+        title: spoken ? shortLabel(cell(promptIdx)) : cell(promptIdx),
+        /**
+         * The task itself. A reading row's material is its text; a speaking or writing row's
+         * prompt is its task, and it belongs here rather than in the name, which is capped at
+         * 300 characters and is not what the student reads.
+         */
+        body:
+          elementKind === PracticeElementKind.text
+            ? material
+            : spoken
+              ? cell(promptIdx)
+              : '',
+        /** Only a recording has one, and it is written where an explanation would go. */
+        transcript:
+          elementKind === PracticeElementKind.audio ? explanation || null : null,
+        /** The author's own answer, which a speaking or writing task is compared against. */
+        sampleAnswer: spoken ? correct || null : null,
+        /** A letter's explanation column holds its rubric instead, read above. */
+        hints: elementKind === PracticeElementKind.rec ? explanation || null : null,
+        criteria,
+        minSentences: range?.min ?? null,
+        maxSentences: range?.max ?? null,
+        audioFileName:
+          elementKind === PracticeElementKind.audio ? material || null : null,
       };
       elements.push(element);
       openElement.set(`${group}\u0000${block}`, id);
@@ -333,7 +486,9 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
       problems.push({
         row: rowNumber,
         id,
-        message: `unknown type "${cell(typeIdx)}" (expected ONE, GAP, TEXT, ORDER or READ)`,
+        message:
+          `unknown type "${cell(typeIdx)}" ` +
+          `(expected ONE, GAP, TEXT, ORDER, READ, AUDIO, REC or WRITE)`,
       });
       return;
     }

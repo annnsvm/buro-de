@@ -13,8 +13,9 @@ const HeroPreview: FC = () => {
   return (
     <div className="relative mx-auto h-[340px] w-full max-w-[460px] sm:h-[420px] lg:mx-0 lg:max-w-none">
       <article className="@container absolute top-0 right-0 w-[82%] rotate-[8deg] rounded-[28px] border border-white/20 bg-white/10 p-5 text-white backdrop-blur-md sm:p-6">
-        <p className="text-[11px] font-bold tracking-[0.14em] text-white/80 uppercase">
-          {t('landing.heroCardIntegration')}
+        <p className="flex flex-wrap items-center gap-x-3 text-[11px] font-bold tracking-[0.14em] uppercase">
+          <span className="text-white/80">{t('landing.heroCardIntegrationName')}</span>
+          <span className="text-white/50">{t('landing.heroCardIntegrationLevel')}</span>
         </p>
         <div className="mt-3 h-0.5 w-14 bg-[var(--color-accent-primary)]/80" />
         <div className="mt-2 h-px w-full bg-white/20" />
@@ -24,8 +25,11 @@ const HeroPreview: FC = () => {
       </article>
 
       <article className="absolute bottom-0 left-0 w-[74%] -rotate-[7deg] rounded-[28px] border border-white/25 bg-white/15 p-5 text-white backdrop-blur-md sm:p-6">
-        <p className="text-[11px] font-bold tracking-[0.12em] text-[var(--color-accent-primary)] uppercase">
-          {t('landing.heroCardLanguage')}
+        <p className="flex flex-wrap items-center gap-x-3 text-[11px] font-bold tracking-[0.12em] uppercase">
+          <span className="text-[var(--color-accent-primary)]">
+            {t('landing.heroCardLanguageName')}
+          </span>
+          <span className="text-white/50">{t('landing.heroCardLanguageLessons')}</span>
         </p>
         <div className="mt-3 h-1 w-20 rounded-full bg-[var(--color-accent-primary)]/80" />
         <p className="mt-2 font-[family-name:var(--font-heading)] text-7xl leading-none font-bold tracking-[-0.06em] text-white/90 sm:text-8xl">

@@ -42,7 +42,7 @@ const TEST_MATERIAL_TITLE = 'Тест модуля';
  * Loads a module's questions from the CSV the author writes them in.
  *
  * Adding sixty-four questions through a form, one at a time, is not a slow way of
- * filling the platform — it is the reason the platform stays empty. The file the
+ * filling the platform - it is the reason the platform stays empty. The file the
  * author already keeps is therefore the input, and importing it twice updates what is
  * there instead of creating a second copy, so a typo can be fixed in the file and
  * re-imported.
@@ -184,6 +184,18 @@ export class QuestionImportService {
             kind: element.kind as PracticeElementKind,
             title: element.title,
             body: element.body,
+            transcript: element.transcript,
+            sampleAnswer: element.sampleAnswer,
+            hints: element.hints,
+            /** A letter's rubric and the length it is counted against. */
+            criteria: element.criteria,
+            minSentences: element.minSentences,
+            maxSentences: element.maxSentences,
+            /**
+             * The file the row asked for, by name. Re-importing must not wipe a recording that
+             * has already been uploaded, so `audioUrl` is deliberately not in this update.
+             */
+            audioFileName: element.audioFileName,
             orderIndex: index,
           };
           await tx.practiceElement.upsert({
@@ -213,7 +225,7 @@ export class QuestionImportService {
             points: question.points,
             /**
              * The "Урок" column: for a lesson quiz it is the lesson, which already
-             * names the material, and for a test it is the part — "ЧАСТИНА 2 · dass і
+             * names the material, and for a test it is the part - "ЧАСТИНА 2 · dass і
              * das". Keeping it on the question is what lets a finished test be
              * reported part by part instead of as a single number.
              */

@@ -6,17 +6,32 @@ import { AppModule } from "./app.module";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
-import { json, text, urlencoded } from "express";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
+import { configureHttp } from "./common/http/configure-http";
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
   const app = await NestFactory.create(AppModule, { bodyParser: false });
 
-  // WayForPay шле callback то як JSON, то як form-urlencoded, то як text/plain
-  app.use(json());
-  app.use(urlencoded({ extended: true }));
-  app.use(text({ type: "text/plain" }));
+  const configService = app.get(ConfigService);
+
+  /**
+   * Never fall back to `origin: true` - with `credentials: true` that reflects whatever
+   * Origin the request carries. In production CORS_ORIGIN is required (see requiredEnv);
+   * locally we allow only the dev front-end origins.
+   */
+  const DEV_CORS_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
+  const corsOrigin = configService.get<string>("CORS_ORIGIN");
+  const allowedOrigins = corsOrigin
+    ? corsOrigin.split(",").map((origin) => origin.trim()).filter(Boolean)
+    : DEV_CORS_ORIGINS;
+  logger.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
+
+  /**
+   * Before everything else, because a body too large is refused before any route runs and that
+   * refusal still has to be readable by the browser that sent it.
+   */
+  configureHttp(app, allowedOrigins);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -35,7 +50,6 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  const configService = app.get(ConfigService);
   const isProduction = configService.get<string>("NODE_ENV") === "production";
   app.useGlobalFilters(new AllExceptionsFilter(isProduction));
 
@@ -89,27 +103,8 @@ async function bootstrap() {
   });
 
   const port = configService.get<number>("PORT") ?? 3000;
-  const corsOrigin = configService.get<string>("CORS_ORIGIN");
 
   app.setGlobalPrefix("api");
-
-  /**
-   * Never fall back to `origin: true` — with `credentials: true` that reflects whatever
-   * Origin the request carries. In production CORS_ORIGIN is required (see requiredEnv);
-   * locally we allow only the dev front-end origins.
-   */
-  const DEV_CORS_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
-  const allowedOrigins = corsOrigin
-    ? corsOrigin.split(",").map((origin) => origin.trim()).filter(Boolean)
-    : DEV_CORS_ORIGINS;
-  logger.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
-
-  app.enableCors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle("Buero.de API")

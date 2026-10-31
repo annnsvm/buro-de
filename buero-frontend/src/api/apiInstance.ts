@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { getStore } from '../redux/storeRef';
-import { API_ENDPOINTS, PUBLIC_ENDPOINT_PREFIXE } from './apiEndpoints';
+import { API_ENDPOINTS, NO_REFRESH_ENDPOINTS } from './apiEndpoints';
 import { logout } from '@/redux/slices/auth';
 
 const baseURL: string =
@@ -24,9 +24,16 @@ const refreshInstance = axios.create({
   },
 });
 
-const isPublicEndpoint = (url: string | undefined): boolean => {
+/**
+ * Exactly, never by prefix.
+ *
+ * `startsWith` is what turned one public catalog path into a ban on refreshing the whole
+ * course-management API - every one of those URLs begins with `/courses`.
+ */
+const neverRefresh = (url: string | undefined): boolean => {
   if (!url) return false;
-  return PUBLIC_ENDPOINT_PREFIXE.some((prefix) => url.startsWith(prefix));
+  const path = url.split('?')[0].replace(/\/+$/, '');
+  return (NO_REFRESH_ENDPOINTS as readonly string[]).includes(path);
 };
 
 let isRefreshing = false;
@@ -65,7 +72,7 @@ apiInstance.interceptors.response.use(
 
     const url: string | undefined = originalRequest?.url;
 
-    if (isPublicEndpoint(url)) {
+    if (neverRefresh(url)) {
       return Promise.reject(error);
     }
     const state = getStore().getState();

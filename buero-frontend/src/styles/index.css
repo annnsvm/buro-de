@@ -303,7 +303,19 @@
     width: 100%;
   }
 
-  ul {
+  /**
+   * Both kinds of list, reset.
+   *
+   * `ol` was missing here, and the `ul, ol` rule above gives it `list-style: inherit` - which
+   * inherits the initial `disc`. So every ordered list in the product drew bullets instead of
+   * numbers. Two components had already worked around it one at a time, each adding its own
+   * `list-none p-0`; the third did not, and a speaking task appeared as a bulleted item.
+   *
+   * A list that genuinely wants markers asks for them with `list-decimal` or `list-disc`,
+   * which is how the writing rubric does it.
+   */
+  ul,
+  ol {
     list-style: none;
     margin: 0;
     padding: 0;

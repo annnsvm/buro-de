@@ -11,6 +11,8 @@ import {
   QuestionType,
 } from '../../generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
+import { shortLabel } from './short-label';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 import { validateQuestion } from './exercise-registry';
 import type {
   SavePracticeElementDto,
@@ -29,7 +31,10 @@ import type {
  */
 @Injectable()
 export class QuestionEditorService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
 
   async list(courseId: string, moduleId: string, materialId: string) {
     await this.assertQuizMaterial(courseId, moduleId, materialId);
@@ -55,7 +60,7 @@ export class QuestionEditorService {
       .filter(Boolean);
 
     /**
-     * Refuse a question a student could not answer — no options to choose from, an
+     * Refuse a question a student could not answer - no options to choose from, an
      * answer key pointing at an option that no longer exists, nothing marked correct.
      * Letting it through means a dead end discovered mid-lesson.
      */
@@ -70,7 +75,7 @@ export class QuestionEditorService {
     }
 
     /**
-     * A question may only point at a text of this same material and block — otherwise a
+     * A question may only point at a text of this same material and block - otherwise a
      * student would be asked about a text the block never shows them.
      */
     const block = dto.block ?? PracticeBlock.grammatik;
@@ -178,7 +183,7 @@ export class QuestionEditorService {
       orderBy: [{ block: 'asc' }, { orderIndex: 'asc' }],
       /**
        * How many questions point at each text. A text nobody's question points at is never
-       * shown to a student, and that is invisible from the outside — the count is how the
+       * shown to a student, and that is invisible from the outside - the count is how the
        * author finds out while they are still on the page.
        */
       include: { _count: { select: { questions: true } } },
@@ -195,14 +200,32 @@ export class QuestionEditorService {
   ) {
     await this.assertQuizMaterial(courseId, moduleId, materialId);
 
+    const body = dto.body?.trim() || null;
     const data = {
       block: dto.block,
       kind: dto.kind,
-      title: dto.title.trim(),
-      body: dto.body?.trim() || null,
+      /**
+       * The short name, or the first sentence of the task when none was given.
+       *
+       * The two used to be one field, with the task's own 300-character name limit applied to
+       * it - so a real prompt was refused for being too long and there was nowhere else to put
+       * it. They are separate now, and the name is the part that can be left alone.
+       */
+      title: dto.title?.trim() || shortLabel(body ?? '') || 'Без назви',
+      body,
       transcript: dto.transcript?.trim() || null,
       sampleAnswer: dto.sample_answer?.trim() || null,
       hints: dto.hints?.trim() || null,
+      /**
+       * The rubric a letter is marked against. Blank lines are dropped rather than saved as
+       * empty criteria, because an empty criterion would be shown to the student as a rule and
+       * sent to the grader as a nothing.
+       */
+      criteria: (dto.criteria ?? [])
+        .map((criterion) => criterion.trim())
+        .filter(Boolean),
+      minSentences: dto.min_sentences ?? null,
+      maxSentences: dto.max_sentences ?? null,
     };
 
     if (elementId) {
@@ -235,9 +258,117 @@ export class QuestionEditorService {
   }
 
   /**
+   * Puts a recording behind a listening element.
+   *
+   * The file goes to Cloudinary rather than into the database, the same way a lesson's
+   * attachments already do - and the element keeps only the address. Replacing a recording
+   * overwrites the address and leaves the old file in storage: an audio that questions still
+   * point at is not something to delete on a save that might have been a mistake.
+   */
+  async attachAudio(
+    courseId: string,
+    moduleId: string,
+    materialId: string,
+    elementId: string,
+    file?: Express.Multer.File,
+  ) {
+    await this.assertQuizMaterial(courseId, moduleId, materialId);
+    if (!file) {
+      throw new BadRequestException('Файл не надіслано');
+    }
+    const element = await this.prisma.practiceElement.findFirst({
+      where: { id: elementId, materialId },
+    });
+    if (!element) {
+      throw new NotFoundException('Матеріал для аудіювання не знайдено');
+    }
+
+    const uploaded = await this.cloudinary.uploadFile(file.buffer, {
+      folder: `practice/${materialId}`,
+      publicId: randomUUID(),
+    });
+
+    const updated = await this.prisma.practiceElement.update({
+      where: { id: elementId },
+      data: { audioUrl: uploaded.url },
+    });
+    return this.toElementResponse(updated);
+  }
+
+  /**
+   * Matches a pile of uploaded recordings to the elements that asked for them, by file name.
+   *
+   * A module is sixteen recordings, and attaching them one at a time means sixteen trips through
+   * the same dialog with a chance to put each in the wrong place. The CSV already said which
+   * file each element wants; this is simply the other half of that promise being kept.
+   *
+   * A file nobody asked for is reported rather than dropped silently - most often it is a
+   * typo in one of the two names, and the author can only see that if it is said out loud.
+   */
+  async attachAudioBatch(
+    courseId: string,
+    moduleId: string,
+    materialId: string,
+    files: Express.Multer.File[],
+  ) {
+    await this.assertQuizMaterial(courseId, moduleId, materialId);
+    if (!files?.length) {
+      throw new BadRequestException('Файли не надіслано');
+    }
+
+    const elements = await this.prisma.practiceElement.findMany({
+      where: { materialId, audioFileName: { not: null } },
+    });
+    const wanted = new Map(
+      elements.map((element) => [
+        (element.audioFileName ?? '').trim().toLowerCase(),
+        element,
+      ]),
+    );
+
+    const matched: string[] = [];
+    const unmatched: string[] = [];
+
+    for (const file of files) {
+      const name = (file.originalname ?? '').trim().toLowerCase();
+      const element = wanted.get(name);
+      if (!element) {
+        unmatched.push(file.originalname ?? '(без імені)');
+        continue;
+      }
+
+      const uploaded = await this.cloudinary.uploadFile(file.buffer, {
+        folder: `practice/${materialId}`,
+        publicId: randomUUID(),
+      });
+      await this.prisma.practiceElement.update({
+        where: { id: element.id },
+        data: { audioUrl: uploaded.url },
+      });
+      matched.push(element.audioFileName ?? '');
+    }
+
+    /** Which recordings are still owed, so the author sees the gap rather than counting rows. */
+    const stillMissing = elements
+      .filter(
+        (element) =>
+          !element.audioUrl &&
+          !matched.includes(element.audioFileName ?? ''),
+      )
+      .map((element) => element.audioFileName ?? '');
+
+    return {
+      uploaded: matched.length,
+      matched,
+      unmatched,
+      still_missing: stillMissing,
+    };
+  }
+
+  /**
    * Deleting a text leaves its questions in place, unbound.
    *
-   * The alternative — taking the questions down with it — turns a mistyped title into lost
+   * The alternative - taking the questions down with it - turns a mistyped title into lost
    * work. The database's own rule already does this (`onDelete: SetNull`); this only says so
    * out loud, and reports how many questions were freed so it is not a silent change.
    */
@@ -290,9 +421,13 @@ export class QuestionEditorService {
     title: string;
     body: string | null;
     audioUrl: string | null;
+    audioFileName: string | null;
     transcript: string | null;
     sampleAnswer: string | null;
     hints: string | null;
+    criteria?: string[];
+    minSentences?: number | null;
+    maxSentences?: number | null;
     orderIndex: number;
     _count?: { questions: number };
   }) {
@@ -303,9 +438,15 @@ export class QuestionEditorService {
       title: element.title,
       body: element.body,
       audio_url: element.audioUrl,
+      /** What the import was promised, so a missing recording can be named rather than guessed. */
+      audio_file_name: element.audioFileName,
       transcript: element.transcript,
       sample_answer: element.sampleAnswer,
       hints: element.hints,
+      /** The rubric, so the editor shows what the import read out of the file. */
+      criteria: element.criteria ?? [],
+      min_sentences: element.minSentences ?? null,
+      max_sentences: element.maxSentences ?? null,
       order_index: element.orderIndex,
       question_count: element._count?.questions ?? 0,
     };

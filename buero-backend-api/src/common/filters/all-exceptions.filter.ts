@@ -18,7 +18,7 @@ export type ApiErrorBody = {
 };
 
 /**
- * Єдиний формат JSON для помилок API. HttpException — з винятку; інше — 500;
+ * Єдиний формат JSON для помилок API. HttpException - з винятку; інше - 500;
  * у production без stack і без внутрішніх повідомлень для клієнта.
  */
 @Catch()
@@ -51,6 +51,29 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
       return;
     }
 
+    /**
+     * The body parsers refuse a request before any route runs, so what they throw is never an
+     * HttpException and used to fall through to a bare 500 - "Internal Server Error" in
+     * development and nothing at all in production.
+     *
+     * A CSV a kilobyte over the limit is the commonest case, and the one where a plain 500
+     * costs the most: there is nothing in that answer, or in the log, to connect it to the
+     * size of the file the author just chose.
+     */
+    const refused = parseBodyParserError(exception);
+    if (refused) {
+      const body: ApiErrorBody = {
+        statusCode: refused.statusCode,
+        error: this.defaultErrorLabel(refused.statusCode),
+        message: refused.message,
+        timestamp,
+        path,
+      };
+      this.logger.warn(`${req.method} ${path} ${refused.statusCode} - ${refused.message}`);
+      res.status(refused.statusCode).json(body);
+      return;
+    }
+
     const err = exception instanceof Error ? exception : new Error(String(exception));
     const statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     const body: ApiErrorBody = {
@@ -65,7 +88,7 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
     }
 
     this.logger.error(
-      `${req.method} ${path} ${statusCode} — ${err.message}`,
+      `${req.method} ${path} ${statusCode} - ${err.message}`,
       err.stack,
     );
 
@@ -137,14 +160,65 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
 
     if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
-        `${summary} — ${msgPreview}`,
+        `${summary} - ${msgPreview}`,
         exception.stack,
       );
       return;
     }
 
     if (statusCode >= HttpStatus.BAD_REQUEST) {
-      this.logger.warn(`${summary} — ${msgPreview}`);
+      this.logger.warn(`${summary} - ${msgPreview}`);
     }
   }
 }
+
+/** Megabytes, to one decimal, for a message a person reads rather than a byte count. */
+const inMegabytes = (bytes: number): string =>
+  `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} МБ`;
+
+/**
+ * An error thrown by `express.json` and friends, read back into an answer.
+ *
+ * body-parser puts the HTTP status it means on the error itself and names the reason in
+ * `type`. Both are honoured here: the status so the answer is not a 500, and the type so the
+ * sentence says which of the three things went wrong.
+ */
+export const parseBodyParserError = (
+  exception: unknown,
+): { statusCode: number; message: string } | null => {
+  if (typeof exception !== "object" || exception === null) return null;
+  const o = exception as {
+    type?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+    limit?: unknown;
+    length?: unknown;
+  };
+  const status =
+    typeof o.status === "number"
+      ? o.status
+      : typeof o.statusCode === "number"
+        ? o.statusCode
+        : null;
+  if (status === null || typeof o.type !== "string" || !o.type.startsWith("entity.")) {
+    return null;
+  }
+
+  if (o.type === "entity.too.large") {
+    const limit = typeof o.limit === "number" ? inMegabytes(o.limit) : null;
+    const length = typeof o.length === "number" ? inMegabytes(o.length) : null;
+    return {
+      statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+      message:
+        "Файл завеликий" +
+        (length ? `: ${length}` : "") +
+        (limit ? `, а максимум ${limit}` : "") +
+        ". Розділіть його на частини й завантажте по одній.",
+    };
+  }
+
+  return {
+    statusCode: HttpStatus.BAD_REQUEST,
+    message: "Не вдалося прочитати тіло запиту - перевірте формат файлу.",
+  };
+};

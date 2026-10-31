@@ -130,13 +130,26 @@ export class QuizService {
     ]);
 
     /**
+     * Which recordings the student has earned the transcript to.
+     *
+     * A transcript handed over before the questions are answered turns listening into
+     * reading - the task stops testing the ear the moment the words are on screen. It opens
+     * once every question about that recording has an answer, whichever sitting each came
+     * from, so leaving and coming back does not close it again.
+     */
+    const transcriptOpen = await this.elementsWithEveryQuestionAnswered(
+      questions,
+      userId,
+    );
+
+    /**
      * The mode travels with the questions because the player has to know, before the
      * first answer, whether to mark answers one at a time or hold everything back
      * until the whole test is submitted.
      */
     const mode = material.quizMode ?? QuizMode.practice;
     /**
-     * A test says up front what it is worth and what it takes to pass — that is part of
+     * A test says up front what it is worth and what it takes to pass - that is part of
      * the task, not a result. A practice quiz has no such scale, so it reports none.
      */
     const totalPoints =
@@ -155,8 +168,11 @@ export class QuizService {
         kind: element.kind,
         title: element.title,
         body: element.body,
-        /** Held back until every question about it has been answered. */
+        audio_url: element.audioUrl,
+        /** So the player can promise a transcript before it is open. */
         has_transcript: Boolean(element.transcript),
+        /** Held back until every question about it has been answered. */
+        transcript: transcriptOpen.has(element.id) ? element.transcript : null,
       })),
       questions: questions.map((question) => {
       const payload = (question.payload ?? {}) as {
@@ -189,6 +205,35 @@ export class QuizService {
   }
 
   /**
+   * The elements whose every question this student has already answered.
+   *
+   * Questions with no element are ignored: nothing is unlocked by them.
+   */
+  private async elementsWithEveryQuestionAnswered(
+    questions: ReadonlyArray<{ id: string; elementId: string | null }>,
+    userId: string,
+  ): Promise<Set<string>> {
+    const bound = questions.filter((question) => question.elementId);
+    if (bound.length === 0) return new Set();
+
+    const answered = await this.prisma.questionAttempt.findMany({
+      where: { userId, questionId: { in: bound.map((q) => q.id) } },
+      select: { questionId: true },
+      distinct: ["questionId"],
+    });
+    const answeredIds = new Set(answered.map((a) => a.questionId));
+
+    const open = new Set<string>();
+    for (const elementId of new Set(bound.map((q) => q.elementId as string))) {
+      const its = bound.filter((question) => question.elementId === elementId);
+      if (its.every((question) => answeredIds.has(question.id))) {
+        open.add(elementId);
+      }
+    }
+    return open;
+  }
+
+  /**
    * The student's last finished attempt at this quiz, or null if there is none.
    *
    * Without this, leaving a lesson and coming back showed an empty quiz: the work was
@@ -215,7 +260,7 @@ export class QuizService {
     );
     if (!attempt) {
       /**
-       * Nothing to replay, but say whether that is because the quiz changed — the
+       * Nothing to replay, but say whether that is because the quiz changed - the
        * student should know their earlier result no longer applies rather than find
        * an empty quiz where a score used to be.
        */
@@ -337,7 +382,7 @@ export class QuizService {
          * This block's sittings, and the ones recorded before a sitting knew its block.
          *
          * An older sitting is claimed by a block only if the questions it answered are
-         * exactly that block's — the check below decides that, and it is the same check
+         * exactly that block's - the check below decides that, and it is the same check
          * that already told a current sitting from a stale one. So work done before blocks
          * existed keeps being shown, and nothing had to be written to say so.
          */
@@ -362,7 +407,7 @@ export class QuizService {
      * Which sittings are this block's at all.
      *
      * A sitting that says which block it is speaks for itself. One recorded before blocks
-     * existed is this block's only if everything it answered is in this block — otherwise it
+     * existed is this block's only if everything it answered is in this block - otherwise it
      * is another block's work, and must not make this one announce that the quiz has changed.
      * Opening Lesen for the first time and being told to redo it is exactly what that
      * confusion looked like.
@@ -436,7 +481,7 @@ export class QuizService {
    *
    * Immediate feedback is what makes a practice quiz teach rather than test: the
    * student sees at once whether they were right and reads the explanation while the
-   * question is still in mind. A question can only be answered once per attempt —
+   * question is still in mind. A question can only be answered once per attempt -
    * otherwise the feedback would just hand over the answer to enter next.
    *
    * The attempt finishes itself once every question has been answered, so no separate
@@ -586,14 +631,14 @@ export class QuizService {
   }
 
   /**
-   * Whether this attempt may see the answer key — the wording that would have counted.
+   * Whether this attempt may see the answer key - the wording that would have counted.
    *
    * Practice always may; that is the whole point of it. A test only after it has been
    * passed: its questions are a fixed set rather than drawn from a pool, so handing
    * over the key after a failure would turn the retake into copying it out.
    *
    * This gates the key alone. The explanation is shown either way, because it teaches
-   * the rule rather than giving the answer — "після weil дієслово стоїть у самому
+   * the rule rather than giving the answer - "після weil дієслово стоїть у самому
    * кінці" is the lesson, not the solution. Withholding it left a student who failed
    * with nothing at all but red marks, which is the one moment they most need telling
    * where to go back to.
@@ -608,7 +653,7 @@ export class QuizService {
   /**
    * Whether this score counts as having got through the material.
    *
-   * A practice quiz has nothing to fail — it is taken as many times as it takes — so any
+   * A practice quiz has nothing to fail - it is taken as many times as it takes - so any
    * score is a pass. A test passes at its threshold, and a test with no threshold set
    * cannot be failed either.
    *
@@ -671,7 +716,7 @@ export class QuizService {
     /**
      * A test below its threshold is not finished, so nothing is written: no tick in the
      * lesson list and no share of the course counted. Marking it done anyway told the
-     * student two opposite things at once — "не зараховано" beside a tick — and let a
+     * student two opposite things at once - "не зараховано" beside a tick - and let a
      * course reach 100% on tests that were never passed.
      *
      * The judgement is on the best attempt rather than this one, which is the same rule
@@ -685,7 +730,7 @@ export class QuizService {
      * One block finished is not the practice finished.
      *
      * A practice is ticked in the lesson list only once every question in it has been
-     * answered, whichever sitting each answer came from — the same rule the practice hub
+     * answered, whichever sitting each answer came from - the same rule the practice hub
      * uses to say four of four. Ticking it after Grammatik alone told the student the
      * lesson was behind them while three blocks were still untouched.
      */
@@ -729,7 +774,7 @@ export class QuizService {
      * Questions come from the table, not from the material's JSON. That is what makes
      * a per-question record possible, and it is also why the score is now out of the
      * number of questions in the quiz rather than the number of answers the browser
-     * happened to send — previously one correct answer out of ten scored 100%.
+     * happened to send - previously one correct answer out of ten scored 100%.
      */
     const questions = await this.prisma.question.findMany({
       where: { materialId: attempt.courseMaterialId },
@@ -829,8 +874,8 @@ export class QuizService {
     });
 
     /**
-     * One row per answered question. This is the record every later feature needs —
-     * reviewing mistakes, repeating what was failed, a breakdown by topic — none of
+     * One row per answered question. This is the record every later feature needs -
+     * reviewing mistakes, repeating what was failed, a breakdown by topic - none of
      * which a single quiz score can answer.
      */
     await this.prisma.questionAttempt.createMany({

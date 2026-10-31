@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import Icon from '@/components/ui/Icon';
 import CheckoutButton from '@/features/subscriptions/components/CheckoutButton';
 import { ICON_NAMES } from '@/helpers/iconNames';
@@ -10,6 +11,8 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
   moduleNumber = 2,
   price = null,
 }) => {
+  const { t } = useTranslation();
+
   /**
    * A trial no longer expires, so the only thing that moves someone to buy is knowing
    * what the rest of the course costs. Without this the price is visible in the
@@ -19,7 +22,7 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
     typeof price === 'number' && Number.isFinite(price)
       ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(price)
       : null;
-  const moduleTitle = previewModule?.title ?? 'More in this course';
+  const moduleTitle = previewModule?.title ?? t('coursePage.lockedModuleFallback');
   const completedTotal = previewModule != null ? String(previewModule.materialCount) : '?';
 
   return (
@@ -29,14 +32,14 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
         aria-hidden
       >
         <div className="flex flex-col">
-          <span className="text-xs font-semibold tracking-wider text-[var(--color-neutral-dark)] uppercase">
-            MODULE&nbsp;&nbsp;{moduleNumber}
+          <span className="text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-neutral-dark)] uppercase">
+            {t('courses.structure.module')} {moduleNumber}
           </span>
           <span className="mt-0.5 text-base leading-tight font-semibold text-[var(--color-neutral-darkest)]">
             {moduleTitle}
           </span>
           <span className="mt-0.5 text-sm text-[var(--color-neutral-dark)] opacity-50">
-            0/{completedTotal} completed
+            {t('courses.structure.completed', { completed: 0, total: completedTotal })}
           </span>
         </div>
         <Icon
@@ -58,7 +61,7 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
               </span>
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-sm font-semibold text-[var(--color-neutral-darkest)]">
-                  Lesson
+                  {t('coursePage.lockedLesson')}
                 </span>
                 <span className="text-xs text-[var(--color-neutral-dark)]">15:35</span>
               </div>
@@ -72,7 +75,7 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
               </span>
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-sm font-semibold text-[var(--color-neutral-darkest)]">
-                  Lesson
+                  {t('coursePage.lockedLesson')}
                 </span>
                 <span className="text-xs text-[var(--color-neutral-dark)]">12:56</span>
               </div>
@@ -86,7 +89,7 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
               </span>
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-sm font-semibold text-[var(--color-neutral-darkest)]">
-                  Quiz
+                  {t('coursePage.lockedQuiz')}
                 </span>
               </div>
             </div>
@@ -102,7 +105,7 @@ const TrialSidebarBlurTail: React.FC<TrialSidebarBlurTailProps> = ({
           <div className="flex w-full flex-col items-center gap-1.5">
             <CheckoutButton
               courseId={courseId}
-              label="Unlock full course"
+              label={t('coursePage.unlockCourse')}
               className="pointer-events-auto w-full max-w-[260px] min-w-[180px] rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-on-accent)] shadow-md hover:bg-[var(--color-primary-hover)] sm:text-base"
             />
             {priceLabel ? (

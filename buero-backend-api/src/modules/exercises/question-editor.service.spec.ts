@@ -7,6 +7,7 @@ import {
   QuestionType,
 } from "src/generated/prisma/enums";
 import { PrismaService } from "src/prisma/prisma.service";
+import { CloudinaryService } from "src/cloudinary/cloudinary.service";
 import { QuestionEditorService } from "./question-editor.service";
 
 describe("QuestionEditorService", () => {
@@ -32,6 +33,7 @@ describe("QuestionEditorService", () => {
     };
     $transaction: jest.Mock;
   };
+  let cloudinary: { uploadFile: jest.Mock };
 
   const courseId = "course-1";
   const moduleId = "module-1";
@@ -69,11 +71,16 @@ describe("QuestionEditorService", () => {
       },
       $transaction: jest.fn((operations: unknown[]) => Promise.all(operations)),
     };
+    cloudinary = { uploadFile: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QuestionEditorService,
         { provide: PrismaService, useValue: prisma as unknown as PrismaService },
+        {
+          provide: CloudinaryService,
+          useValue: cloudinary as unknown as CloudinaryService,
+        },
       ],
     }).compile();
 
@@ -354,6 +361,72 @@ describe("QuestionEditorService", () => {
       await expect(
         service.removeElement(courseId, moduleId, materialId, "elsewhere"),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+  /**
+   * Attaching a module's recordings in one go.
+   *
+   * The CSV already named the file each element wants, so the match is by name. Sixteen trips
+   * through a file dialog is sixteen chances to put a recording under the wrong question, and
+   * the author would only find out by listening to all of them.
+   */
+  describe("uploading a block's recordings together", () => {
+    const file = (originalname: string) =>
+      ({ originalname, buffer: Buffer.from("x") }) as Express.Multer.File;
+
+    beforeEach(() => {
+      prisma.practiceElement.findMany.mockResolvedValue([
+        { id: "a1", audioFileName: "A2.1-2.1-hoeren-1.mp3", audioUrl: null },
+        { id: "a2", audioFileName: "A2.1-2.1-hoeren-2.mp3", audioUrl: null },
+      ]);
+      cloudinary.uploadFile.mockResolvedValue({
+        url: "https://res.cloudinary.com/x/a.mp3",
+        publicId: "p",
+        resourceType: "video",
+      });
+    });
+
+    it("puts each file behind the element that asked for it", async () => {
+      const result = await service.attachAudioBatch(courseId, moduleId, materialId, [
+        file("A2.1-2.1-hoeren-2.mp3"),
+        file("A2.1-2.1-hoeren-1.mp3"),
+      ]);
+
+      expect(result.uploaded).toBe(2);
+      expect(result.unmatched).toEqual([]);
+      expect(result.still_missing).toEqual([]);
+      expect(prisma.practiceElement.update).toHaveBeenCalledTimes(2);
+    });
+
+    /** Case and stray spaces in a file name are the author's, not a reason to refuse the file. */
+    it("matches regardless of case", async () => {
+      const result = await service.attachAudioBatch(courseId, moduleId, materialId, [
+        file("  a2.1-2.1-HOEREN-1.MP3  "),
+      ]);
+      expect(result.matched).toEqual(["A2.1-2.1-hoeren-1.mp3"]);
+    });
+
+    /** Usually a typo in one of the two names - invisible unless it is said out loud. */
+    it("names a file nobody asked for instead of dropping it", async () => {
+      const result = await service.attachAudioBatch(courseId, moduleId, materialId, [
+        file("hoeren-3.mp3"),
+      ]);
+      expect(result.unmatched).toEqual(["hoeren-3.mp3"]);
+      expect(result.uploaded).toBe(0);
+      expect(cloudinary.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it("says which recordings are still owed", async () => {
+      const result = await service.attachAudioBatch(courseId, moduleId, materialId, [
+        file("A2.1-2.1-hoeren-1.mp3"),
+      ]);
+      expect(result.still_missing).toEqual(["A2.1-2.1-hoeren-2.mp3"]);
+    });
+
+    it("refuses an empty upload rather than reporting success", async () => {
+      await expect(
+        service.attachAudioBatch(courseId, moduleId, materialId, []),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

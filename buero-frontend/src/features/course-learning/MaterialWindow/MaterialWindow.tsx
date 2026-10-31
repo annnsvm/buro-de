@@ -7,6 +7,7 @@ import useModal from '@/components/modal/context/useModal';
 import { loadYoutubeIframeApi } from '@/helpers/youtubeIframeApi';
 import { lessonContent } from './MaterialWindow.data';
 import LessonAttachments from './LessonAttachments';
+import LessonNotes from './LessonNotes';
 import type { LearningPageProps } from '@/types/features/learning/LearningPage.types';
 
 const extractYouTubeEmbedVideoId = (embedUrl: string): string | null => {
@@ -384,16 +385,13 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
           materialId={lesson.materialId}
         />
 
-        <section className="mt-6 rounded-[20px] bg-[var(--color-neutral-white)] p-6 shadow-sm sm:mt-8 sm:rounded-[22px] md:mt-10">
-          <h2 className="text-xl font-semibold text-[#56504c] sm:text-2xl md:text-[2rem]">
-            {t('coursePage.lessonNotes')}
-          </h2>
-
-          <textarea
-            placeholder={t('coursePage.notesPlaceholder')}
-            className="mt-4 min-h-[120px] w-full rounded-lg border border-[#cfc4be] bg-[var(--color-neutral-white)] px-4 py-3 text-sm text-[#1f1c1a] outline-none placeholder:text-[#75706c] focus:border-[#b8aaa1] sm:min-h-[132px]"
-          />
-        </section>
+        {/**
+         * The notes box was decoration: a placeholder and nothing else, so every note typed into
+         * it was lost on the next navigation. It is a component of its own now, and what it
+         * writes is kept on the server for as long as the course is.
+         */}
+        {/** No lesson id means nothing to attach a note to, so the box is not offered. */}
+        {lesson.materialId ? <LessonNotes materialId={lesson.materialId} /> : null}
 
         <div className="mt-4 sm:mt-5 md:mt-6">
           <button

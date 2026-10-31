@@ -86,10 +86,15 @@ const CourseStructure: React.FC<CourseStructureProps> = ({
               className="flex w-full items-center justify-between px-2 py-1 text-left"
             >
               <div className="flex flex-col">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-neutral-dark)]">
-                  {t('courses.structure.module')} {modIdx + 1}
+                {/**
+                 * Numbered from zero, because module 0 is the introduction every course
+                 * opens with and module 1 is the first one that teaches. Counting from one
+                 * put "МОДУЛЬ 1" above a module the author had named "Module 0".
+                 */}
+                <span className="text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-neutral-dark)] uppercase">
+                  {t('courses.structure.module')} {modIdx}
                 </span>
-                <span className="mt-0.5 text-base font-semibold leading-tight text-[var(--color-neutral-darkest)]">
+                <span className="mt-0.5 text-base leading-tight font-semibold text-[var(--color-neutral-darkest)]">
                   {mod.title}
                 </span>
                 <span className="mt-0.5 text-sm text-[var(--color-neutral-dark)]">
@@ -197,7 +202,7 @@ const LessonRow: React.FC<LessonRowProps> = ({
     <button
       type="button"
       onClick={() => onSelect?.({ moduleId, materialId: lesson.id })}
-      className={`flex w-full min-w-0 items-center gap-3 rounded-lg p-2 text-left outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${rowBgClass}`}
+      className={`flex w-full min-w-0 items-center gap-3 rounded-lg p-2 text-left ring-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${rowBgClass}`}
     >
       <span
         className={`flex shrink-0 items-center justify-center rounded-lg ${iconWrapClass} ${isNested ? 'h-8 w-8' : 'h-10 w-10'}`}

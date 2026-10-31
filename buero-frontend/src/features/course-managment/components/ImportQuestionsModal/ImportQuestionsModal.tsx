@@ -135,15 +135,17 @@ const ImportQuestionsModal: React.FC<ImportQuestionsModalProps> = ({
 
               {/**
                * The labels named where the file is chosen, because that is the moment they are
-               * needed — `READ` in particular, which is new and has no counterpart in the files
+               * needed - `READ` in particular, which is new and has no counterpart in the files
                * written so far.
                */}
               <dl className="space-y-1 rounded-lg bg-[var(--color-surface-section)] p-3 text-xs text-[var(--color-text-secondary)]">
                 <div className="font-medium text-[var(--color-text-primary)]">Колонка «Тип»</div>
-                <div>ONE — один варіант · GAP — вписати слово</div>
-                <div>TEXT — вписати речення · ORDER — порядок слів</div>
+                <div>ONE - один варіант</div>
+                <div>GAP - вписати слово</div>
+                <div>TEXT - вписати речення</div>
+                <div>ORDER - порядок слів</div>
                 <div>
-                  READ — текст для читання: сам текст у колонці «Матеріал», заголовок у «Питання».
+                  READ - текст для читання: сам текст у колонці «Матеріал», заголовок у «Питання».
                   Питання нижче в тому ж уроці й блоці стають питаннями про нього.
                 </div>
               </dl>
@@ -160,7 +162,7 @@ const ImportQuestionsModal: React.FC<ImportQuestionsModalProps> = ({
                     onChange={() => setMode('practice')}
                     className="accent-[var(--color-primary)]"
                   />
-                  Практики уроків — по одній на кожен урок із колонки «Урок»
+                  Практики уроків - по одній на кожен урок із колонки «Урок»
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -170,7 +172,7 @@ const ImportQuestionsModal: React.FC<ImportQuestionsModalProps> = ({
                     onChange={() => setMode('test')}
                     className="accent-[var(--color-primary)]"
                   />
-                  Підсумковий тест модуля — увесь файл одним матеріалом
+                  Підсумковий тест модуля - увесь файл одним матеріалом
                 </label>
               </fieldset>
 
@@ -198,7 +200,7 @@ const ImportQuestionsModal: React.FC<ImportQuestionsModalProps> = ({
                 <span>
                   Зараховувати формулювання, які згадані в поясненні як прийнятні
                   <span className="block text-xs text-[var(--color-text-secondary)]">
-                    Їх видно у попередньому перегляді — перевірте перед імпортом
+                    Їх видно у попередньому перегляді - перевірте перед імпортом
                   </span>
                 </span>
               </label>
@@ -249,8 +251,8 @@ const Preview: React.FC<{ preview: ImportPreview }> = ({ preview }) => (
           <span className="font-medium text-[var(--color-text-primary)]">{target.title}</span>
           <span className="text-[var(--color-text-secondary)]">
             {' '}
-            — {target.questionCount} питань, {target.points} балів
-            {target.existingMaterialId ? ' · оновиться' : ' · новий'}
+            - {target.questionCount} питань, {target.points} балів
+            {target.existingMaterialId ? ' - оновиться' : ' - новий'}
           </span>
           {target.alternatives.length > 0 ? (
             <ul className="mt-1 ml-4 list-disc text-xs text-[var(--color-text-secondary)]">
@@ -273,7 +275,7 @@ const Preview: React.FC<{ preview: ImportPreview }> = ({ preview }) => (
         <ul className="mt-1 ml-4 list-disc text-xs text-[var(--color-text-secondary)]">
           {preview.problems.map((problem) => (
             <li key={`${problem.row}-${problem.id}`}>
-              рядок {problem.row} {problem.id ? `[${problem.id}]` : ''} — {problem.message}
+              рядок {problem.row} {problem.id ? `[${problem.id}]` : ''} - {problem.message}
             </li>
           ))}
         </ul>
@@ -288,7 +290,7 @@ const Preview: React.FC<{ preview: ImportPreview }> = ({ preview }) => (
         <ul className="mt-1 ml-4 list-disc text-xs text-[var(--color-text-secondary)]">
           {preview.unusable.map((entry) => (
             <li key={entry.id}>
-              {entry.id} — {entry.reasons.join('; ')}
+              {entry.id} - {entry.reasons.join('; ')}
             </li>
           ))}
         </ul>

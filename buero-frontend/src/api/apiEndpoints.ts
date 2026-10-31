@@ -91,16 +91,28 @@ export const API_ENDPOINTS = {
   },
   practice: {
     overview: (materialId: string) => `/practice/materials/${materialId}`,
+    /** The speaking tasks of a practice, and whatever this student has recorded. */
+    speaking: (materialId: string) => `/practice/materials/${materialId}/speaking`,
+    speakingRecording: (elementId: string) =>
+      `/practice/speaking/${elementId}/recording`,
   },
   writing: {
     task: (materialId: string) => `/writing/materials/${materialId}`,
     submit: (materialId: string) => `/writing/materials/${materialId}/submit`,
+    /** Every writing task of a practice's Schreiben block, in one request. */
+    practiceTasks: (materialId: string) => `/writing/practice/${materialId}`,
+    submitPractice: (elementId: string) =>
+      `/writing/practice/elements/${elementId}/submit`,
   },
   progress: {
     me: '/progress/me',
     course: (courseId: string) => `/courses/${courseId}/progress`,
     complete: (courseId: string, moduleId: string, materialId: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/complete`,
+  },
+  lessonNotes: {
+    read: (materialId: string) => `/lesson-notes/${materialId}`,
+    save: (materialId: string) => `/lesson-notes/${materialId}`,
   },
   vocabulary: {
     list: '/vocabulary',
@@ -113,13 +125,32 @@ export const API_ENDPOINTS = {
   },
 } as const;
 
-export const PUBLIC_ENDPOINT_PREFIXE = [
+/**
+ * Endpoints where a 401 must never start a token refresh.
+ *
+ * These are the auth endpoints themselves. Answering a failed refresh with another refresh is
+ * a loop, and answering a wrong password with one is nonsense.
+ *
+ * `/courses` used to be on this list, for the public catalog, and the match was by prefix.
+ * Together those two facts made every authenticated course-management call unrefreshable,
+ * because all of them begin with `/courses` - `/courses/manage`, `/courses/:id/structure`,
+ * `/courses/:id/modules/:m/materials/:mat/elements`, the CSV import. Thirty minutes after
+ * logging in the access-token cookie expires and the browser stops sending it; the next save
+ * in the course editor then failed with "No token provided" and no retry at all, while the
+ * refresh token still had six days left on it.
+ *
+ * Nothing else belongs here. The interceptor already declines to refresh when there is no
+ * session, which is exactly the anonymous visitor browsing the catalog.
+ */
+export const NO_REFRESH_ENDPOINTS = [
   API_ENDPOINTS.auth.login,
   API_ENDPOINTS.auth.register,
   API_ENDPOINTS.auth.verifyRegistration,
   API_ENDPOINTS.auth.resendRegistrationCode,
   API_ENDPOINTS.auth.refresh,
   API_ENDPOINTS.auth.logout,
-  API_ENDPOINTS.courses.list,
   API_ENDPOINTS.contact.submit,
 ] as const;
+
+/** @deprecated The old name, kept so nothing that imports it breaks. */
+export const PUBLIC_ENDPOINT_PREFIXE = NO_REFRESH_ENDPOINTS;

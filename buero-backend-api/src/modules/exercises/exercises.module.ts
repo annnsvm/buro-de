@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { CloudinaryModule } from '../../cloudinary/cloudinary.module';
 import { QuestionImportService } from './import/question-import.service';
 import { QuestionEditorService } from './question-editor.service';
 
@@ -9,7 +10,7 @@ import { QuestionEditorService } from './question-editor.service';
  * JSON the course editor still writes.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, CloudinaryModule],
   providers: [QuestionImportService, QuestionEditorService],
   exports: [QuestionImportService, QuestionEditorService],
 })

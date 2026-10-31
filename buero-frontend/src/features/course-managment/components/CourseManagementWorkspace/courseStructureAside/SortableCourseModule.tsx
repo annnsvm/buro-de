@@ -10,6 +10,7 @@ import {
   toModuleDroppableId,
   toModuleSortableId,
 } from './courseStructureDnd.ids';
+import { orderWithPractice } from './orderWithPractice';
 import SortableModuleMaterial from './SortableModuleMaterial';
 
 type SortableCourseModuleProps = {
@@ -85,23 +86,29 @@ const SortableCourseModule = ({
       onSelectMaterial={onSelectMaterial}
       onRequestDeleteModule={onRequestDeleteModule}
       onRequestDeleteMaterial={onRequestDeleteMaterial}
-      renderMaterialsList={() => (
-        <SortableContext
-          items={module.materials.map((item) => toMaterialSortableId(item.id))}
-          strategy={verticalListSortingStrategy}
-        >
-          {module.materials.map((material) => (
-            <SortableModuleMaterial
-              key={material.id}
-              moduleId={module.id}
-              material={material}
-              dragEnabled={dragEnabled}
-              onSelectMaterial={onSelectMaterial}
-              onRequestDeleteMaterial={onRequestDeleteMaterial}
-            />
-          ))}
-        </SortableContext>
-      )}
+      renderMaterialsList={() => {
+        /** Each lesson followed by its own practice, the same order the student walks. */
+        const placed = orderWithPractice(module.materials);
+
+        return (
+          <SortableContext
+            items={placed.map((entry) => toMaterialSortableId(entry.material.id))}
+            strategy={verticalListSortingStrategy}
+          >
+            {placed.map(({ material, depth }) => (
+              <SortableModuleMaterial
+                key={material.id}
+                moduleId={module.id}
+                material={material}
+                depth={depth}
+                dragEnabled={dragEnabled}
+                onSelectMaterial={onSelectMaterial}
+                onRequestDeleteMaterial={onRequestDeleteMaterial}
+              />
+            ))}
+          </SortableContext>
+        );
+      }}
     />
   );
 };

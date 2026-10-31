@@ -14,7 +14,7 @@ export type CatalogPathStepProps = {
 /**
  * The step above a language course, turning the grid into a route.
  *
- * The language courses are one path taken in order — A1, then A2.1, then A2.2 — and a flat
+ * The language courses are one path taken in order - A1, then A2.1, then A2.2 - and a flat
  * grid of equal cards hides that. The dot and the line say "these follow one another",
  * which is the single most useful thing a visitor can learn from the page: not which
  * courses exist, but in what order to take them.
@@ -37,8 +37,13 @@ const CatalogPathStep: FC<CatalogPathStepProps> = ({
             : 'border-[var(--color-neutral-darkest)] bg-[var(--color-neutral-white)]',
         ].join(' ')}
       />
-      <span className="shrink-0 text-[11px] font-bold tracking-[0.08em] uppercase text-[var(--color-text-primary)]">
-        {t('courses.pathStep', { step, level: levelLabel })}
+      <span className="flex shrink-0 items-center gap-x-2.5 text-[11px] font-bold tracking-[0.08em] uppercase">
+        <span className="text-[var(--color-text-primary)]">
+          {t('courses.pathStepNumber', { step })}
+        </span>
+        <span className="text-[var(--color-text-secondary)]">
+          {t('courses.pathStepLevel', { level: levelLabel })}
+        </span>
       </span>
       <div
         className={[

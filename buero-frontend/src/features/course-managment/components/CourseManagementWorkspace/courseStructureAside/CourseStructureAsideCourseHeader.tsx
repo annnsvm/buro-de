@@ -51,7 +51,11 @@ const CourseStructureAsideCourseHeader: React.FC<CourseStructureAsideCourseHeade
             onKeyDown={handleDeleteKeyDown}
             className="shrink-0 rounded-lg p-2 hover:bg-[var(--color-surface-section)]"
           >
-            <Icon name={ICON_NAMES.TRASH} size={20} className="text-[var(--color-text-secondary)]" />
+            <Icon
+              name={ICON_NAMES.TRASH}
+              size={20}
+              className="text-[var(--color-text-secondary)]"
+            />
           </button>
         ) : null}
       </div>

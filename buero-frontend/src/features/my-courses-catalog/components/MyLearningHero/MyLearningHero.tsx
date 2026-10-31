@@ -16,7 +16,10 @@ const finishedCourseTitle = (
   resumeCourseId: string,
 ): string | null => {
   const finished = progressCourses.find(
-    (course) => course.completion_percent === 100 && course.course_id !== resumeCourseId && course.course_title,
+    (course) =>
+      course.completion_percent === 100 &&
+      course.course_id !== resumeCourseId &&
+      course.course_title,
   );
   return finished?.course_title ?? null;
 };
@@ -33,7 +36,7 @@ const MyLearningHero: FC<MyLearningHeroProps> = ({ name, resume, progressCourses
   return (
     <section className="bg-[var(--color-soapstone-base)] pt-6 pb-8 sm:pt-8 sm:pb-10">
       <Container className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
-        <div className="min-w-0 max-w-xl">
+        <div className="max-w-xl min-w-0">
           <p className="mb-3 text-xs font-bold tracking-[0.16em] text-[var(--color-accent-primary)] uppercase">
             {t('myLearning.eyebrow')}
           </p>
@@ -49,12 +52,16 @@ const MyLearningHero: FC<MyLearningHeroProps> = ({ name, resume, progressCourses
 
         {resume ? (
           <article className="w-full shrink-0 rounded-[28px] border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] p-6 sm:p-7 lg:w-[420px]">
-            <p className="text-[11px] font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
-              {t('myLearning.continueMeta', {
-                course: resume.course_title,
-                current: resume.lesson_number,
-                total: resume.lesson_total,
-              })}
+            <p className="flex flex-wrap items-center gap-x-3 text-[11px] font-bold tracking-[0.12em] uppercase">
+              <span className="text-[var(--color-text-primary)]">
+                {t('myLearning.continueMetaCourse', { course: resume.course_title })}
+              </span>
+              <span className="text-[var(--color-text-secondary)]">
+                {t('myLearning.continueMetaLesson', {
+                  current: resume.lesson_number,
+                  total: resume.lesson_total,
+                })}
+              </span>
             </p>
             <div className="mt-3 h-0.5 w-14 bg-[var(--color-accent-primary)]" />
             <p className="mt-4 font-[family-name:var(--font-heading)] text-2xl font-bold tracking-[-0.03em] text-[var(--color-cod-gray-base)] sm:text-3xl">

@@ -110,7 +110,9 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
     if (materialType === 'video' && !youtubeVideoId.trim())
       return setError('YouTube video id is required');
     if (materialType === 'video' && !extractYouTubeVideoId(youtubeVideoId)) {
-      return setError('Enter a valid YouTube video id or a supported YouTube link (watch, youtu.be, embed)');
+      return setError(
+        'Enter a valid YouTube video id or a supported YouTube link (watch, youtu.be, embed)',
+      );
     }
     if (materialType === 'video' && !youtubeVideoDuration.trim())
       return setError('Video duration is required');
@@ -210,7 +212,7 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
               disabled={isBusy}
               className="mt-1 block w-full rounded-[12px] border border-[var(--color-border-default)] px-3 py-2 text-sm"
             >
-              <option value="">Без уроку — окремим пунктом модуля</option>
+              <option value="">Без уроку - окремим пунктом модуля</option>
               {(activeModule?.materials ?? [])
                 .filter((candidate) => candidate.type === 'video')
                 .map((candidate) => (
@@ -222,15 +224,11 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
             {/* Optional on purpose: a practice with no lesson behaves exactly as a quiz
                 always has, which is why nothing had to move when nesting arrived. */}
             <span className="mt-1 block text-xs text-[var(--color-text-secondary)]">
-              Без уроку практика стоїть у модулі сама по собі — так само, як зараз стоять квізи.
+              Без уроку практика стоїть у модулі сама по собі - так само, як зараз стоять квізи.
             </span>
           </label>
         ) : materialType === 'writing' ? (
-          <WritingTaskFields
-            draft={writing}
-            isSubmitting={isBusy}
-            onChange={setWriting}
-          />
+          <WritingTaskFields draft={writing} isSubmitting={isBusy} onChange={setWriting} />
         ) : (
           <QuizModeFields
             quizMode={quizMode}
@@ -242,19 +240,28 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
         )}
       </div>
 
-      {createdMaterialId && courseId && activeModuleId ? (
-        <CourseMaterialAttachmentsSection
-          courseId={courseId}
-          moduleId={activeModuleId}
-          materialId={createdMaterialId}
-          onDraftChange={setHasAttachmentsDraft}
-          flushRef={flushAttachmentsRef}
-        />
-      ) : (
-        <p className="mt-6 text-xs text-[var(--color-text-secondary)]">
-          Save the lesson first to add attachments.
-        </p>
-      )}
+      {/**
+       * Attachments belong to the lesson, which means the video.
+       *
+       * A cheat sheet is handed out with the lesson it belongs to, and a practice or a quiz
+       * sitting under that lesson would only offer the same file a second time. Offering the
+       * field everywhere invited exactly that duplication.
+       */}
+      {materialType === 'video' ? (
+        createdMaterialId && courseId && activeModuleId ? (
+          <CourseMaterialAttachmentsSection
+            courseId={courseId}
+            moduleId={activeModuleId}
+            materialId={createdMaterialId}
+            onDraftChange={setHasAttachmentsDraft}
+            flushRef={flushAttachmentsRef}
+          />
+        ) : (
+          <p className="mt-6 text-xs text-[var(--color-text-secondary)]">
+            Save the lesson first to add attachments.
+          </p>
+        )
+      ) : null}
 
       {error ? <p className="mt-2 text-sm text-[var(--color-error)]">{error}</p> : null}
 

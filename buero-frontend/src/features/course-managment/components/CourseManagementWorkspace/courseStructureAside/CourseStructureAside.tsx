@@ -116,7 +116,9 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
       if (activeData?.type !== 'material') return;
 
       const overModuleId =
-        overData?.type === 'material' || overData?.type === 'module' || overData?.type === 'module-drop'
+        overData?.type === 'material' ||
+        overData?.type === 'module' ||
+        overData?.type === 'module-drop'
           ? overData.moduleId
           : undefined;
       if (!overModuleId) return;
@@ -160,7 +162,9 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
 
       if (activeData.type === 'module') {
         const overModuleId =
-          overData?.type === 'module' || overData?.type === 'module-drop' || overData?.type === 'material'
+          overData?.type === 'module' ||
+          overData?.type === 'module-drop' ||
+          overData?.type === 'material'
             ? overData.moduleId
             : undefined;
         if (!overModuleId) return;
@@ -174,7 +178,9 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
       const materialId = activeData.materialId;
       const currentModuleId = findModuleIdByMaterial(modules, materialId);
       const overModuleId =
-        overData?.type === 'material' || overData?.type === 'module' || overData?.type === 'module-drop'
+        overData?.type === 'material' ||
+        overData?.type === 'module' ||
+        overData?.type === 'module-drop'
           ? overData.moduleId
           : currentModuleId;
       if (!currentModuleId || !overModuleId) return;
@@ -324,7 +330,7 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
             <Logo isLight={false} width={70} height={28} />
           </Link>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col pl-4 pt-4 pb-4 pr-0">
+        <div className="flex min-h-0 flex-1 flex-col pt-4 pr-0 pb-4 pl-4">
           <h2 className="shrink-0 pr-4 text-base font-bold text-[var(--color-text-primary)]">
             Course structure
           </h2>
@@ -336,7 +342,11 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
       </aside>
 
       {sheetMounted ? (
-        <div className="pointer-events-none fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+        <div
+          className="pointer-events-none fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+        >
           <button
             type="button"
             aria-label="Close course structure"
@@ -369,7 +379,7 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
               Course structure
             </h2>
             <WorkspaceScrollArea className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <div className="pl-4 pr-2 pb-2">{renderScrollableBody(true)}</div>
+              <div className="pr-2 pb-2 pl-4">{renderScrollableBody(true)}</div>
             </WorkspaceScrollArea>
             <div className="shrink-0 px-4 pb-4">{renderFooter(true)}</div>
           </div>
