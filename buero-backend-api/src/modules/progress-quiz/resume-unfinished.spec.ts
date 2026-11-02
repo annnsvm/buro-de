@@ -43,6 +43,7 @@ describe("a block the student left half done", () => {
     answered: string[],
     completedAt: Date | null,
     createdAt = new Date("2026-11-01T10:00:00Z"),
+    answersSnapshot: Record<string, unknown> | null = null,
   ) => ({
     id,
     userId: "user-1",
@@ -51,6 +52,7 @@ describe("a block the student left half done", () => {
     score: completedAt ? 100 : null,
     completedAt,
     createdAt,
+    answersSnapshot,
     questionAttempts: answered.map((questionId) => ({ questionId })),
   });
 
@@ -167,6 +169,37 @@ describe("a block the student left half done", () => {
   /** An empty sitting is not work; it is a row created and walked away from. */
   it("ignores a sitting with no answers in it", async () => {
     prisma.quizAttempt.findMany.mockResolvedValue([sitting("empty", [], null)]);
+
+    expect(await last()).toBeNull();
+  });
+
+  /**
+   * A test keeps its work somewhere else.
+   *
+   * Nothing in a test is marked until it is handed in, so a half-done test has no answers
+   * recorded at all - only the draft. Judging a sitting by its recorded answers locked
+   * every test draft out of being resumed, which is the very loss the draft prevents.
+   */
+  it("gives back a test whose work is only a draft", async () => {
+    prisma.quizAttempt.findMany.mockResolvedValue([
+      sitting("drafted", [], null, new Date("2026-11-02T10:00:00Z"), {
+        question_g1: { question_id: "g1", answer: "dem" },
+      }),
+    ]);
+
+    const result = await last();
+
+    expect(result).toMatchObject({ attempt_id: "drafted", completed_at: null });
+    expect(result?.draft_answers).toEqual([
+      { question_id: "g1", answer: "dem" },
+    ]);
+  });
+
+  /** An empty draft is still an empty sitting. */
+  it("ignores a sitting whose draft holds nothing", async () => {
+    prisma.quizAttempt.findMany.mockResolvedValue([
+      sitting("empty", [], null, new Date("2026-11-02T10:00:00Z"), {}),
+    ]);
 
     expect(await last()).toBeNull();
   });

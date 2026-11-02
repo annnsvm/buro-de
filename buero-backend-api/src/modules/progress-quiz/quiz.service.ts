@@ -220,6 +220,12 @@ export class QuizService {
         points: question.points,
         /** Which text or audio this question is about, if any. */
         element_id: question.elementId,
+        /**
+         * Which skill it belongs to. A module test is taken part by part, and the parts
+         * are the skills - so the screen has to be able to tell one question's part from
+         * another's without asking the server again.
+         */
+        block: question.block,
         order_index: question.orderIndex,
         ...(Array.isArray(payload.options) && {
           options: payload.options.map((option) => ({
@@ -496,13 +502,27 @@ export class QuizService {
      * question it answered is still in the block, which is the same test a finished sitting
      * has to pass.
      */
+    /**
+     * A sitting holds work in one of two shapes, and either counts.
+     *
+     * A practice records each answer as it is marked, so its work is in `question_attempts`.
+     * A test marks nothing until it is handed in, so its work is the draft in
+     * `answers_snapshot` - and requiring the first of those locked every test draft out of
+     * being resumed, which is exactly the loss the draft was written to prevent.
+     */
+    const hasWork = (sitting: (typeof sittings)[number]): boolean =>
+      sitting.questionAttempts.length > 0 ||
+      Object.keys(
+        (sitting.answersSnapshot as Record<string, unknown> | null) ?? {},
+      ).length > 0;
+
     const resumable =
       current.length > 0
         ? null
         : (sittings.find(
             (sitting) =>
               sitting.completedAt === null &&
-              sitting.questionAttempts.length > 0 &&
+              hasWork(sitting) &&
               [...answeredIds(sitting)].every((id) => currentIds.has(id)),
           ) ?? null);
 
@@ -935,6 +955,8 @@ export class QuizService {
       correct: boolean;
       quality: AnswerMatchQuality;
       explanation: string | null;
+      /** The lesson that taught this one question, for the result's list of mistakes. */
+      review_lesson: string | null;
     }> = [];
     const answeredIds = new Set<string>();
     let correctCount = 0;
@@ -965,6 +987,7 @@ export class QuizService {
         quality: graded.quality,
         // Authored alongside the question; shown only now that it has been answered.
         explanation: question.explanation,
+        review_lesson: question.reviewLesson,
       });
       if (graded.correct) correctCount += 1;
     }
@@ -977,6 +1000,7 @@ export class QuizService {
         correct: false,
         quality: "none",
         explanation: question.explanation,
+        review_lesson: question.reviewLesson,
       });
     }
 

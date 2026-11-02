@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   answerQuizQuestion,
@@ -24,13 +25,22 @@ import ListeningAudio from '@/features/course-learning/QuizPanel/ListeningAudio'
 import type { PracticeBlockId } from '@/api/practiceApi';
 import BlockHeader from '@/features/course-learning/PracticePanel/ui/BlockHeader';
 import GapPrompt from '@/features/course-learning/PracticePanel/ui/GapPrompt';
+import TestHub, { type TestHubPart } from '@/features/course-learning/QuizPanel/TestHub';
+import TestResult, { type TestMistake } from '@/features/course-learning/QuizPanel/TestResult';
 import QuestionCard from '@/features/course-learning/PracticePanel/ui/QuestionCard';
-import { PRIMARY_BUTTON } from '@/features/course-learning/PracticePanel/ui/buttons';
+import {
+  DISABLED_BUTTON,
+  PRIMARY_BUTTON,
+  SECONDARY_BUTTON,
+} from '@/features/course-learning/PracticePanel/ui/buttons';
 import { groupByElement } from '@/features/course-learning/QuizPanel/groupByElement';
 import {
   isAnswered,
   type ExerciseAnswer,
 } from '@/features/course-learning/exercises/exercise.types';
+
+/** Which part of a module test is open, kept in the address bar. */
+const PART_PARAM = 'part';
 
 export type QuizResultSummary = {
   correct: number;
@@ -48,6 +58,8 @@ export type QuizPanelProps = {
   courseId?: string;
   moduleId?: string;
   quizMaterialTitle: string;
+  /** The module this test belongs to, for a heading that says which one. */
+  moduleTitle?: string | null;
   attachments?: MaterialAttachment[];
   /** Narrows a practice to one of its blocks; absent for a quiz or the module test. */
   block?: string;
@@ -81,6 +93,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   courseId,
   moduleId,
   quizMaterialTitle,
+  moduleTitle,
   attachments,
   block,
   onBack,
@@ -135,7 +148,141 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   /** Grammatik, Lesen and Hören run through here; a module test and a plain quiz do not. */
   const isPracticeBlock = block === 'grammatik' || block === 'lesen' || block === 'horen';
   /** Each text with the questions it is about, so the text can stay in view while they run. */
-  const groups = useMemo(() => groupByElement(questions, elements), [questions, elements]);
+  /**
+   * The parts of a module test, in the order its author set them.
+   *
+   * Only a test has parts, and only one whose questions carry a skill: a test written before
+   * blocks existed is one long list, and was always read that way. First appearance decides
+   * the order, which is the order the author put the rows in.
+   */
+  const testParts = useMemo<TestHubPart[]>(() => {
+    if (mode !== 'test') return [];
+    const order: PracticeBlockId[] = [];
+    for (const question of questions) {
+      if (question.block && !order.includes(question.block)) order.push(question.block);
+    }
+    if (order.length < 2) return [];
+    return order.map((block) => {
+      const its = questions.filter((question) => question.block === block);
+      const used = new Set(its.map((question) => question.element_id).filter(Boolean));
+      const material = elements.filter((element) => used.has(element.id));
+      return {
+        block,
+        total: its.length,
+        answered: its.filter((question) => isAnswered(drafts[question.id])).length,
+        texts: material.filter((element) => element.kind === 'text').length,
+        recordings: material.filter((element) => element.kind === 'audio').length,
+      };
+    });
+  }, [mode, questions, drafts, elements]);
+
+  /**
+   * Which part is open is a place, the way a practice block is: the browser's back button
+   * means "out of this part", and a part can be linked to directly.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawPart = searchParams.get(PART_PARAM);
+  const openPart = testParts.some((part) => part.block === rawPart)
+    ? (rawPart as PracticeBlockId)
+    : null;
+
+  const setOpenPart = useCallback(
+    (block: PracticeBlockId | null) => {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        if (block) next.set(PART_PARAM, block);
+        else next.delete(PART_PARAM);
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
+
+  /** Inside a part it is that part; on the hub there is no part to filter by. */
+  const activePart = openPart;
+
+  /**
+   * Only the open part is on screen, and its questions are numbered from one.
+   *
+   * A test of twenty-seven questions shown as one list is a wall; and a student who has just
+   * read a text should be answering about that text, not scrolling past the grammar they did
+   * ten minutes ago.
+   */
+  const shown = useMemo(() => {
+    /** The hub lists the parts; the questions live inside them. */
+    if (testParts.length > 0 && activePart === null) return [];
+    return activePart === null
+      ? questions
+      : questions.filter((question) => question.block === activePart);
+  }, [questions, activePart, testParts.length]);
+
+  const groups = useMemo(() => groupByElement(shown, elements), [shown, elements]);
+
+  /**
+   * The questions that cost a point, with everything the result needs to explain them.
+   *
+   * Numbered inside their own part, because that is how the student met them: "question 4"
+   * on the result has to be the same "04" they answered, not the fourth of twenty-seven.
+   */
+  const mistakes = useMemo<TestMistake[]>(() => {
+    if (!result) return [];
+    const seenInPart = new Map<string, number>();
+    const out: TestMistake[] = [];
+    for (const question of questions) {
+      const part = question.block ?? '';
+      const at = (seenInPart.get(part) ?? 0) + 1;
+      seenInPart.set(part, at);
+
+      const given = feedback[question.id];
+      if (!given || given.correct) continue;
+
+      const typed = drafts[question.id];
+      out.push({
+        question,
+        position: at,
+        given: Array.isArray(typed) ? typed.join(', ') : (typed ?? ''),
+        accepted: given.accepted_answers ?? [],
+        explanation: given.explanation,
+        reviewLesson: given.review_lesson ?? null,
+      });
+    }
+    return out;
+  }, [result, questions, feedback, drafts]);
+
+  /** How much of the whole test is filled in, across every part. */
+  const answeredDraftCount = questions.filter((question) =>
+    isAnswered(drafts[question.id]),
+  ).length;
+  const allAnswered =
+    questions.length > 0 && answeredDraftCount === questions.length;
+
+  /** What is left in the part on screen, and which part comes after it. */
+  const partLeft = shown.filter((question) => !isAnswered(drafts[question.id])).length;
+  const nextPart = (() => {
+    const at = testParts.findIndex((part) => part.block === openPart);
+    if (at === -1) return null;
+    const after = testParts[at + 1];
+    if (after) return after.block;
+    /** From the last part, on to the first that still has gaps - or nowhere. */
+    return testParts.find((part) => part.answered < part.total)?.block ?? null;
+  })();
+
+  /**
+   * The next part along, and from the last one the first that still has gaps.
+   *
+   * It is a shortcut, not an order: wrapping round to a part that is already full would
+   * march the student in circles past work they have finished.
+   */
+  const goToNextPart = () => {
+    const at = testParts.findIndex((part) => part.block === activePart);
+    const after = testParts[at + 1];
+    if (after) {
+      setOpenPart(after.block);
+      return;
+    }
+    const unfilled = testParts.find((part) => part.answered < part.total);
+    if (unfilled) setOpenPart(unfilled.block);
+  };
   /**
    * Recordings the author has described but not uploaded. Their questions never arrive, so
    * without this they would have nothing to be grouped with and would vanish from the screen.
@@ -446,11 +593,64 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           onBack={onBack}
           progress={mode !== 'test' ? { answered: answeredCount, total } : undefined}
         />
+      ) : testParts.length > 0 && !result ? (
+        /**
+         * Nothing here. A module test carries its own heading - on its front page, and
+         * again as the name of the part being answered. A third one above both said the
+         * same words a third time.
+         */
+        null
       ) : (
         <h2 className="pt-6 text-xl font-bold text-[var(--color-text-primary)] sm:text-2xl">
           {quizMaterialTitle || t('quiz.title')}
         </h2>
       )}
+
+      {/**
+       * A module test opens on its own front page, the way a practice does.
+       *
+       * The parts are too big to sit behind tabs - each has its own text or recording and
+       * five questions - and a student picking one wants to see what they are picking. The
+       * hub lists them; opening one is a step the back button can undo.
+       */}
+      {testParts.length > 0 && !result && !openPart ? (
+        <TestHub
+          parts={testParts}
+          passingScore={passingScore}
+          title={quizMaterialTitle}
+          moduleTitle={moduleTitle ?? null}
+          onOpenPart={setOpenPart}
+          onFinish={() => void submitTest()}
+          submitting={submitting}
+        />
+      ) : null}
+
+      {/** Inside one part: the way back, which part it is, and how big. */}
+      {openPart && !result ? (
+        <div className="pt-6">
+          <button
+            type="button"
+            onClick={() => setOpenPart(null)}
+            className="text-sm font-medium text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
+          >
+            {t('quiz.backToTest')}
+          </button>
+
+          <div className="mt-4 flex flex-wrap items-baseline gap-x-4">
+            <span className="text-[13px] font-semibold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+              {t('quiz.partNumber', {
+                number: testParts.findIndex((part) => part.block === openPart) + 1,
+              })}
+            </span>
+            <span className="text-[13px] text-[var(--color-text-secondary)]">
+              {t('quiz.partQuestions', { count: shown.length })}
+            </span>
+          </div>
+          <h3 className="mt-1 font-[family-name:var(--font-heading)] text-[1.6rem] font-bold tracking-[-0.03em] text-[var(--color-text-primary)]">
+            {t(`practice.blocks.${openPart}.title`)}
+          </h3>
+        </div>
+      ) : null}
 
       {outdated ? (
         <p className="mt-3 rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
@@ -476,7 +676,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
             : t('quiz.testIntro', { passing: passingScore ?? 0 })}
       </p>
 
-      {total === 0 ? (
+      {testParts.length > 0 && !openPart ? null : total === 0 ? (
         /**
          * Nothing to answer. Which is not the same as nothing here.
          *
@@ -602,6 +802,61 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         </div>
       )}
 
+      {/**
+       * The end of a part, and the way out of it.
+       *
+       * There was nothing here: a student who answered every question scrolled to the
+       * bottom and found no button, no mark and no next step - the answers are kept and
+       * nothing is marked until the whole test is handed in, but the screen said none of
+       * that. It says it here, and offers the three things worth doing next.
+       */}
+      {openPart && !result ? (
+        <div className="mt-10 flex flex-col gap-4 rounded-[22px] bg-[var(--color-neutral-white)] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            {partLeft === 0
+              ? t('quiz.partFilled')
+              : t('quiz.partLeft', { count: partLeft })}
+          </p>
+
+          <div className="flex flex-col gap-2.5 sm:flex-row">
+            {/**
+             * Forward only. The way back is at the top of the part, where a student looks
+             * for it; repeating it here put the same button on screen twice, which a
+             * screen reader reads as two different ways out.
+             */}
+            {!nextPart && !allAnswered ? (
+              <button
+                type="button"
+                onClick={() => setOpenPart(null)}
+                className={SECONDARY_BUTTON}
+              >
+                {t('quiz.backToTest')}
+              </button>
+            ) : null}
+            {nextPart ? (
+              <button
+                type="button"
+                onClick={() => setOpenPart(nextPart)}
+                className={PRIMARY_BUTTON}
+              >
+                {t('quiz.nextPart')}
+              </button>
+            ) : null}
+            {/** Only once the whole test is full; the hub carries it the rest of the time. */}
+            {allAnswered ? (
+              <button
+                type="button"
+                onClick={() => void submitTest()}
+                disabled={submitting}
+                className={PRIMARY_BUTTON}
+              >
+                {submitting ? t('quiz.submitting') : t('quiz.submitTest')}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <LessonAttachments
         attachments={attachments}
         courseId={courseId}
@@ -615,22 +870,79 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         </p>
       ) : null}
 
-      {mode === 'test' && !result ? (
-        <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-4 py-3 sm:-mx-6 sm:px-6">
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => void submitTest()}
-              disabled={submitting}
-              className="inline-flex w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[220px]"
-            >
-              {submitting ? t('quiz.submitting') : t('quiz.submitTest')}
-            </button>
+      {mode === 'test' && !result && testParts.length === 0 ? (
+        <div className="sticky bottom-0 z-20 -mx-4 mt-8 bg-[var(--color-surface-background)] px-4 pt-2 pb-3 sm:-mx-6 sm:px-6">
+          <div className="flex flex-col gap-4 rounded-[22px] bg-[var(--color-neutral-white)] py-4 pr-4 pl-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                {t('quiz.totalAnswered', {
+                  answered: answeredDraftCount,
+                  total: questions.length,
+                })}
+              </p>
+              {/**
+               * Why the finish button is dead, said beside it rather than discovered by
+               * pressing. A disabled control that explains nothing is a dead end.
+               */}
+              {!allAnswered ? (
+                <p
+                  id="finish-test-hint"
+                  className="mt-0.5 text-[13px] text-[var(--color-text-secondary)]"
+                >
+                  {t('quiz.finishWhenFull')}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+              {/** A convenience, not a step: every part is reachable from the tabs above. */}
+              {testParts.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={goToNextPart}
+                  className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
+                >
+                  {t('quiz.nextPart')}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void submitTest()}
+                disabled={submitting || !allAnswered}
+                aria-describedby={allAnswered ? undefined : 'finish-test-hint'}
+                className={[
+                  allAnswered ? PRIMARY_BUTTON : DISABLED_BUTTON,
+                  'w-full sm:w-auto sm:min-w-[180px]',
+                ].join(' ')}
+              >
+                {submitting ? t('quiz.submitting') : t('quiz.submitTest')}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
 
-      {result ? (
+      {/**
+       * A module test comes to its own screen: the mark, the skills behind it, and the
+       * lessons to go back over. A plain quiz keeps the short summary below, which is the
+       * right size for ten questions about one lesson.
+       */}
+      {result && testParts.length > 0 ? (
+        <TestResult
+          percent={result.bestPercent}
+          earnedPoints={earnedPoints}
+          totalPoints={totalPoints}
+          passingScore={passingScore}
+          passed={passed}
+          parts={parts}
+          mistakes={mistakes}
+          onRetry={handleRetry}
+          onMoveOn={onMoveOn}
+          moveOnLabel={moveOnLabel}
+        />
+      ) : null}
+
+      {result && testParts.length === 0 ? (
         <div
           className="mt-10 rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-surface-section)] px-6 py-6 text-center"
           role="status"
