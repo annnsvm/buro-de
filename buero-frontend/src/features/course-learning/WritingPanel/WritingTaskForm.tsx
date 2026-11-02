@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   type WritingAssessment,
@@ -11,7 +11,7 @@ import { usePersistentDraft } from '@/hooks/usePersistentDraft';
 import Folder from '../PracticePanel/ui/Folder';
 import QuestionCard from '../PracticePanel/ui/QuestionCard';
 import Segments from '../PracticePanel/ui/Segments';
-import { PRIMARY_BUTTON } from '../PracticePanel/ui/buttons';
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../PracticePanel/ui/buttons';
 import { readMarks } from './marks';
 import { parseWritingPrompt } from './prompt';
 
@@ -69,6 +69,8 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
     restored: draftRestored,
   } = usePersistentDraft<string>(draftKey, task.best?.text ?? '');
   const [result, setResult] = useState<WritingSubmitResponse | null>(null);
+  /** So "write it again" puts the student back in the box rather than next to it. */
+  const box = useRef<HTMLTextAreaElement | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -163,6 +165,7 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
             {t('writing.yourLetter')}
           </span>
           <textarea
+            ref={box}
             value={text}
             onChange={(event) => setText(event.target.value)}
             rows={12}
@@ -234,6 +237,18 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
           criteriaText={task.criteria}
           justGraded={Boolean(graded)}
           repeated={graded?.repeated ?? false}
+          /**
+           * Offered only when there is a check left to spend. With the allowance gone the box
+           * is not on screen at all, and a button that scrolls to nothing is worse than none.
+           */
+          onWriteAgain={
+            usedUp
+              ? undefined
+              : () => {
+                  box.current?.focus();
+                  box.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+          }
         />
       ) : null}
 
@@ -474,63 +489,77 @@ const Result: React.FC<{
   criteriaText: string[];
   justGraded: boolean;
   repeated: boolean;
-}> = ({ score, maxScore, assessment, criteriaText, justGraded, repeated }) => {
+  /** Offered only while a check is left to spend; the box is gone otherwise. */
+  onWriteAgain?: () => void;
+}> = ({
+  score,
+  maxScore,
+  assessment,
+  criteriaText,
+  justGraded,
+  repeated,
+  onWriteAgain,
+}) => {
   const { t } = useTranslation();
   const marks = readMarks(assessment);
   const corrections = assessment.corrections ?? [];
+  const earned = marks.filter((mark) => mark.earned);
+  const lost = marks.filter((mark) => !mark.earned);
+  const full = maxScore > 0 && score === maxScore;
 
   return (
-    <section
-      className="mt-8 rounded-2xl border border-[var(--color-border-default)] p-5"
-      role="status"
-      aria-live="polite"
-    >
-      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-        {justGraded ? t('writing.yourResult') : t('writing.bestResult')}
-      </p>
-      <p className="mt-1 text-3xl font-bold tabular-nums text-[var(--color-primary)]">
-        {t('writing.pointsOf', { score, total: maxScore })}
-      </p>
+    <section className="mt-8" role="status" aria-live="polite">
+      {/**
+       * The mark as a stamp on a sheet.
+       *
+       * It is the one number the student came back for, so it is read before anything else and
+       * from across the room. The sentence beside it is the checker's own praise - the first
+       * thing it found worth saying - rather than a label the screen made up.
+       */}
+      <header className="flex flex-col items-center gap-6 rounded-3xl bg-[var(--color-surface-section)] p-7 sm:flex-row sm:items-center">
+        <span className="flex size-32 shrink-0 -rotate-6 flex-col items-center justify-center rounded-full border-[3px] border-[var(--color-burnt-siena-dark)] bg-[var(--color-neutral-white)]">
+          <span className="font-[family-name:var(--font-heading)] text-[2.6rem] leading-none font-bold tracking-[-0.04em] text-[var(--color-burnt-siena-dark)] tabular-nums">
+            {score}/{maxScore}
+          </span>
+          <span className="mt-1 text-[0.65rem] font-bold tracking-[0.18em] text-[var(--color-burnt-siena-dark)] uppercase">
+            {t('writing.pointsStamp')}
+          </span>
+        </span>
 
-      {/* Sending the same text again is answered from the record, not paid for twice. */}
-      {repeated ? (
-        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-          {t('writing.repeated')}
-        </p>
+        <div className="min-w-0 text-center sm:text-left">
+          <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+            {justGraded ? t('writing.yourResult') : t('writing.bestResult')}
+          </p>
+          <h4 className="mt-1.5 font-[family-name:var(--font-heading)] text-[1.75rem] leading-tight font-bold tracking-[-0.03em] text-[var(--color-text-primary)]">
+            {full ? t('writing.allPoints') : t('writing.checked')}
+          </h4>
+          {assessment.praise ? (
+            <p className="mt-2 leading-relaxed text-[var(--color-text-primary)]">
+              {assessment.praise}
+            </p>
+          ) : null}
+          {/* Sending the same text again is answered from the record, not paid for twice. */}
+          {repeated ? (
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              {t('writing.repeated')}
+            </p>
+          ) : null}
+        </div>
+      </header>
+
+      <MarkList
+        title={t('writing.earned')}
+        marks={earned}
+        criteriaText={criteriaText}
+        earned
+        score={score}
+        maxScore={maxScore}
+      />
+
+      {/** The criteria that cost a point, each with the sentence that says why. */}
+      {lost.length > 0 ? (
+        <MarkList title={t('writing.notEarned')} marks={lost} criteriaText={criteriaText} />
       ) : null}
-
-      {assessment.praise ? (
-        <p className="mt-4 text-sm text-[var(--color-success-text)]">{assessment.praise}</p>
-      ) : null}
-
-      <ul className="mt-4 space-y-3">
-        {marks.map((mark) => (
-          <li key={mark.n} className="flex gap-3 text-sm">
-            <span
-              aria-hidden
-              className={[
-                'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-                mark.earned
-                  ? 'bg-[var(--color-success-soft)] text-[var(--color-success-text)]'
-                  : 'bg-[var(--color-error-soft)] text-[var(--color-error)]',
-              ].join(' ')}
-            >
-              {mark.earned ? '✓' : '-'}
-            </span>
-            <span className="min-w-0">
-              <span className="block font-medium text-[var(--color-text-primary)]">
-                {criteriaText[mark.n - 1] ?? ''}
-              </span>
-              {/* Only when the point was lost. A tick needs no sentence beneath it. */}
-              {mark.comment ? (
-                <span className="mt-0.5 block text-[var(--color-text-secondary)]">
-                  {mark.comment}
-                </span>
-              ) : null}
-            </span>
-          </li>
-        ))}
-      </ul>
 
       {/**
        * What to fix, as wrong against right.
@@ -539,22 +568,26 @@ const Result: React.FC<{
        * student to find which words; this names them.
        */}
       {corrections.length > 0 ? (
-        <section className="mt-6 rounded-xl bg-[var(--color-surface-section)] p-4">
-          <h5 className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+        <section className="mt-7">
+          <h5 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
             {t('writing.whatToFix')}
           </h5>
-          <ul className="mt-3 space-y-3">
+          <ul className="mt-3 flex flex-col gap-4 rounded-[18px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] px-[22px] py-5">
             {corrections.map((fix) => (
-              <li key={`${fix.wrong}-${fix.right}`} className="text-sm">
-                <span className="text-[var(--color-error)] line-through">{fix.wrong}</span>
-                <span className="mx-2 text-[var(--color-text-secondary)]" aria-hidden>
-                  →
-                </span>
-                <span className="font-medium text-[var(--color-success-text)]">{fix.right}</span>
-                {fix.why ? (
-                  <span className="mt-0.5 block text-xs text-[var(--color-text-secondary)]">
-                    {fix.why}
+              <li key={`${fix.wrong}-${fix.right}`}>
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[var(--color-text-secondary)] line-through decoration-[var(--color-accent-primary)] decoration-2">
+                    {fix.wrong}
                   </span>
+                  <span className="text-[var(--color-text-secondary)]" aria-hidden>
+                    →
+                  </span>
+                  <span className="rounded-md bg-[var(--color-burnt-siena-lighter)] px-2 py-0.5 font-mono font-medium text-[var(--color-text-primary)]">
+                    {fix.right}
+                  </span>
+                </p>
+                {fix.why ? (
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{fix.why}</p>
                 ) : null}
               </li>
             ))}
@@ -562,11 +595,121 @@ const Result: React.FC<{
         </section>
       ) : null}
 
+      {/**
+       * Whose comment this is, said plainly.
+       *
+       * It was going to be headed "the teacher's comment", which would have told the student
+       * the author read their letter herself. She does not - the checker writes it against her
+       * criteria - and a student who believed otherwise would take a disagreement about a mark
+       * to her as a personal slight.
+       */}
       {assessment.summary ? (
-        <p className="mt-5 text-sm leading-relaxed text-[var(--color-text-primary)]">
-          {assessment.summary}
-        </p>
+        <section className="mt-7 flex gap-3.5">
+          <span
+            aria-hidden
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-primary)] font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--color-text-on-accent)]"
+          >
+            b
+          </span>
+          <div className="min-w-0">
+            <p className="text-[0.8rem] font-semibold text-[var(--color-text-secondary)]">
+              {t('writing.checkComment')}
+            </p>
+            <p className="mt-0.5 leading-relaxed text-[var(--color-text-primary)]">
+              {assessment.summary}
+            </p>
+          </div>
+        </section>
       ) : null}
+
+      {onWriteAgain ? (
+        <div className="mt-7 flex flex-wrap gap-3">
+          <button type="button" onClick={onWriteAgain} className={SECONDARY_BUTTON}>
+            {t('writing.writeAgain')}
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+};
+
+/**
+ * One list of criteria, earned or lost.
+ *
+ * Two columns, because a criterion is a short line and a single column of seven left the eye
+ * travelling further than the text was worth. The tick is a plain stroke rather than a tick in
+ * a circle: a circle reads as a control to press.
+ */
+const MarkList: React.FC<{
+  title: string;
+  marks: ReturnType<typeof readMarks>;
+  criteriaText: string[];
+  earned?: boolean;
+  score?: number;
+  maxScore?: number;
+}> = ({ title, marks, criteriaText, earned = false, score, maxScore }) => {
+  const { t } = useTranslation();
+  if (marks.length === 0) return null;
+
+  return (
+    <section className="mt-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h5 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+          {title}
+        </h5>
+        {earned && score != null && maxScore != null ? (
+          <span className="flex items-center gap-3">
+            <Segments filled={score} total={maxScore} />
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              {t('writing.pointsOf', { score, total: maxScore })}
+            </span>
+          </span>
+        ) : null}
+      </div>
+
+      <ul className="mt-3 grid gap-x-8 gap-y-1 sm:grid-cols-2">
+        {marks.map((mark) => (
+          <li key={mark.n} className="flex min-h-10 items-start gap-3 py-1">
+            {earned ? (
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                className="mt-1 size-[18px] shrink-0"
+                fill="none"
+                stroke="var(--color-accent-primary)"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 13l4.5 4.5L19 7" />
+              </svg>
+            ) : (
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                className="mt-1 size-[18px] shrink-0"
+                fill="none"
+                stroke="var(--color-text-secondary)"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+              >
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            )}
+            <span className="min-w-0 text-[0.95rem]">
+              <span className="text-[var(--color-text-primary)]">
+                {criteriaText[mark.n - 1] ?? ''}
+              </span>
+              {/* Only when the point was lost. A tick needs no sentence beneath it. */}
+              {mark.comment ? (
+                <span className="mt-0.5 block text-sm text-[var(--color-text-secondary)]">
+                  {mark.comment}
+                </span>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 };
@@ -589,54 +732,92 @@ const History: React.FC<{
   if (attempts.length < 2) return null;
 
   return (
-    <details open={open} className="mt-8">
-      <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-primary)]">
+    <details
+      open={open}
+      className="mt-9 border-t border-[var(--color-dawn-pink-dark)]/35 pt-7"
+    >
+      <summary className="cursor-pointer font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
         {t('writing.earlierAttempts', { count: attempts.length })}
       </summary>
 
-      <ol className="mt-4 space-y-6">
+      <ol className="mt-4 flex flex-col gap-6">
         {attempts.map((attempt, index) => {
           const marks = readMarks(attempt.assessment);
           const lost = marks.filter((mark) => !mark.earned);
           return (
-            <li
-              key={attempt.submitted_at}
-              className="rounded-2xl border border-[var(--color-border-subtle)] p-4"
-            >
-              <p className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <span className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
-                  {t('writing.attemptNumber', { number: attempts.length - index })}
-                </span>
-                <span className="font-[family-name:var(--font-heading)] text-lg font-bold tabular-nums text-[var(--color-primary)]">
-                  {t('writing.pointsOf', {
-                    score: attempt.score,
-                    total: attempt.max_score,
-                  })}
-                </span>
-              </p>
+            <li key={attempt.submitted_at}>
+              <Folder
+                tab={
+                  <span className="flex items-center gap-3">
+                    <span>
+                      {t('writing.attemptNumber', { number: attempts.length - index })}
+                    </span>
+                    <Segments
+                      filled={attempt.score}
+                      total={attempt.max_score}
+                      size="sm"
+                    />
+                    <span className="font-[family-name:var(--font-heading)] text-[0.95rem] font-bold text-[var(--color-burnt-siena-dark)] tabular-nums">
+                      {attempt.score}/{attempt.max_score}
+                    </span>
+                  </span>
+                }
+              >
+                {/**
+                 * The student's own text, ruled like the sheet they wrote it on and marked
+                 * down the left as something quoted back rather than something to edit.
+                 */}
+                <pre
+                  style={{
+                    backgroundImage:
+                      'repeating-linear-gradient(transparent 0 27px, var(--color-surface-section) 27px 28px)',
+                  }}
+                  className="overflow-x-auto border-l-[1.5px] border-[var(--color-burnt-siena-light)] py-0.5 pl-4 font-mono text-[0.9rem] leading-7 whitespace-pre-wrap text-[var(--color-text-primary)]"
+                >
+                  {attempt.text}
+                </pre>
 
-              <pre className="mt-3 overflow-x-auto rounded-lg bg-[var(--color-surface-section)] p-3 text-xs leading-relaxed whitespace-pre-wrap text-[var(--color-text-primary)]">
-                {attempt.text}
-              </pre>
+                {attempt.assessment.summary ? (
+                  <p className="mt-4 leading-relaxed text-[var(--color-text-primary)]">
+                    {attempt.assessment.summary}
+                  </p>
+                ) : null}
 
-              {attempt.assessment.summary ? (
-                <p className="mt-3 text-sm text-[var(--color-text-primary)]">
-                  {attempt.assessment.summary}
-                </p>
-              ) : null}
-
-              {lost.length > 0 ? (
-                <ul className="mt-3 space-y-1.5">
-                  {lost.map((mark) => (
-                    <li key={mark.n} className="text-xs text-[var(--color-text-secondary)]">
-                      <span className="font-medium text-[var(--color-text-primary)]">
-                        {criteriaText[mark.n - 1] ?? ''}
-                      </span>
-                      {mark.comment ? ` - ${mark.comment}` : ''}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+                {lost.length > 0 ? (
+                  <>
+                    <p className="mt-5 text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+                      {t('writing.notEarned')}
+                    </p>
+                    <ul className="mt-2 flex flex-col gap-1.5">
+                      {lost.map((mark) => (
+                        <li key={mark.n} className="flex items-start gap-2.5 text-sm">
+                          <svg
+                            aria-hidden
+                            viewBox="0 0 24 24"
+                            className="mt-1 size-4 shrink-0"
+                            fill="none"
+                            stroke="var(--color-text-secondary)"
+                            strokeWidth="2.4"
+                            strokeLinecap="round"
+                          >
+                            <path d="M6 6l12 12M18 6L6 18" />
+                          </svg>
+                          <span className="min-w-0">
+                            <span className="font-semibold text-[var(--color-text-primary)]">
+                              {criteriaText[mark.n - 1] ?? ''}
+                            </span>
+                            {mark.comment ? (
+                              <span className="text-[var(--color-text-secondary)]">
+                                {` - ${mark.comment}`}
+                              </span>
+                            ) : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </Folder>
             </li>
           );
         })}

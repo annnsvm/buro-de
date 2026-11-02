@@ -588,7 +588,14 @@
     "waitASecond": "Just sent - you can send again at {{time}}.",
     "whatToFix": "What to fix",
     "yourLetter": "Your text",
-    "yourResult": "Your result"
+    "yourResult": "Your result",
+    "allPoints": "Sehr gut! Full marks",
+    "checked": "Your text has been checked",
+    "earned": "Earned",
+    "notEarned": "Not earned",
+    "checkComment": "Automatic check",
+    "pointsStamp": "points",
+    "writeAgain": "Write it again"
   },
   "practice": {
     "audioMissing": "This task is still being prepared: the recording is on its way. Its questions open together with the audio.",
