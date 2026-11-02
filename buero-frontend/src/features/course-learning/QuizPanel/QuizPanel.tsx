@@ -50,6 +50,8 @@ export type QuizPanelProps = {
   attachments?: MaterialAttachment[];
   /** Narrows a practice to one of its blocks; absent for a quiz or the module test. */
   block?: string;
+  /** Drawn in the block's own header, so a practice shows one way back and not two. */
+  onBack?: () => void;
   onQuizResult?: (result: QuizResultSummary | null) => void;
   /**
    * Where to go once this is finished. A practice quiz leads to the next lesson, a
@@ -80,6 +82,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   quizMaterialTitle,
   attachments,
   block,
+  onBack,
   onQuizResult,
   onMoveOn,
   moveOnLabel: moveOnLabelOverride,
@@ -390,6 +393,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         <BlockHeader
           block={block as PracticeBlockId}
           title={quizMaterialTitle || t('quiz.title')}
+          onBack={onBack}
           progress={mode !== 'test' ? { answered: answeredCount, total } : undefined}
         />
       ) : (

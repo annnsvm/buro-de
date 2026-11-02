@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { i18nReady } from '@/i18n';
 import { renderWithProviders } from '../../../utils/renderWithProviders';
@@ -23,6 +24,9 @@ vi.mock('@/api/writingApi', async (importOriginal) => ({
 
 const { default: WritingPanel } = await import(
   '@/features/course-learning/WritingPanel/WritingPanel'
+);
+const { default: WritingTaskForm } = await import(
+  '@/features/course-learning/WritingPanel/WritingTaskForm'
 );
 
 const installStorage = () => {
@@ -153,6 +157,49 @@ describe('what the heading says about the mark', () => {
 
     await screen.findByText('Зараховано');
     expect(screen.queryByText('Не зараховано')).not.toBeInTheDocument();
+  });
+});
+
+describe('where a checked letter leads', () => {
+  const drawForm = (finish?: { label: string; onClick: () => void }) =>
+    renderWithProviders(
+      <WritingTaskForm
+        task={task() as never}
+        draftKey={null}
+        onSubmit={vi.fn()}
+        onGraded={vi.fn()}
+        finish={finish}
+      />,
+    );
+
+  /**
+   * The practice decides the label, because only it knows whether anything is still waiting:
+   * the next lesson when nothing is, the way back to the other blocks when something is.
+   */
+  it('offers whatever the practice named', async () => {
+    drawForm({ label: 'Наступний урок', onClick: vi.fn() });
+
+    expect(
+      await screen.findByRole('button', { name: 'Наступний урок' }),
+    ).toBeInTheDocument();
+  });
+
+  it('takes the student there when pressed', async () => {
+    const go = vi.fn();
+    drawForm({ label: 'До практики', onClick: go });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'До практики' }));
+
+    expect(go).toHaveBeenCalledTimes(1);
+  });
+
+  /** A writing material opened on its own has no practice to go back to, and says nothing. */
+  it('offers nothing when there is nowhere to go', async () => {
+    drawForm();
+
+    await screen.findByText('Зараховано');
+    expect(screen.queryByRole('button', { name: /урок|практик/i })).not.toBeInTheDocument();
   });
 });
 

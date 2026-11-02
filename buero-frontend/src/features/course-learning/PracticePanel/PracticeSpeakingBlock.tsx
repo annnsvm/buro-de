@@ -14,6 +14,8 @@ import { asClock, useRecorder } from './useRecorder';
 
 export type PracticeSpeakingBlockProps = {
   courseMaterialId: string;
+  /** Drawn in the header, so a block shows one way back rather than two. */
+  onBack?: () => void;
 };
 
 /**
@@ -27,6 +29,7 @@ export type PracticeSpeakingBlockProps = {
  */
 const PracticeSpeakingBlock: React.FC<PracticeSpeakingBlockProps> = ({
   courseMaterialId,
+  onBack,
 }) => {
   const { t } = useTranslation();
 
@@ -95,6 +98,7 @@ const PracticeSpeakingBlock: React.FC<PracticeSpeakingBlockProps> = ({
         block="sprechen"
         title={t('practice.blocks.sprechen.title')}
         badges={[t('practice.optional'), t('practice.speaking.noScore')]}
+        onBack={onBack}
         intro={t('practice.speaking.intro')}
       />
 

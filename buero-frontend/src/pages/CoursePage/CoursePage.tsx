@@ -191,6 +191,12 @@ const CoursePage: React.FC = () => {
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
         next.set(LESSON_PARAM, materialId);
+        /**
+         * Whichever practice block was open belonged to the lesson being left. Carried over,
+         * the next lesson's practice would open straight into a block the student never
+         * chose - and on Hören, into one that may not exist there at all.
+         */
+        next.delete('block');
         return next;
       });
     },

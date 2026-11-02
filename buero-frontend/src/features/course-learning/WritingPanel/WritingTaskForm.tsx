@@ -21,6 +21,11 @@ export type WritingTaskFormProps = {
   heading?: string | null;
   /** Which task this is inside its block, for the number down the left of the card. */
   position?: number;
+  /**
+   * Where a checked letter leads next. Offered beside "write it again", and only where there
+   * is somewhere to go: a writing material opened on its own has no practice to return to.
+   */
+  finish?: { label: string; onClick: () => void };
   /** Sends the letter. Which endpoint it reaches is the caller's business, not the form's. */
   onSubmit: (text: string) => Promise<WritingSubmitResponse>;
   /** Re-read the task after a graded submission: the attempts and the best result both move. */
@@ -46,6 +51,7 @@ export type WritingTaskFormProps = {
  */
 const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
   position = 1,
+  finish,
   task,
   heading,
   onSubmit,
@@ -241,6 +247,7 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
            * Offered only when there is a check left to spend. With the allowance gone the box
            * is not on screen at all, and a button that scrolls to nothing is worse than none.
            */
+          finish={finish}
           onWriteAgain={
             usedUp
               ? undefined
@@ -491,6 +498,8 @@ const Result: React.FC<{
   repeated: boolean;
   /** Offered only while a check is left to spend; the box is gone otherwise. */
   onWriteAgain?: () => void;
+  /** Where to go once the letter is behind them, when there is anywhere to go. */
+  finish?: { label: string; onClick: () => void };
 }> = ({
   score,
   maxScore,
@@ -499,6 +508,7 @@ const Result: React.FC<{
   justGraded,
   repeated,
   onWriteAgain,
+  finish,
 }) => {
   const { t } = useTranslation();
   const marks = readMarks(assessment);
@@ -622,11 +632,19 @@ const Result: React.FC<{
         </section>
       ) : null}
 
-      {onWriteAgain ? (
+      {finish || onWriteAgain ? (
         <div className="mt-7 flex flex-wrap gap-3">
-          <button type="button" onClick={onWriteAgain} className={SECONDARY_BUTTON}>
-            {t('writing.writeAgain')}
-          </button>
+          {/** On first, because once a letter is marked most students are done with it. */}
+          {finish ? (
+            <button type="button" onClick={finish.onClick} className={PRIMARY_BUTTON}>
+              {finish.label}
+            </button>
+          ) : null}
+          {onWriteAgain ? (
+            <button type="button" onClick={onWriteAgain} className={SECONDARY_BUTTON}>
+              {t('writing.writeAgain')}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </section>

@@ -13,6 +13,14 @@ import BlockHeader from './ui/BlockHeader';
 
 export type PracticeWritingBlockProps = {
   courseMaterialId: string;
+  /** Drawn in the header, so a block shows one way back rather than two. */
+  onBack?: () => void;
+  /**
+   * Where a finished letter leads: on to the next lesson when nothing else in the practice
+   * is waiting, and back to the other blocks when something is. The practice decides which;
+   * the block only offers it.
+   */
+  finish?: { label: string; onClick: () => void };
 };
 
 /**
@@ -24,6 +32,8 @@ export type PracticeWritingBlockProps = {
  */
 const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
   courseMaterialId,
+  onBack,
+  finish,
 }) => {
   const { t } = useTranslation();
   /** In the draft key so two people sharing a browser never see each other's letter. */
@@ -82,6 +92,7 @@ const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
         block="schreiben"
         title={t('practice.blocks.schreiben.title')}
         badges={[t('practice.optional')]}
+        onBack={onBack}
         intro={t('practice.writing.intro')}
       />
 
@@ -105,6 +116,7 @@ const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
             }
             heading={headed ? task.title : null}
             position={index + 1}
+            finish={finish}
             onSubmit={(text) => submitPracticeWriting(task.element_id, text)}
             onGraded={load}
           />
