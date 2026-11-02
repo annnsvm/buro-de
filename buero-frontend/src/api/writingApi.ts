@@ -1,16 +1,58 @@
 import { apiInstance } from '@/api/apiInstance';
 import { API_ENDPOINTS } from '@/api/apiEndpoints';
 
-/** One criterion's verdict, with the sentence of explanation the student reads. */
+/**
+ * One criterion's verdict, in the shape the checker returns now.
+ *
+ * `comment` is empty whenever the point was given: the student sees a tick, and a sentence
+ * explaining a point they already have is noise.
+ */
+export type CriterionMark = {
+  n: number;
+  point: 0 | 1;
+  comment: string;
+};
+
+/** @deprecated The shape attempts graded before the amendment were stored in. */
 export type CriterionVerdict = {
   id: number;
   met: boolean;
   note: string;
 };
 
+/** What to fix, as wrong -> right -> why. At most three. */
+export type Correction = {
+  wrong: string;
+  right: string;
+  why: string;
+};
+
+/**
+ * The feedback on one attempt.
+ *
+ * Both shapes appear, and both have to render: attempts graded before the amendment are stored
+ * with `id`/`met`/`note` and are not going to be re-marked. `readMarks` below is the one place
+ * that knows the difference.
+ */
+export type WritingAssessment = {
+  criteria: Array<CriterionMark | CriterionVerdict>;
+  corrections?: Correction[];
+  praise?: string;
+  summary?: string;
+};
+
 export type WritingBest = {
   score: number;
-  assessment: { criteria: CriterionVerdict[] };
+  assessment: WritingAssessment;
+  text: string;
+  submitted_at: string;
+};
+
+/** One attempt the student made, with what the checker said about it. */
+export type WritingAttempt = {
+  score: number;
+  max_score: number;
+  assessment: WritingAssessment;
   text: string;
   submitted_at: string;
 };
@@ -28,12 +70,19 @@ export type WritingTaskResponse = {
   max_sentences: number;
   max_score: number;
   attempts_used: number;
+  /** The student's whole allowance: what the course grants plus what a teacher added. */
   attempts_per_window: number;
   can_submit: boolean;
   attempts_left: number;
-  blocked_reason: 'wait' | 'daily' | 'budget' | null;
+  /**
+   * Why the box is closed. `used_up` is final for this task until a teacher grants more;
+   * `cooldown` means only that the last check was moments ago.
+   */
+  blocked_reason: 'cooldown' | 'daily' | 'used_up' | 'budget' | null;
   retry_at: string | null;
   best: WritingBest | null;
+  /** Every attempt, newest first. What the student works from once the allowance is spent. */
+  attempts: WritingAttempt[];
 };
 
 /**
@@ -49,12 +98,24 @@ export type WritingSubmitResponse =
       repeated: boolean;
       score: number;
       max_score: number;
-      assessment: { criteria: CriterionVerdict[] };
+      assessment: WritingAssessment;
       attempts_left: number;
     }
   | {
       status: 'needs_more';
-      reason: 'too_short' | 'no_salutation' | 'no_closing' | 'too_long';
+      /**
+       * None of these costs a check. `no_salutation` and `no_closing` are no longer produced -
+       * the rubric decides whether a text needs either - but their messages stay, so an older
+       * answer still reads sensibly.
+       */
+      reason:
+        | 'too_short'
+        | 'too_long'
+        | 'not_german'
+        | 'already_sent'
+        | 'copied'
+        | 'no_salutation'
+        | 'no_closing';
       body_sentences: number;
       min_sentences: number;
       max_sentences: number;
@@ -62,10 +123,21 @@ export type WritingSubmitResponse =
     }
   | {
       status: 'blocked';
-      reason: 'wait' | 'daily' | 'budget';
+      reason: 'cooldown' | 'daily' | 'used_up' | 'budget';
       retry_at: string | null;
       self_check: boolean;
       model_answer: string | null;
+    }
+  /**
+   * The checker answered twice with something we could not read.
+   *
+   * Our fault, so it costs the student nothing: the check is still theirs and the attempt was
+   * never recorded. Told apart from `blocked` because there is nothing for them to do about it
+   * except come back.
+   */
+  | {
+      status: 'unavailable';
+      attempts_left: number;
     };
 
 /**
