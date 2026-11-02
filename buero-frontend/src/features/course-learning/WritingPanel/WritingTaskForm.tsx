@@ -8,12 +8,19 @@ import {
 } from '@/api/writingApi';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
 import { usePersistentDraft } from '@/hooks/usePersistentDraft';
+import Folder from '../PracticePanel/ui/Folder';
+import QuestionCard from '../PracticePanel/ui/QuestionCard';
+import Segments from '../PracticePanel/ui/Segments';
+import { PRIMARY_BUTTON } from '../PracticePanel/ui/buttons';
 import { readMarks } from './marks';
+import { parseWritingPrompt } from './prompt';
 
 export type WritingTaskFormProps = {
   task: WritingTaskResponse;
   /** The author's heading, when a block holds more than one task. */
   heading?: string | null;
+  /** Which task this is inside its block, for the number down the left of the card. */
+  position?: number;
   /** Sends the letter. Which endpoint it reaches is the caller's business, not the form's. */
   onSubmit: (text: string) => Promise<WritingSubmitResponse>;
   /** Re-read the task after a graded submission: the attempts and the best result both move. */
@@ -38,6 +45,7 @@ export type WritingTaskFormProps = {
  * drift apart.
  */
 const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
+  position = 1,
   task,
   heading,
   onSubmit,
@@ -103,31 +111,38 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
 
   return (
     <div>
-      {heading ? (
-        <h3 className="text-[1.05rem] font-semibold text-[var(--color-text-primary)]">
-          {heading}
-        </h3>
-      ) : null}
-
-      <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-[var(--color-text-primary)]">
-        {task.task}
-      </p>
+      <QuestionCard
+        position={position}
+        prompt={heading ?? <Prompt task={task.task} />}
+      >
+        {heading ? <Prompt task={task.task} /> : null}
+      </QuestionCard>
 
       {/**
        * The rubric, in full, before writing. It is the same wording the grader is given and the
        * same wording the result quotes back, so nothing can be lost against a rule the student
        * was not shown.
        */}
-      <section className="mt-6 rounded-2xl bg-[var(--color-surface-section)] p-5">
-        <h4 className="text-sm font-bold text-[var(--color-text-primary)]">
-          {t('writing.criteriaTitle', { count: task.max_score })}
-        </h4>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-[var(--color-text-secondary)]">
+      <Folder
+        className="mt-6"
+        tab={t('writing.criteriaTitle', { count: task.max_score })}
+      >
+        <ul className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
           {task.criteria.map((criterion) => (
-            <li key={criterion}>{criterion}</li>
+            <li
+              key={criterion}
+              className="flex min-h-10 items-start gap-3 py-1 text-[0.95rem] text-[var(--color-text-primary)]"
+            >
+              {/** A mark not yet earned: the same bar the result fills in. */}
+              <span
+                aria-hidden
+                className="mt-2 h-2 w-3.5 shrink-0 rounded-sm bg-[var(--color-dawn-pink-dark)]/45"
+              />
+              <span>{criterion}</span>
+            </li>
           ))}
-        </ol>
-      </section>
+        </ul>
+      </Folder>
 
       {/**
         * When the allowance is spent the box goes away and the history takes its place.
@@ -144,7 +159,7 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
         </section>
       ) : (
         <label className="mt-6 block">
-          <span className="text-sm font-semibold text-[var(--color-text-primary)]">
+          <span className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
             {t('writing.yourLetter')}
           </span>
           <textarea
@@ -161,7 +176,19 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
               * neighbours' chat. What the text should look like is in the task, in the author's
               * words, and an empty box does not argue with it.
               */
-            className="mt-2 block w-full rounded-xl border border-[var(--color-border-default)] px-4 py-3 text-sm leading-relaxed outline-none disabled:opacity-60"
+            /**
+              * Ruled like a sheet of paper, and set in a monospaced face.
+              *
+              * Both are for proof-reading German rather than for decoration: the ruling gives
+              * the eye a line to follow in a language whose sentences run long, and a fixed
+              * width makes a missing space or a doubled letter visible. The lines are painted
+              * as a background on a fixed line-height, so they stay under the text as it grows.
+              */
+            style={{
+              backgroundImage:
+                'repeating-linear-gradient(transparent 0 27px, var(--color-surface-section) 27px 28px)',
+            }}
+            className="mt-3 block w-full resize-y rounded-[18px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] py-3.5 pr-5 pl-8 font-mono text-[0.95rem] leading-7 text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] disabled:opacity-60"
           />
         </label>
       )}
@@ -176,8 +203,6 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
         </p>
       ) : null}
 
-      <AttemptLine task={task} />
-
       {error ? (
         <p className="mt-4 text-sm text-[var(--color-error)]" role="alert">
           {error}
@@ -187,15 +212,18 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
       {result && result.status !== 'graded' ? <Refusal result={result} /> : null}
 
       {usedUp ? null : (
-        <button
-          type="button"
-          onClick={() => void send()}
-          /** Dead while a check is running, which is half of the double-click guard. */
-          disabled={sending || !text.trim() || !task.can_submit}
-          className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[220px]"
-        >
-          {sending ? t('writing.checking') : t('writing.check')}
-        </button>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+          <AttemptLine task={task} />
+          <button
+            type="button"
+            onClick={() => void send()}
+            /** Dead while a check is running, which is half of the double-click guard. */
+            disabled={sending || !text.trim() || !task.can_submit}
+            className={`${PRIMARY_BUTTON} w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[220px]`}
+          >
+            {sending ? t('writing.checking') : t('writing.check')}
+          </button>
+        </div>
       )}
 
       {shown ? (
@@ -211,6 +239,78 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
 
       {/** Every earlier version, so a student can see what they changed and what it earned. */}
       <History attempts={task.attempts ?? []} criteriaText={task.criteria} open={usedUp} />
+    </div>
+  );
+};
+
+/**
+ * The task as its author wrote it.
+ *
+ * Her files give it in four labelled parts, and the labels are hers: the situation, what to
+ * write, what the text must contain, and the words to lean on. Shown as one paragraph, the
+ * third of those - the part a mark actually depends on - was the easiest to skim past. A task
+ * written without the labels is shown whole, exactly as before.
+ */
+const Prompt: React.FC<{ task: string }> = ({ task }) => {
+  const { sections, props, plain } = parseWritingPrompt(task);
+
+  if (sections.length === 0 && props.length === 0) {
+    return (
+      <p className="mt-3 leading-relaxed whitespace-pre-line text-[var(--color-text-primary)]">
+        {task}
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-4 flex flex-col gap-4">
+      {plain ? (
+        <p className="leading-relaxed font-normal whitespace-pre-line text-[var(--color-text-primary)]">
+          {plain}
+        </p>
+      ) : null}
+
+      {sections.map((section, index) => (
+        <div key={section.label}>
+          <h4 className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+            {section.label}
+          </h4>
+          <p
+            className={[
+              'mt-1.5 leading-relaxed whitespace-pre-line',
+              /**
+               * The first part is the situation; the rest is what to do about it.
+               *
+               * The weight is set on both, not only on the first: the card around them is
+               * styled semibold for a one-line question, and without saying so the rest of a
+               * four-part task would inherit it and read as four headings.
+               */
+              index === 0
+                ? 'font-semibold text-[var(--color-text-primary)]'
+                : 'font-normal text-[var(--color-text-primary)]',
+            ].join(' ')}
+          >
+            {section.text}
+          </p>
+        </div>
+      ))}
+
+      {/**
+       * The words to lean on, as separate pills rather than one line joined by middots.
+       * They are a list of things to use, and a student picking one reads them one at a time.
+       */}
+      {props.length > 0 ? (
+        <ul className="flex flex-wrap gap-2">
+          {props.map((word) => (
+            <li
+              key={word}
+              className="rounded-2xl bg-[var(--color-burnt-siena-lightest)] px-3 py-1.5 font-mono text-sm font-normal text-[var(--color-text-primary)]"
+            >
+              {word}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 };
@@ -239,7 +339,19 @@ const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
   const retry = task.retry_at ? new Date(task.retry_at) : null;
 
   return (
-    <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--color-text-secondary)]">
+      {/**
+       * The allowance as dots, spent ones filled.
+       *
+       * The same shape the hub uses for blocks and the result uses for criteria, so "how many
+       * of these have I used" reads the same way everywhere. The sentence beside it carries the
+       * meaning; the dots are there to be counted at a glance.
+       */}
+      <Segments
+        filled={Math.max(0, task.attempts_per_window - task.attempts_left)}
+        total={task.attempts_per_window}
+        size="sm"
+      />
       {t('writing.checksLeft', {
         left: task.attempts_left,
         total: task.attempts_per_window,

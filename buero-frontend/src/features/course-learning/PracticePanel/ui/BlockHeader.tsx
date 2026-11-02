@@ -15,7 +15,11 @@ import Segments from './Segments';
 type BlockHeaderProps = {
   block: PracticeBlockId;
   title: string;
-  onBack: () => void;
+  /**
+   * Left out while the panel above still draws the way back, so a screen never shows two of
+   * them. It moves in here once every block screen is built this way.
+   */
+  onBack?: () => void;
   /** Said beside the title, as its own badge: "за бажанням", "без оцінки". */
   badges?: string[];
   /** One sentence under the title, where the block has one. */
@@ -37,13 +41,15 @@ const BlockHeader: React.FC<BlockHeaderProps> = ({
 
   return (
     <header className="pt-6">
-      <button
-        type="button"
-        onClick={onBack}
-        className="text-sm font-medium text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
-      >
-        {t('practice.backToHub')}
-      </button>
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-sm font-medium text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
+        >
+          {t('practice.backToHub')}
+        </button>
+      ) : null}
 
       <div className="mt-4 flex items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
