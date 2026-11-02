@@ -48,8 +48,15 @@ export type PracticeElement = {
   kind: 'text' | 'audio' | 'rec';
   title: string;
   body: string | null;
-  /** Where the recording is, for a listening task. */
+  /** Where the recording is, for a listening task. Null until the file has been uploaded. */
   audio_url: string | null;
+  /**
+   * The author has described this recording but not uploaded it yet.
+   *
+   * Her file names the mp3 and the mp3 follows later, so the task exists before there is
+   * anything to play. The screen says so, and the server holds back the questions about it.
+   */
+  awaiting_audio: boolean;
   /** Whether one exists at all - said before it is open, so nothing is promised falsely. */
   has_transcript: boolean;
   /** Only once every question about this recording has been answered; null until then. */

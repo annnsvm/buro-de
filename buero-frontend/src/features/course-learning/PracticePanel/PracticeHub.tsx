@@ -200,12 +200,24 @@ const BlockRow: React.FC<{
               {t('practice.optional')}
             </span>
           ) : null}
+          {/**
+           * A block whose recordings have not been uploaded yet. Said here for the same
+           * reason: the student decides whether to open it from this line, and "0 questions"
+           * would have read as a block that is broken rather than one still being written.
+           */}
+          {!block.ready ? (
+            <span className="rounded-full bg-[var(--color-surface-section)] px-2.5 py-0.5 text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-secondary)] uppercase">
+              {t('practice.awaitingBlock')}
+            </span>
+          ) : null}
         </span>
         {/* Described by what is actually in it, so the line stays true as the author adds. */}
         <span className="text-[15px] text-[var(--color-text-secondary)]">
-          {t(`practice.blocks.${block.block}.summary`, {
-            count: block.total || block.task_count,
-          })}
+          {block.ready
+            ? t(`practice.blocks.${block.block}.summary`, {
+                count: block.total || block.task_count,
+              })
+            : t(`practice.blocks.${block.block}.description`)}
         </span>
       </span>
 

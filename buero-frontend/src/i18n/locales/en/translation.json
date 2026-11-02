@@ -591,7 +591,7 @@
     "yourResult": "Your result"
   },
   "practice": {
-    "audioMissing": "No recording yet",
+    "audioMissing": "This task is still being prepared: the recording is on its way. Its questions open together with the audio.",
     "backToHub": "← Back to practice",
     "blockDone": "correct",
     "blockStart": "Start →",
@@ -678,6 +678,7 @@
       "empty": "This block has no writing tasks yet.",
       "intro": "Write the letter and send it to be checked. The criteria are shown before you start - re-read your own text against them before spending an attempt.",
       "notReady": "This task is not ready yet - it has no marking criteria."
-    }
+    },
+    "awaitingBlock": "in preparation"
   }
 }

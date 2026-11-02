@@ -6,6 +6,7 @@ import {
 import {
   CourseMaterialType,
   PracticeBlock,
+  PracticeElementKind,
   QuizMode,
   Role,
 } from "src/generated/prisma/enums";
@@ -130,6 +131,31 @@ export class QuizService {
     ]);
 
     /**
+     * A recording the author has described but not uploaded yet.
+     *
+     * The row and the file arrive separately: the CSV names the mp3, and the mp3 is uploaded
+     * afterwards. Between the two the element exists with nothing to play, and the questions
+     * about it cannot honestly be asked - a student answering them is guessing about a
+     * recording they could not hear, and the wrong answers would go into their record.
+     *
+     * So they are held back rather than shown. The element itself is still sent, because the
+     * student is told the task is not ready instead of being shown an empty frame.
+     */
+    const awaitingAudio = new Set(
+      elements
+        .filter(
+          (element) =>
+            element.kind === PracticeElementKind.audio && !element.audioUrl,
+        )
+        .map((element) => element.id),
+    );
+    /** Everything that can actually be answered right now. */
+    const askable = questions.filter(
+      (question) =>
+        !question.elementId || !awaitingAudio.has(question.elementId),
+    );
+
+    /**
      * Which recordings the student has earned the transcript to.
      *
      * A transcript handed over before the questions are answered turns listening into
@@ -138,7 +164,7 @@ export class QuizService {
      * from, so leaving and coming back does not close it again.
      */
     const transcriptOpen = await this.elementsWithEveryQuestionAnswered(
-      questions,
+      askable,
       userId,
     );
 
@@ -154,7 +180,7 @@ export class QuizService {
      */
     const totalPoints =
       mode === QuizMode.test
-        ? questions.reduce((sum, q) => sum + Math.max(1, q.points), 0)
+        ? askable.reduce((sum, q) => sum + Math.max(1, q.points), 0)
         : null;
 
     return {
@@ -169,12 +195,17 @@ export class QuizService {
         title: element.title,
         body: element.body,
         audio_url: element.audioUrl,
+        /**
+         * Described by the author, not uploaded yet. The screen says so in words; without it
+         * the student saw a heading over an empty frame and no reason for it.
+         */
+        awaiting_audio: awaitingAudio.has(element.id),
         /** So the player can promise a transcript before it is open. */
         has_transcript: Boolean(element.transcript),
         /** Held back until every question about it has been answered. */
         transcript: transcriptOpen.has(element.id) ? element.transcript : null,
       })),
-      questions: questions.map((question) => {
+      questions: askable.map((question) => {
       const payload = (question.payload ?? {}) as {
         options?: Array<{ id: string; text: string }>;
         tokens?: string[];

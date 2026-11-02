@@ -80,7 +80,18 @@ const ListeningAudio: React.FC<ListeningAudioProps> = ({ element }) => {
           </div>
         </>
       ) : (
-        <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
+        /**
+         * Said as a notice rather than a grey aside.
+         *
+         * The author writes the row and uploads the mp3 afterwards, so a student can reach a
+         * listening task before there is anything to play. A faint line under the heading read
+         * like something had gone wrong on their side; this says the task is being prepared,
+         * and that its questions are coming with it - which is why there are none below.
+         */
+        <p
+          role="status"
+          className="mt-3 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-section)] px-4 py-3 text-sm leading-relaxed text-[var(--color-text-secondary)]"
+        >
           {t('practice.audioMissing')}
         </p>
       )}

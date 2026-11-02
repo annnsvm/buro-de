@@ -125,6 +125,14 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   const answeredCount = Object.keys(feedback).length;
   /** Each text with the questions it is about, so the text can stay in view while they run. */
   const groups = useMemo(() => groupByElement(questions, elements), [questions, elements]);
+  /**
+   * Recordings the author has described but not uploaded. Their questions never arrive, so
+   * without this they would have nothing to be grouped with and would vanish from the screen.
+   */
+  const awaiting = useMemo(
+    () => elements.filter((element) => element.awaiting_audio),
+    [elements],
+  );
 
   /**
    * Opens the quiz without starting anything.
@@ -379,9 +387,25 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       </p>
 
       {total === 0 ? (
-        <p className="py-12 text-center text-[var(--color-text-secondary)]">
-          {t('quiz.noQuestions')}
-        </p>
+        /**
+         * Nothing to answer. Which is not the same as nothing here.
+         *
+         * A listening block whose recordings have not been uploaded has its questions held
+         * back by the server, so this branch is what the student meets - and "there are no
+         * questions yet" would be the wrong thing to say about a task that exists and is
+         * simply not ready. The tasks are shown instead, each saying so for itself.
+         */
+        awaiting.length > 0 ? (
+          <div className="mt-6 space-y-6">
+            {awaiting.map((element) => (
+              <ListeningAudio key={element.id} element={element} />
+            ))}
+          </div>
+        ) : (
+          <p className="py-12 text-center text-[var(--color-text-secondary)]">
+            {t('quiz.noQuestions')}
+          </p>
+        )
       ) : (
         /**
          * The groups need air between them, and more of it than the questions inside a group

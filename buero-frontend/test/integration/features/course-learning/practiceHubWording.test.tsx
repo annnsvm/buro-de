@@ -30,6 +30,8 @@ const block = (
   correct: done && !optional ? 4 : 0,
   done,
   optional,
+  awaiting_audio: 0,
+  ready: true,
   task_count: optional ? 1 : 0,
   points: null,
 });
