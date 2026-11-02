@@ -679,6 +679,12 @@
       "intro": "Write the letter and send it to be checked. The criteria are shown before you start - re-read your own text against them before spending an attempt.",
       "notReady": "This task is not ready yet - it has no marking criteria."
     },
-    "awaitingBlock": "in preparation"
+    "awaitingBlock": "in preparation",
+    "requiredDone": "required blocks done",
+    "groupRequired": "Required",
+    "groupOptional": "Optional",
+    "recorded": "Recorded",
+    "pointsLabel": "points",
+    "requiredPurpose": "The required blocks count towards your course progress. You can move on to the next lesson before them; they will wait here."
   }
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   fetchPracticeOverview,
@@ -20,6 +20,11 @@ export type PracticePanelProps = {
   attachments?: MaterialAttachment[];
   /** Offered once every block is done. */
   onMoveOn?: () => void;
+  /**
+   * Called once the required blocks are all behind the student, so the lesson can be counted
+   * towards the course. The practice does not own that record; it only knows when it is true.
+   */
+  onAllRequiredDone?: () => void;
   /** Names where "move on" leads, so the hub does not guess. */
   nextStepLabel?: string;
 };
@@ -37,6 +42,7 @@ const PracticePanel: React.FC<PracticePanelProps> = ({
   moduleId,
   attachments,
   onMoveOn,
+  onAllRequiredDone,
   nextStepLabel,
 }) => {
   const { t } = useTranslation();
@@ -61,6 +67,22 @@ const PracticePanel: React.FC<PracticePanelProps> = ({
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * Reported the moment it becomes true, and not again.
+   *
+   * The hub is re-read every time the student comes back from a block, so without the guard
+   * this would fire on every return once the practice was finished. A practice with nothing
+   * required in it is never "all done" - there is nothing to be done.
+   */
+  const reported = useRef(false);
+  useEffect(() => {
+    if (!overview || !onAllRequiredDone || reported.current) return;
+    if (overview.total_count === 0) return;
+    if (overview.done_count < overview.total_count) return;
+    reported.current = true;
+    onAllRequiredDone();
+  }, [overview, onAllRequiredDone]);
 
   /** Coming back from a block re-reads the hub, so its progress is never stale. */
   const closeBlock = useCallback(() => {
