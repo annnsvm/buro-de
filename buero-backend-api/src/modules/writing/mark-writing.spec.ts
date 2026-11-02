@@ -1,4 +1,4 @@
-import type Anthropic from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { markWriting, UnreadableMarkingError } from './mark-writing';
 import { buildSchreibenRequest, SCHREIBEN_SYSTEM_PROMPT } from './rubric';
 
@@ -123,11 +123,35 @@ describe('marking a text', () => {
     });
   });
 
-  it('keeps the reply short', async () => {
+  /**
+   * The budget follows the model, because thinking is billed as output and spends the same
+   * ceiling. Five hundred was the author's figure for the answer; on a model whose thinking
+   * cannot be turned off it was a guarantee of a reply that stops mid-string.
+   */
+  it('gives the answer room to think on a model that cannot stop thinking', async () => {
     const { client, parse } = stub([marked([1, 1, 1, 1, 1])]);
     await markWriting(TASK, TEXT, client);
 
+    /** The default model is claude-opus-5-5, where thinking is always on. */
+    expect(sent(parse).thinking).toBeUndefined();
+    expect(sent(parse).maxTokens).toBeGreaterThan(500);
+  });
+
+  it('holds the author’s figure where thinking really can be turned off', async () => {
+    const previous = process.env.LLM_WRITING_MODEL;
+    process.env.LLM_WRITING_MODEL = 'claude-sonnet-5-5';
+    jest.resetModules();
+    const { markWriting: mark } =
+      require('./mark-writing') as typeof import('./mark-writing');
+
+    const { client, parse } = stub([marked([1, 1, 1, 1, 1])]);
+    await mark(TASK, TEXT, client);
+
+    expect(sent(parse).thinking).toEqual({ type: 'between_tools' });
     expect(sent(parse).maxTokens).toBe(500);
+
+    process.env.LLM_WRITING_MODEL = previous;
+    jest.resetModules();
   });
 
   /**
@@ -211,7 +235,71 @@ describe('marking a text', () => {
         stop_reason: 'max_tokens',
       });
 
-      await expect(markWriting(TASK, TEXT, client)).rejects.toThrow(/500 токенів/);
+      await expect(markWriting(TASK, TEXT, client)).rejects.toThrow(/не вмістилася/);
+    });
+
+    /**
+     * The failure the author actually hit.
+     *
+     * The SDK does not hand back an unparsed answer - it throws, before there is a response to
+     * look at. The guard used to read `stop_reason` on an object it never received, so the retry
+     * never ran and `Failed to parse structured output: Unterminated string in JSON` reached the
+     * student as a server error.
+     */
+    it('retries a reply the SDK could not parse at all', async () => {
+      const parse = jest
+        .fn()
+        .mockRejectedValueOnce(
+          new Anthropic.AnthropicError(
+            'Failed to parse structured output: Error: Unterminated string in JSON at position 372',
+          ),
+        )
+        .mockResolvedValueOnce({
+          parsed_output: marked([1, 1, 1, 0, 1]),
+          stop_reason: 'end_turn',
+          usage: {
+            input_tokens: 150,
+            output_tokens: 260,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 1950,
+          },
+        });
+      const client = { messages: { parse } } as unknown as Anthropic;
+
+      const result = await markWriting(TASK, TEXT, client);
+      expect(parse).toHaveBeenCalledTimes(2);
+      expect(result.score).toBe(4);
+    });
+
+    it('gives up after a second unparsable reply, and says which failure it was', async () => {
+      const unreadable = () =>
+        new Anthropic.AnthropicError(
+          'Failed to parse structured output: Error: Unterminated string in JSON',
+        );
+      const parse = jest.fn().mockRejectedValue(unreadable());
+      const client = { messages: { parse } } as unknown as Anthropic;
+
+      await expect(markWriting(TASK, TEXT, client)).rejects.toThrow(
+        UnreadableMarkingError,
+      );
+      expect(parse).toHaveBeenCalledTimes(2);
+    });
+
+    /**
+     * A rate limit or a bad key is not an unreadable answer, and must not be reported to the
+     * student as "try again in a minute". `AnthropicError` is the base class of both, so a
+     * broad catch would have swallowed them.
+     */
+    it('lets a real API error through untouched', async () => {
+      const parse = jest.fn().mockRejectedValue(
+        new Anthropic.AuthenticationError(401, { message: 'invalid x-api-key' }, 'bad key', new Headers()),
+      );
+      const client = { messages: { parse } } as unknown as Anthropic;
+
+      await expect(markWriting(TASK, TEXT, client)).rejects.toThrow(
+        Anthropic.AuthenticationError,
+      );
+      expect(parse).toHaveBeenCalledTimes(1);
     });
   });
 });

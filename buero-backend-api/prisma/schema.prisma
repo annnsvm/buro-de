@@ -154,6 +154,8 @@ model User {
   writingSubmissions      WritingSubmission[]
   speakingRecordings      SpeakingRecording[]
   lessonNotes             LessonNote[]
+  writingCheckGrants      WritingCheckGrant[]
+  writingCheckGrantsGiven WritingCheckGrant[] @relation("WritingCheckGrantedBy")
   lessonRequestsAsStudent LessonRequest[]    @relation("LessonRequestStudent")
   lessonRequestsAsTeacher LessonRequest[]    @relation("LessonRequestTeacher")
   placementResults        PlacementResult[]
@@ -241,6 +243,13 @@ model Course {
   /// describe a range, which is what the catalogue draws and filters on.
   levelTo          Level?         @map("level_to")
   durationHours    Int?           @map("duration_hours")
+  /// How many times a student may send one writing task to be checked, for the whole time they
+  /// have access. Three is the first attempt and two rewrites.
+  ///
+  /// On the course rather than in the code so it can be changed without a developer, and on the
+  /// course rather than on the task because it is a decision about what the course costs to run,
+  /// not about one letter.
+  writingChecksPerTask Int        @default(3) @map("writing_checks_per_task")
   imageUrl         String?        @map("image_url")
   stripeProductId  String?        @map("stripe_product_id")
   stripePriceId    String?        @map("stripe_price_id")
@@ -306,6 +315,7 @@ model CourseMaterial {
   attachments    MaterialAttachment[]
   questions      Question[]
   lessonNotes    LessonNote[]
+  writingCheckGrants WritingCheckGrant[]
   practiceElements PracticeElement[]
 
   @@index([moduleId])
@@ -464,8 +474,16 @@ model WritingSubmission {
   maxScore         Int      @map("max_score")
   /// One verdict per criterion, as the grader returned it.
   assessment       Json
+  /// What the call cost, kept per attempt so a month's spend can be reported rather than
+  /// estimated. The model is stored with the tokens because the two are only meaningful
+  /// together: the same token count costs twice as much on one model as on another.
+  model            String?
   inputTokens      Int      @map("input_tokens")
   outputTokens     Int      @map("output_tokens")
+  /// Tokens written to the prompt cache, billed at 1.25x. Only the first call of a prefix pays.
+  cacheWriteTokens Int      @default(0) @map("cache_write_tokens")
+  /// Tokens served from the cache, billed at about a twentieth of the input price.
+  cacheReadTokens  Int      @default(0) @map("cache_read_tokens")
   createdAt        DateTime @default(now()) @map("created_at")
   /// Set when the letter answers a writing task inside a practice block rather than a
   /// writing material of its own. A practice may hold more than one, so the attempt window
@@ -560,6 +578,7 @@ model PracticeElement {
   questions Question[]
   submissions WritingSubmission[]
   recordings  SpeakingRecording[]
+  checkGrants WritingCheckGrant[]
 
   @@index([materialId, block, orderIndex])
   @@map("practice_elements")
@@ -628,6 +647,36 @@ model UserVocabularyEntry {
   @@unique([userId, word])
   @@index([userId, createdAt])
   @@map("user_vocabulary_entries")
+}
+
+/// Checks a teacher gave a student on top of the course's allowance.
+///
+/// Kept as a separate row rather than a counter on the submission, because it is a different
+/// kind of fact: the submissions record what was spent, and this records what was granted. A
+/// counter mixed into the first would make the record of spending editable.
+///
+/// Keyed the same way a submission is - the student, the material, and the task inside it when
+/// the material is a practice - so the two can be counted against each other.
+model WritingCheckGrant {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  courseMaterialId  String   @map("course_material_id")
+  /// Null for a writing material of its own; the task's id inside a practice block.
+  practiceElementId String?  @map("practice_element_id")
+  /// How many extra checks were given. Always positive; a teacher gives, never takes away.
+  extra             Int
+  /// Why, in the teacher's words. Shown to nobody; it is there so the grant can be explained.
+  reason            String?
+  grantedById       String?  @map("granted_by_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  material  CourseMaterial  @relation(fields: [courseMaterialId], references: [id], onDelete: Cascade)
+  element   PracticeElement? @relation(fields: [practiceElementId], references: [id], onDelete: Cascade)
+  grantedBy User?           @relation("WritingCheckGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, courseMaterialId, practiceElementId])
+  @@map("writing_check_grants")
 }
 
 /// What a student writes down for themselves while working through a lesson.

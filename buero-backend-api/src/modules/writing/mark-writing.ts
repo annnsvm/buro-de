@@ -23,11 +23,17 @@ import {
 const MODEL = process.env.LLM_WRITING_MODEL ?? 'claude-opus-5-5';
 
 /**
- * Five short verdicts, three corrections and two sentences. 500 is the author's figure and it
- * fits that comfortably - but see `thinkingFor`: on a model that thinks, thinking is billed as
- * output and counts against this, which is why the ceiling is checked rather than trusted.
+ * Five short verdicts, three corrections and two sentences.
+ *
+ * 500 is the author's figure and the answer fits it comfortably - but only when thinking is off.
+ * Thinking is billed as output and spends the same budget, so on a model where it cannot be
+ * turned off 500 is a guarantee of a truncated reply: the model spends the ceiling reasoning and
+ * the JSON stops mid-string. That is not a limit, it is a broken route.
+ *
+ * So the default follows the model. Where thinking can be turned off, her figure stands. Where
+ * it cannot, the answer gets its 500 and the thinking gets room of its own.
  */
-const MAX_OUTPUT_TOKENS = Number(process.env.LLM_WRITING_MAX_OUTPUT_TOKENS ?? 500);
+const answerTokens = Number(process.env.LLM_WRITING_MAX_OUTPUT_TOKENS ?? 500);
 
 /**
  * `low` on both models. Marking a short text against five stated criteria is judgement, not
@@ -48,6 +54,22 @@ const EFFORT = (process.env.LLM_WRITING_EFFORT ?? 'low') as 'low' | 'medium' | '
  */
 const thinkingFor = (model: string): Anthropic.ThinkingConfigParam | undefined =>
   model.startsWith('claude-sonnet-5-5') ? { type: 'between_tools' } : undefined;
+
+/** Room for the thinking that cannot be switched off, on top of the answer's own budget. */
+const THINKING_HEADROOM = Number(process.env.LLM_WRITING_THINKING_HEADROOM ?? 1500);
+
+/**
+ * A reply we could not read, told apart from a reply we never got.
+ *
+ * The SDK does not hand back an unparsed answer - it throws, and `AnthropicError` is also the
+ * base class of every API error, so catching that alone would swallow a 401 or a rate limit and
+ * report them to the student as "try again in a minute". Only the structured-output failure
+ * counts, and only when it is not an API error.
+ */
+const isUnreadableReply = (error: unknown): boolean =>
+  error instanceof Anthropic.AnthropicError &&
+  !(error instanceof Anthropic.APIError) &&
+  /Failed to parse structured output/i.test(error.message);
 
 export type MarkingTask = {
   task: string;
@@ -100,11 +122,13 @@ export const markWriting = async (
   client: Anthropic = new Anthropic(),
 ): Promise<MarkResult> => {
   const thinking = thinkingFor(MODEL);
+  /** Thinking off: her figure. Thinking on: her figure for the answer, plus room to think. */
+  const maxTokens = thinking ? answerTokens : answerTokens + THINKING_HEADROOM;
 
   const ask = () =>
     client.messages.parse({
       model: MODEL,
-      max_tokens: MAX_OUTPUT_TOKENS,
+      max_tokens: maxTokens,
       ...(thinking ? { thinking } : {}),
       output_config: {
         effort: EFFORT,
@@ -142,14 +166,36 @@ export const markWriting = async (
   const unusable = (response: Awaited<ReturnType<typeof ask>>): boolean =>
     !response.parsed_output || response.stop_reason === 'max_tokens';
 
-  let response = await ask();
-  if (unusable(response)) {
-    response = await ask();
+  /**
+   * Asked once, and once more if the first answer was no good.
+   *
+   * Both ways an answer can be no good are handled here, because from the student's side they
+   * are the same thing. One comes back as a response with nothing parsed or a `max_tokens` stop;
+   * the other is thrown out of the SDK before there is a response at all, which is what happened
+   * in practice - the guard below used to read `stop_reason` on an object it never received, so
+   * the retry never ran and the raw parse error reached the student.
+   */
+  const attempt = async (): Promise<{
+    response: Awaited<ReturnType<typeof ask>> | null;
+    truncated: boolean;
+  }> => {
+    try {
+      const response = await ask();
+      return { response: unusable(response) ? null : response, truncated: unusable(response) };
+    } catch (error: unknown) {
+      if (!isUnreadableReply(error)) throw error;
+      return { response: null, truncated: false };
+    }
+  };
+
+  let { response, truncated } = await attempt();
+  if (!response) {
+    ({ response, truncated } = await attempt());
   }
-  if (unusable(response)) {
+  if (!response) {
     throw new UnreadableMarkingError(
-      response.stop_reason === 'max_tokens'
-        ? `Відповідь не вмістилася у ${MAX_OUTPUT_TOKENS} токенів`
+      truncated
+        ? `Відповідь не вмістилася у ${maxTokens} токенів`
         : 'Модель двічі повернула відповідь, яку не вдалося розібрати за схемою',
     );
   }
