@@ -157,6 +157,11 @@ export const answerQuizQuestion = async (
 export type LastQuizAttempt = {
   attempt_id: string;
   completed_at: string | null;
+  /**
+   * What was typed into a sitting still in progress, unmarked. Empty for a finished one,
+   * whose answers come back graded in `answers`.
+   */
+  draft_answers: SubmitQuizAnswerItem[];
   score: number;
   total: number;
   correct: number;
@@ -245,6 +250,20 @@ export type SubmitQuizResponse = {
   parts: QuizPartResult[];
   results: Array<QuizQuestionResult & { accepted_answers: string[] }>;
   attempt: QuizAttemptResponse;
+};
+
+/**
+ * Keeps what has been typed into a test so far, without marking any of it.
+ *
+ * A test is answered as a whole, so nothing used to reach the server until the student
+ * pressed finish - and a closed tab took the lot. This is the draft, not the submission:
+ * it replaces whatever was kept before and returns no mark.
+ */
+export const saveQuizDraft = async (
+  attemptId: string,
+  body: { answers: SubmitQuizAnswerItem[] },
+): Promise<void> => {
+  await apiInstance.patch(API_ENDPOINTS.quiz.draft(attemptId), body);
 };
 
 export const submitQuizAttempt = async (

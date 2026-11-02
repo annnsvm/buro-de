@@ -107,6 +107,8 @@ export type PartResult = {
 export type PartedQuestion = GradedQuestion & {
   partTitle: string | null;
   reviewLesson: string | null;
+  /** Which skill the question belongs to, where the author said. */
+  block?: string | null;
 };
 
 /**
@@ -123,18 +125,39 @@ export const summariseParts = (
 ): PartResult[] => {
   if (mode !== QuizMode.test) return [];
 
+  /**
+   * A test is broken down by skill where its author said so, and by lesson where she did
+   * not.
+   *
+   * Her test files carry a block on every row - Grammatik, Lesen, Hören - and those are the
+   * parts a student recognises: the result says which skill let them down, not which of the
+   * eight lessons a question happened to come from. A test written before blocks existed has
+   * one block on every row and nothing to group by, so it falls back to the lesson, which is
+   * how every such test already reads.
+   */
+  const blocks = new Set(
+    graded.map((question) => question.block?.trim()).filter(Boolean),
+  );
+  const bySkill = blocks.size > 1;
+
   const order: string[] = [];
   const byTitle = new Map<string, PartResult>();
 
   for (const question of graded) {
-    const title = question.partTitle?.trim();
+    const title = (bySkill ? question.block : question.partTitle)?.trim();
     if (!title) continue;
 
     if (!byTitle.has(title)) {
       order.push(title);
       byTitle.set(title, {
         title,
-        reviewLesson: question.reviewLesson,
+        /**
+         * A part is only worth a single lesson link when it is a single lesson. Grouped by
+         * skill it spans the whole module, and "revise lesson 2.1" for a Hören part built
+         * from eight lessons would send the student to one eighth of what they missed - the
+         * link belongs on each mistake instead.
+         */
+        reviewLesson: bySkill ? null : question.reviewLesson,
         earnedPoints: 0,
         totalPoints: 0,
         correct: 0,
@@ -151,7 +174,7 @@ export const summariseParts = (
       part.earnedPoints += points;
       part.correct += 1;
     }
-    part.reviewLesson ??= question.reviewLesson;
+    if (!bySkill) part.reviewLesson ??= question.reviewLesson;
   }
 
   /** A breakdown of one part is not a breakdown; it says nothing the total did not. */

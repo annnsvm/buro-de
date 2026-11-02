@@ -5,6 +5,7 @@ import {
   fetchLastQuizAttempt,
   fetchQuizQuestions,
   isOutdatedAttempt,
+  saveQuizDraft,
   startQuizAttempt,
   submitQuizAttempt,
   type AnswerQuestionResponse,
@@ -177,7 +178,20 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         setAttemptId(previous.attempt_id);
         setDrafts(
           Object.fromEntries(
-            previous.answers.map((answer) => [answer.question_id, answer.raw_answer]),
+            [
+              /**
+               * A finished sitting hands its answers back graded; one still in progress
+               * hands back what was typed and never sent. Both land in the same box, so
+               * the student finds the test as they left it either way.
+               */
+              ...previous.answers.map(
+                (answer) => [answer.question_id, answer.raw_answer] as const,
+              ),
+              /** Absent from an older server; the finished answers above still arrive. */
+              ...(previous.draft_answers ?? []).map(
+                (answer) => [answer.question_id, answer.answer] as const,
+              ),
+            ],
           ),
         );
         setFeedback(
@@ -289,6 +303,42 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     );
     if (pending) void check(pending);
   }, [mode, questions, drafts, feedback, checking, check]);
+
+  /**
+   * A test's answers, kept on the server as they are typed.
+   *
+   * Nothing in a test reaches the server until the student presses finish - that is what
+   * makes it a test rather than a practice - so a closed tab used to take every answer with
+   * it. They are saved as a draft instead: not marked, not counted, and written back when
+   * the student returns.
+   *
+   * Held back for a moment rather than sent on every keystroke, and never sent for an empty
+   * test: a sitting should not exist because somebody opened the page.
+   */
+  useEffect(() => {
+    if (mode !== 'test' || result) return;
+    const answers = Object.entries(drafts)
+      .filter(([, answer]) => isAnswered(answer))
+      .map(([question_id, answer]) => ({ question_id, answer }));
+    if (answers.length === 0) return;
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const id = await ensureAttempt();
+          await saveQuizDraft(id, { answers });
+        } catch {
+          /**
+           * Silent on purpose. The answers are still on screen and will be sent again on
+           * the next change; interrupting a test with a save error would cost the student
+           * more than the save is worth.
+           */
+        }
+      })();
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+  }, [drafts, ensureAttempt, mode, result]);
 
   /** Clears the screen; the next answer starts a fresh attempt on the server. */
   const handleRetry = useCallback(() => {

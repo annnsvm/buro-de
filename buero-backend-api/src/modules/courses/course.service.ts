@@ -10,6 +10,7 @@ import {
   Language,
   Level,
   PracticeBlock,
+  QuizMode,
   Role,
   UserCourseAccessType,
 } from "../../generated/prisma/enums";
@@ -17,6 +18,12 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { stripQuizAnswers } from "../../common/content/strip-quiz-answers";
 import { TRIAL_FREE_MODULE_COUNT } from "../../common/access/trial-scope";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
+import {
+  openModules,
+  type GateAttempt,
+  type GateModule,
+  type ModuleGate,
+} from "./module-gate";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
   ListCoursesQueryDto,
@@ -244,10 +251,22 @@ export class CourseService {
         .map((mod) => (typeof mod.id === "string" ? mod.id : null))
         .filter((moduleId): moduleId is string => moduleId !== null);
 
+      /**
+       * Two different locks, answered separately.
+       *
+       * One asks whether the student has paid for this module; the other whether they have
+       * passed the test standing in front of it. A screen that cannot tell them apart shows
+       * "buy the course" to someone who owns it, and that student has no way on.
+       */
+      const gate = isTeacher
+        ? null
+        : await this.moduleGate(orderedModules, userId);
+
       const scoped = this.applyContentAccess(
         course as Record<string, unknown>,
         this.resolveReadableModules(access, isTeacher, trialModuleIds),
         isTeacher,
+        gate,
       );
       const serialized = this.serializeCourse(scoped);
 
@@ -289,10 +308,72 @@ export class CourseService {
   }
 
   /** Drops `content` and attachments of every module the viewer may not read. */
+  /**
+   * Which modules the student has reached, and which test is holding back the rest.
+   *
+   * A guest has no attempts and so reaches only the first module - but a guest cannot read
+   * any module's content anyway, so the gate never decides anything on its own.
+   */
+  private async moduleGate(
+    modules: ReadonlyArray<{ id?: unknown }>,
+    userId: string | null,
+  ): Promise<ModuleGate> {
+    const ordered: GateModule[] = modules.map((mod) => {
+      const record = mod as Record<string, unknown>;
+      const materials = Array.isArray(record.materials) ? record.materials : [];
+      const test = materials.find(
+        (mat) =>
+          (mat as Record<string, unknown>).quizMode === QuizMode.test &&
+          typeof (mat as Record<string, unknown>).id === "string",
+      ) as Record<string, unknown> | undefined;
+      return {
+        id: typeof record.id === "string" ? record.id : "",
+        test: test
+          ? {
+              id: test.id as string,
+              passingScore:
+                typeof test.passingScore === "number" ? test.passingScore : null,
+            }
+          : null,
+      };
+    });
+
+    const testIds = ordered
+      .map((mod) => mod.test?.id)
+      .filter((id): id is string => Boolean(id));
+
+    if (!userId || testIds.length === 0) {
+      return openModules(ordered, new Map());
+    }
+
+    const attempts = await this.prisma.quizAttempt.findMany({
+      where: {
+        userId,
+        courseMaterialId: { in: testIds },
+        completedAt: { not: null },
+      },
+      select: { courseMaterialId: true, score: true, completedAt: true },
+    });
+
+    const byMaterial = new Map<string, GateAttempt[]>();
+    for (const attempt of attempts) {
+      const list = byMaterial.get(attempt.courseMaterialId) ?? [];
+      list.push({
+        courseMaterialId: attempt.courseMaterialId,
+        score: attempt.score == null ? null : Number(attempt.score),
+        completedAt: attempt.completedAt,
+      });
+      byMaterial.set(attempt.courseMaterialId, list);
+    }
+
+    return openModules(ordered, byMaterial);
+  }
+
   private applyContentAccess(
     course: Record<string, unknown>,
     readable: ReadableModules,
     isTeacher: boolean,
+    gate: ModuleGate | null,
   ): Record<string, unknown> {
     const modules = course.modules;
     if (!Array.isArray(modules)) return course;
@@ -302,9 +383,21 @@ export class CourseService {
         const materials = mod.materials;
         if (!Array.isArray(materials)) return mod;
         const moduleId = typeof mod.id === "string" ? mod.id : "";
-        const unlocked = readable === "all" || readable.has(moduleId);
+        const paidFor = readable === "all" || readable.has(moduleId);
+        const reached = gate === null || gate.open.has(moduleId);
+        const unlocked = paidFor && reached;
         return {
           ...mod,
+          locked: !unlocked,
+          /**
+           * Why, in one word, so the screen can offer the right way out. Access first: a
+           * student who has not bought the course is not going to be helped by being told
+           * to pass a test in it.
+           */
+          lock_reason: unlocked ? null : !paidFor ? "access" : "test",
+          /** The test to pass, when that is what is in the way. */
+          locked_by_test_id:
+            unlocked || !paidFor ? null : (gate?.blockedBy.get(moduleId) ?? null),
           materials: materials.map((mat: Record<string, unknown>) =>
             this.applyMaterialAccess(mat, unlocked, isTeacher),
           ),

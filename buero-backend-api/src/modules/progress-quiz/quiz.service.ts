@@ -121,13 +121,16 @@ export class QuizService {
        * The texts and audio the questions are about. Fetched alongside rather than from their
        * own endpoint: a reading task is one thing on screen, and two requests could show the
        * questions before the text they refer to.
+       *
+       * Loaded for a whole material as well as for one block. A module test has no block of
+       * its own, so asking for one returned nothing - and a test with a Lesen part showed its
+       * questions with no text above them and a Hören part with nothing to play. Anything
+       * without a question of its own is ignored downstream, so a plain quiz is unaffected.
        */
-      block
-        ? this.prisma.practiceElement.findMany({
-            where: { materialId, block },
-            orderBy: { orderIndex: "asc" },
-          })
-        : Promise.resolve([]),
+      this.prisma.practiceElement.findMany({
+        where: { materialId, ...(block && { block }) },
+        orderBy: { orderIndex: "asc" },
+      }),
     ]);
 
     /**
@@ -335,12 +338,26 @@ export class QuizService {
       correct: correctById.get(question.id) ?? false,
       partTitle: question.partTitle,
       reviewLesson: question.reviewLesson,
+      /** The skill, where the author named one: a test is read by skill, not by lesson. */
+      block: question.block,
     }));
     const scored = scoreAttempt(mode, gradedQuestions);
 
     return {
       attempt_id: attempt.id,
       completed_at: attempt.completedAt?.toISOString() ?? null,
+      /**
+       * What was typed and not yet sent, for a sitting still in progress. Empty for a
+       * finished one, whose answers come back graded in `answers` below.
+       */
+      draft_answers: attempt.completedAt
+        ? []
+        : Object.values(
+            (attempt.answersSnapshot as Record<
+              string,
+              { question_id: string; answer: string | string[] }
+            > | null) ?? {},
+          ),
       score,
       total: questions.length,
       correct: answers.filter((answer) => answer.isCorrect).length,
@@ -371,6 +388,15 @@ export class QuizService {
             quality: graded.quality,
             /** Shown whatever the result; only the answer key waits for a pass. */
             explanation: question.explanation,
+            /**
+             * Which lesson this one question came from.
+             *
+             * It was reported for the part only, which is the right size for a test broken
+             * down by lesson and the wrong one for a test broken down by skill: a student
+             * looking at a Hören mistake needs the lesson that taught it, not the lesson
+             * that happened to be first in the part.
+             */
+            review_lesson: question.reviewLesson,
             accepted_answers: reveal ? describeAcceptedAnswers(question) : [],
             raw_answer: answer.rawAnswer as string | string[],
           },
@@ -522,6 +548,57 @@ export class QuizService {
       );
     }
     return material;
+  }
+
+  /**
+   * Keeps what the student has typed so far, without marking any of it.
+   *
+   * A module test is answered as a whole: nothing reaches the server until the student
+   * presses finish, so a closed tab used to take twenty answers with it. The sitting now
+   * carries them in `answers_snapshot` - the column the schema already set aside for
+   * resuming - and they are written back on the next visit.
+   *
+   * Deliberately not graded and not turned into `question_attempts`: the answers are a
+   * draft. Grading them here would leak the result mid-test, and recording them as real
+   * answers would have them counted twice when the test is finally submitted.
+   */
+  async saveDraft(
+    attemptId: string,
+    userId: string,
+    answers: ReadonlyArray<{ question_id: string; answer: string | string[] }>,
+  ) {
+    const attempt = await this.prisma.quizAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, userId: true, completedAt: true },
+    });
+    if (!attempt || attempt.userId !== userId) {
+      throw new NotFoundException(`Спробу з id ${attemptId} не знайдено`);
+    }
+    /**
+     * A finished sitting is a record, not a draft. Writing over it would let a student
+     * change the answers behind a mark they already have.
+     */
+    if (attempt.completedAt) {
+      throw new BadRequestException(
+        "Спробу вже завершено, відповіді не приймаються",
+      );
+    }
+
+    const snapshot: Record<string, { question_id: string; answer: string | string[] }> =
+      {};
+    for (const item of answers) {
+      snapshot[`question_${item.question_id}`] = {
+        question_id: item.question_id,
+        answer: item.answer,
+      };
+    }
+
+    await this.prisma.quizAttempt.update({
+      where: { id: attemptId },
+      data: { answersSnapshot: snapshot as object },
+    });
+
+    return { attempt_id: attemptId, saved: answers.length };
   }
 
   async getAttempt(attemptId: string, userId: string) {
@@ -923,6 +1000,8 @@ export class QuizService {
       correct: correctById.get(question.id) ?? false,
       partTitle: question.partTitle,
       reviewLesson: question.reviewLesson,
+      /** The skill, where the author named one: a test is read by skill, not by lesson. */
+      block: question.block,
     }));
     const scored = scoreAttempt(mode, graded);
     const parts = summariseParts(mode, graded);
