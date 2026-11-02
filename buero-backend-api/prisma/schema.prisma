@@ -545,6 +545,13 @@ model PracticeElement {
   /// mark never rests on the grader having counted sentences correctly.
   minSentences Int?              @map("min_sentences")
   maxSentences Int?              @map("max_sentences")
+  /// The author's instructions to whoever marks this task: how to count sentences for this one
+  /// lesson, which mistakes to catch, which to let pass, and which grammar has not been taught
+  /// yet and so must not cost a mark. Per-task rules the rubric cannot carry on its own.
+  ///
+  /// It goes to the checker and nowhere else. It names the very mistakes the text is about to
+  /// be checked for, so no route a student can call may select it.
+  checkerNote  String?           @map("checker_note")
   orderIndex Int                 @default(0) @map("order_index")
   createdAt  DateTime            @default(now()) @map("created_at")
   updatedAt  DateTime            @updatedAt @map("updated_at")

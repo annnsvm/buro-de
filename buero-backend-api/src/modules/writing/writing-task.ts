@@ -17,7 +17,14 @@ export const writingTask = z.object({
    * counted sentences correctly.
    */
   minSentences: z.number().int().min(1),
-  maxSentences: z.number().int().min(1),
+  /**
+   * There is usually none, and that is deliberate.
+   *
+   * The author's files state only the least number of sentences; the range itself ("4-6 речень")
+   * is written into criterion 1, in her own words, and judged with the per-task counting rules
+   * from her note. Requiring an upper bound here refused all 53 of her tasks as unmarkable.
+   */
+  maxSentences: z.number().int().min(1).nullish(),
   /**
    * One sentence per criterion, in the author's order. The first is the length-and-formulas
    * criterion decided by counting; the rest are judged.
@@ -44,7 +51,10 @@ export const parseWritingTask = (content: unknown): WritingTask => {
         parsed.error.issues.map((issue) => issue.path.join('.') || 'content').join(', '),
     );
   }
-  if (parsed.data.minSentences > parsed.data.maxSentences) {
+  if (
+    parsed.data.maxSentences != null &&
+    parsed.data.minSentences > parsed.data.maxSentences
+  ) {
     throw new InvalidWritingTaskError(
       'Мінімальна кількість речень більша за максимальну',
     );

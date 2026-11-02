@@ -57,6 +57,78 @@ export const parseSentenceRange = (
   return null;
 };
 
+/**
+ * What a writing row keeps in `Матеріал`: the least number of sentences, then a note for the
+ * checker.
+ *
+ * This column was read as a bare range (`6-8`), which is not what the author's files hold. Every
+ * WRITE row of every module begins with `Мінімум речень: N` and then carries several paragraphs
+ * telling the checker what to catch, what to let pass and what has not been taught yet. Read as
+ * a range, all 53 of them were refused on import.
+ *
+ * The note never reaches the student. It names the mistakes their text is about to be checked
+ * for, so showing it would hand over the answer key.
+ */
+const MINIMUM_SENTENCES = /^[ \t]*м[іi]н[іi]мум\s+речень\s*:?\s*(\d{1,3})\s*$/im;
+
+export const parseWritingMaterial = (
+  raw: string,
+): { minSentences: number | null; checkerNote: string | null } => {
+  const text = raw.replace(/\r\n/g, '\n');
+  const line = MINIMUM_SENTENCES.exec(text);
+
+  if (line) {
+    const minSentences = Number(line[1]);
+    const note = (text.slice(0, line.index) + text.slice(line.index + line[0].length)).trim();
+    return {
+      minSentences: minSentences >= 1 ? minSentences : null,
+      checkerNote: note || null,
+    };
+  }
+
+  /**
+   * The older spelling, where the column was the range and nothing else. Kept because the
+   * module 4 practice files are written that way and must keep importing.
+   */
+  const range = parseSentenceRange(text);
+  return { minSentences: range?.min ?? null, checkerNote: null };
+};
+
+/**
+ * The rubric, read off the lines that are numbered.
+ *
+ * The column is not a bare list: it opens with a heading (`Критерії (5 балів):`) and closes with
+ * a sentence about mistakes the criteria do not ask about. Splitting on every line turned a
+ * five-criterion rubric into seven, so a letter was marked out of seven and the student was
+ * shown a heading and a footnote as things to achieve.
+ *
+ * A line counts when it is numbered, which is how the author writes each criterion. The trailing
+ * `- 1 бал` goes too: the points are one per criterion and are counted in code.
+ */
+const NUMBERED = /^[ \t]*\d{1,2}[.)]\s*/;
+const TRAILING_POINTS = /[\s\u2013\u2014-]+\d+\s*бал\S*\s*$/i;
+
+export const parseCriteria = (explanation: string): string[] => {
+  const lines = explanation.split(/\r?\n/);
+  const numbered = lines.filter((line) => NUMBERED.test(line));
+
+  /**
+   * A rubric with no numbering at all is taken line by line, the way it used to be. Nothing that
+   * imported before stops importing because the author did not number the lines.
+   */
+  const chosen = numbered.length >= 2 ? numbered : lines;
+
+  return chosen
+    .map((line) =>
+      line
+        .replace(NUMBERED, '')
+        .replace(/^[ \t]*[-\u2013\u2014\u2022]\s*/, '')
+        .replace(TRAILING_POINTS, '')
+        .trim(),
+    )
+    .filter(Boolean);
+};
+
 /** A text to read, a recording to listen to, a prompt to speak from, or a letter to write. */
 export type ParsedElement = {
   id: string;
@@ -76,6 +148,17 @@ export type ParsedElement = {
   sampleAnswer: string | null;
   /** The phrases to lean on, from `Пояснення` on a speaking row. */
   hints: string | null;
+  /**
+   * The author's instructions to the checker, from `Матеріал` on a writing row.
+   *
+   * Per-task rules the rubric cannot carry on its own: how to count sentences for this one
+   * lesson, which mistakes to catch, which to let pass, and which grammar has not been taught
+   * yet and so must not cost a mark. It is the author's standing answer to "but what about…".
+   *
+   * It goes to the checker and nowhere else. It names the very mistakes the text is about to be
+   * checked for, so putting it on the page would hand the student the answer key.
+   */
+  checkerNote: string | null;
   /**
    * The rubric a letter is marked against, one criterion per line of `Пояснення`.
    *
@@ -394,12 +477,15 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
        * there are only four answer columns. The file already carries multi-line fields, so
        * this is a shape the author is writing anyway.
        */
-      const criteria = writing
-        ? explanation
-            .split(/\r?\n/)
-            .map((line) => line.replace(/^\s*(?:\d+[.)]|[-–—•])\s*/, '').trim())
-            .filter(Boolean)
-        : [];
+      const criteria = writing ? parseCriteria(explanation) : [];
+      /**
+       * The least number of sentences and the note for the checker. There is no upper bound: the
+       * author's rubric states the range in its own words ("4-6 речень") and the checker judges
+       * it, which is the only way the per-task counting rules in the note can be honoured.
+       */
+      const writingMaterial = writing
+        ? parseWritingMaterial(material)
+        : { minSentences: null, checkerNote: null };
       const range = writing ? parseSentenceRange(material) : null;
 
       /** Each kind has what it cannot do without, and a missing one is reported, not guessed. */
@@ -426,9 +512,9 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
                      * written down. Guessing a default would mark every letter against a
                      * length the author never chose.
                      */
-                    writing && !range
-                    ? 'WRITE row needs the sentence range in the "Матеріал" column, ' +
-                      'written as 6-8'
+                    writing && writingMaterial.minSentences === null
+                    ? 'WRITE row needs "Мінімум речень: N" on the first line of the ' +
+                      '"Матеріал" column'
                     : writing && !correct
                       ? 'WRITE row has no model answer in the "Правильна відповідь" column'
                       : null;
@@ -471,8 +557,11 @@ export const parseQuestionCsv = (input: string): ParsedCsv => {
         /** A letter's explanation column holds its rubric instead, read above. */
         hints: elementKind === PracticeElementKind.rec ? explanation || null : null,
         criteria,
-        minSentences: range?.min ?? null,
+        minSentences: writingMaterial.minSentences,
+        /** Only the older range spelling gives one; otherwise the rubric and the checker decide. */
         maxSentences: range?.max ?? null,
+        /** For the checker only. It must never be sent to a student. */
+        checkerNote: writingMaterial.checkerNote,
         audioFileName:
           elementKind === PracticeElementKind.audio ? material || null : null,
       };

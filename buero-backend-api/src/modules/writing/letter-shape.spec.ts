@@ -2,6 +2,7 @@ import { ACCEPTANCE_LETTERS } from './acceptance-letters';
 import {
   countedCriterionIndex,
   countSentences,
+  MAX_CHARS,
   preCheckLetter,
   readLetterShape,
   requiresLetterShape,
@@ -107,28 +108,76 @@ describe('what the free check turns away', () => {
    * keeps the attempt. Only the short case is filtered - a long letter still goes to the model
    * and loses criterion 1 there.
    */
-  it('refuses a letter under six sentences without calling anything', () => {
+  it('refuses a letter that is plainly too short, without calling anything', () => {
     const result = preCheckLetter(TOO_SHORT);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toBe('no_closing');
+    /** Short is short. It is no longer refused for the formulas it happens to be missing. */
+    if (!result.ok) expect(result.reason).toBe('too_short');
   });
 
-  it('names a missing salutation separately, so the student knows what to add', () => {
-    const result = preCheckLetter(
-      'ich bin krank. Zwei. Drei. Vier. Fünf. Sechs.\n\nMit freundlichen Grüßen\nOlha',
-    );
+  /**
+   * A missing greeting is no longer a refusal.
+   *
+   * It was free, and it was wrong. Every criterion 1 in the author's files says "привітання й
+   * підпис не рахуються" - a counting rule, not a requirement - so the guess fired on all twelve
+   * tasks of module 1, and four of her own full-marks answers were turned away for signing off
+   * with "Olha" or "Bis gleich". Whether a text needs a greeting is the rubric's to say.
+   */
+  it('sends a long enough text with no greeting to the checker', () => {
+    const noGreeting =
+      'Ich bin heute krank geworden. Die Besprechung muss ich absagen. ' +
+      'Das tut mir leid. Ich gehe zum Arzt. Ich hoffe auf Verständnis. Vielen Dank.';
+    expect(preCheckLetter(noGreeting, 6, 8).ok).toBe(true);
+  });
+
+  /** The author's own answers, which the check used to refuse. */
+  it.each([
+    ['a first name alone', 'Olha'],
+    ['see you soon', 'Bis gleich\nOlha'],
+    ['see you tomorrow', 'Bis morgen\nOlha'],
+  ])('accepts a message signed off with %s', (_name, signoff) => {
+    const text =
+      'Hallo Tom,\nich bin heute krank geworden. Die Besprechung muss ich absagen. ' +
+      'Das tut mir leid. Ich gehe gleich zum Arzt. Vielen Dank für Ihr Verständnis.\n\n' +
+      signoff;
+    expect(preCheckLetter(text, 4, null).ok).toBe(true);
+  });
+
+  /**
+   * One sentence short is a text worth marking.
+   *
+   * The free check used to refuse anything under the minimum, which sent back a letter of five
+   * sentences out of six with "write more" instead of telling its author what was wrong with it.
+   * The author's own rule is half the minimum: below that there is nothing to mark, and above it
+   * the checker judges the length against criterion 1 in her own words.
+   */
+  it('lets a body of five sentences through when six were asked for', () => {
+    const five =
+      'Ich bin heute krank geworden. Die Besprechung muss ich leider absagen. ' +
+      'Das tut mir sehr leid. Ich gehe gleich zum Arzt. Vielen Dank für Ihr Verständnis.';
+    const result = preCheckLetter(letter(five), 6, 8);
+    expect(result.ok).toBe(true);
+  });
+
+  it('refuses a body of two sentences when six were asked for', () => {
+    const result = preCheckLetter(letter('Eins zwei drei. Vier fünf sechs.'), 6, 8);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toBe('no_salutation');
+    if (!result.ok) expect(result.reason).toBe('too_short');
   });
 
-  it('refuses a body of five sentences that is otherwise a proper letter', () => {
-    const result = preCheckLetter(letter('Eins. Zwei. Drei. Vier. Fünf.'));
+  /** Six full stops around nothing is the other shape of too short. */
+  it('refuses a handful of words however many full stops they carry', () => {
+    const result = preCheckLetter(letter('Ja. Nein. Gut. Danke. Tschuess. Okay.'), 6, 8);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('too_short');
   });
 
   it('lets a long letter through to be graded, rather than refusing it', () => {
-    const nine = letter('Eins. Zwei. Drei. Vier. Fünf. Sechs. Sieben. Acht. Neun.');
+    const nine = letter(
+      'Ich bin heute krank. Die Besprechung muss ich absagen. Das tut mir leid. ' +
+        'Ich gehe zum Arzt. Ich hoffe auf Verständnis. Morgen melde ich mich. ' +
+        'Die Unterlagen liegen auf dem Tisch. Frau Berg weiß davon. Vielen Dank.',
+    );
     const result = preCheckLetter(nine);
     expect(result.ok).toBe(true);
     // It reaches the model, and loses criterion 1 when it gets there.
@@ -311,12 +360,24 @@ describe('the word ceiling', () => {
     expect(wordCeiling(20)).toBe(600);
   });
 
-  it('still refuses an essay sent to a short task', () => {
-    const essay = Array.from({ length: 400 }, () => 'Wort').join(' ');
-    expect(preCheckLetter(essay, 6, 8, false)).toMatchObject({
+  /**
+   * The guard is a character cap now, not a ceiling worked out from the number of sentences:
+   * almost every task states no upper bound at all, so there is nothing to work one out from.
+   * It is there to stop one submission costing what twenty should, and nothing else.
+   */
+  it('refuses a text over the character cap, whatever the task asked for', () => {
+    const essay = 'Ich bin heute leider krank und kann nicht kommen. '.repeat(50);
+    expect(essay.length).toBeGreaterThan(MAX_CHARS);
+    expect(preCheckLetter(essay, 6, null, false)).toMatchObject({
       ok: false,
       reason: 'too_long',
     });
+  });
+
+  it('accepts a long text that stays under the cap', () => {
+    const long = 'Ich bin heute leider krank und kann nicht kommen. '.repeat(20);
+    expect(long.length).toBeLessThan(MAX_CHARS);
+    expect(preCheckLetter(long, 6, null, false).ok).toBe(true);
   });
 });
 

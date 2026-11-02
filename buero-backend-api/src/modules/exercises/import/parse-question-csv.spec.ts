@@ -1,7 +1,9 @@
 import { PracticeBlock, QuestionType } from "src/generated/prisma/enums";
 import {
   groupQuestions,
+  parseCriteria,
   parseQuestionCsv,
+  parseWritingMaterial,
   readCsvRows,
 } from "./parse-question-csv";
 
@@ -315,7 +317,11 @@ describe("parseQuestionCsv", () => {
       expect(empty.problems[0].message).toContain("at least two criteria");
     });
 
-    it("reports a writing row with no sentence range", () => {
+    /**
+     * The column must say how long the text has to be. It used to have to say it as a range,
+     * which is not how the author writes it - see the Матеріал tests at the end of this file.
+     */
+    it("reports a writing row that does not say how many sentences", () => {
       const empty = parseQuestionCsv(
         [
           FULL,
@@ -323,7 +329,7 @@ describe("parseQuestionCsv", () => {
         ].join("\n"),
       );
       expect(empty.elements).toEqual([]);
-      expect(empty.problems[0].message).toContain("sentence range");
+      expect(empty.problems[0].message).toContain("Мінімум речень");
     });
 
     /** Without a model answer the task has nothing to degrade to when the budget runs out. */
@@ -544,5 +550,150 @@ describe("groupQuestions", () => {
       "4.1.1",
       "4.1.2",
     ]);
+  });
+});
+
+/**
+ * The two columns of a WRITE row that are not what the first version of the importer expected.
+ *
+ * Both were read wrongly, and both failures were silent in the worst way: the sentence range
+ * refused all 53 writing tasks outright, and the rubric would have turned a five-criterion task
+ * into a seven-criterion one, marking a letter against a heading and a footnote.
+ */
+describe("the Матеріал column of a writing row", () => {
+  const REAL = [
+    "Мінімум речень: 4",
+    "",
+    "Ціль уроку: Perfekt із haben і дієприкметник правильних дієслів без приставки.",
+    "Ловити: пропущене haben: «Ich gearbeitet am Samstag» → «Ich habe am Samstag gearbeitet».",
+    "Рахування: привітання, підпис і «Und du?» не рахуються.",
+  ].join("\n");
+
+  it("reads the least number of sentences off the first line", () => {
+    expect(parseWritingMaterial(REAL).minSentences).toBe(4);
+  });
+
+  it("keeps everything else as the note for the checker", () => {
+    const { checkerNote } = parseWritingMaterial(REAL);
+    expect(checkerNote).toContain("Ціль уроку");
+    expect(checkerNote).toContain("Рахування");
+    /** The line that was read as a number must not be repeated as prose. */
+    expect(checkerNote).not.toContain("Мінімум речень");
+  });
+
+  it.each([
+    ["no colon", "Мінімум речень 6"],
+    ["latin i", "Мiнiмум речень: 6"],
+    ["extra spaces", "   Мінімум   речень :  6  "],
+  ])("reads it with %s", (_name, line) => {
+    expect(parseWritingMaterial(`${line}\n\nПримітка`).minSentences).toBe(6);
+  });
+
+  /** The older spelling, which the module 4 practice files use and which must keep working. */
+  it("still reads a bare range, and then has no note", () => {
+    expect(parseWritingMaterial("6-8")).toEqual({ minSentences: 6, checkerNote: null });
+  });
+
+  it("gives nothing when the column says neither", () => {
+    expect(parseWritingMaterial("просто текст")).toEqual({
+      minSentences: null,
+      checkerNote: null,
+    });
+  });
+});
+
+describe("the rubric in the Пояснення column", () => {
+  const REAL = [
+    "Критерії (5 балів):",
+    "1. 4-6 речень про вашу суботу (привітання й підпис не рахуються) - 1 бал",
+    "2. Щонайменше 4 речення в Perfekt, і в кожному з них є haben - 1 бал",
+    "3. У всіх реченнях Perfekt haben стоїть на 2-му місці - 1 бал",
+    "4. Усі дієприкметники утворено як ge + основа + t - 1 бал",
+    "5. Є щонайменше один дієприкметник від дієслова з основою на -t або -d - 1 бал",
+    "Помилки, про які критерії не питають, балів не знімають, якщо текст зрозумілий.",
+  ].join("\n");
+
+  it("finds exactly the five criteria the author wrote", () => {
+    expect(parseCriteria(REAL)).toHaveLength(5);
+  });
+
+  it.each([
+    ["the heading", /Критерії \(5 балів\)/],
+    ["the footnote", /балів не знімають/],
+    ["the points on the end", /1 бал\s*$/],
+  ])("leaves out %s", (_name, pattern) => {
+    for (const criterion of parseCriteria(REAL)) {
+      expect(criterion).not.toMatch(pattern);
+    }
+  });
+
+  it("keeps the author's wording otherwise, including a dash inside it", () => {
+    expect(parseCriteria(REAL)[0]).toBe(
+      "4-6 речень про вашу суботу (привітання й підпис не рахуються)",
+    );
+  });
+
+  /** An unnumbered rubric is taken line by line, as it was before, so nothing stops importing. */
+  it("falls back to one criterion per line when nothing is numbered", () => {
+    const plain = "У тілі листа 6-8 речень\nЄ речення з weil\nТекст ввічливий";
+    expect(parseCriteria(plain)).toHaveLength(3);
+  });
+});
+
+describe("a writing row as the author's own files are written", () => {
+  const FULL_HEADER =
+    "ID,Урок,Тип,Питання,A,B,C,D,Правильна відповідь,Пояснення,Блок,Матеріал";
+
+  const row = (material: string, explanation: string) =>
+    [
+      FULL_HEADER,
+      [
+        "1.1.W1",
+        "1.1 Рамка речення",
+        "WRITE",
+        "Напишіть Lena відповідь - що ви робили в суботу.",
+        "",
+        "",
+        "",
+        "",
+        "Hallo Lena! Ich habe gearbeitet.",
+        `"${explanation.replace(/"/g, '""')}"`,
+        "Schreiben",
+        `"${material.replace(/"/g, '""')}"`,
+      ].join(","),
+    ].join("\n");
+
+  const RUBRIC = [
+    "Критерії (5 балів):",
+    "1. 4-6 речень про вашу суботу - 1 бал",
+    "2. Щонайменше 4 речення в Perfekt - 1 бал",
+    "3. haben на 2-му місці - 1 бал",
+    "4. Дієприкметники без зайвого -e - 1 бал",
+    "5. Є дієприкметник з основою на -t - 1 бал",
+  ].join("\n");
+
+  it("imports, where before every one of them was refused", () => {
+    const { elements, problems } = parseQuestionCsv(
+      row("Мінімум речень: 4\n\nЦіль уроку: Perfekt із haben.", RUBRIC),
+    );
+
+    expect(problems).toEqual([]);
+    expect(elements).toHaveLength(1);
+    expect(elements[0]).toMatchObject({
+      minSentences: 4,
+      /** No upper bound is given: the rubric states the range and the checker judges it. */
+      maxSentences: null,
+    });
+    expect(elements[0].criteria).toHaveLength(5);
+    expect(elements[0].checkerNote).toContain("Ціль уроку");
+  });
+
+  it("refuses a row whose Матеріал does not say the least number of sentences", () => {
+    const { elements, problems } = parseQuestionCsv(
+      row("Ціль уроку: Perfekt із haben.", RUBRIC),
+    );
+
+    expect(elements).toHaveLength(0);
+    expect(problems[0].message).toContain("Мінімум речень");
   });
 });

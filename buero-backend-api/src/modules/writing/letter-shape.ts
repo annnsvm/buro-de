@@ -24,6 +24,27 @@ export const DEFAULT_MAX_SENTENCES = 8;
 export const MIN_WORD_CEILING = 300;
 export const WORDS_PER_SENTENCE = 30;
 
+/**
+ * The hard cap on what is sent, in characters.
+ *
+ * A guard on cost, not on writing: one submission must not be able to cost what twenty should.
+ * It replaced a ceiling derived from the number of sentences, which cannot work now that most
+ * tasks state no upper bound at all.
+ */
+export const MAX_CHARS = 2000;
+
+/**
+ * Below this a text is sent back rather than marked, free of charge.
+ *
+ * Half the minimum, not the minimum: a text one sentence short is a text worth marking, and
+ * saying "write more" to someone who wrote five of six sentences wastes the lesson. The word
+ * floor catches the other shape of the same thing - six words split over six full stops.
+ */
+export const MIN_WORDS = 15;
+
+export const shortestAccepted = (minSentences: number): number =>
+  Math.max(1, Math.ceil(minSentences / 2));
+
 export const wordCeiling = (maxSentences: number): number =>
   Math.max(MIN_WORD_CEILING, Math.round(maxSentences * WORDS_PER_SENTENCE));
 
@@ -97,9 +118,15 @@ const quotesBound = (criterion: string, bound: number): boolean =>
 
 export const countedCriterionIndex = (
   criteria: readonly string[],
-  minSentences = DEFAULT_MIN_SENTENCES,
-  maxSentences = DEFAULT_MAX_SENTENCES,
+  minSentences: number = DEFAULT_MIN_SENTENCES,
+  maxSentences?: number | null,
 ): number | null => {
+  /**
+   * Without an upper bound there is nothing a count can settle on its own: the rubric says
+   * "4-6 речень" and the author's note says what counts as a sentence for this one lesson.
+   * Both of those are the checker's to read, so no verdict is overwritten.
+   */
+  if (maxSentences == null) return null;
   const index = criteria.findIndex(
     (criterion) =>
       MENTIONS_SENTENCES.test(criterion) &&
@@ -117,6 +144,14 @@ export type LetterShape = {
   hasSalutation: boolean;
   hasClosing: boolean;
   words: number;
+  /**
+   * Words between the salutation and the closing.
+   *
+   * The floor is measured on these, not on the whole letter: "Sehr geehrte Frau Schmidt" and
+   * "Mit freundlichen Grüßen Olha Kovalenko" are eleven words of boilerplate, enough on their
+   * own to carry an all-but-empty letter past a fifteen-word floor.
+   */
+  bodyWords: number;
   /** Criterion 1, decided here rather than by the model. */
   meetsCriterionOne: boolean;
 };
@@ -127,7 +162,16 @@ export type PreCheck =
    * Turned away before the model is called. `reason` is what the student is told, and the
    * attempt is not counted against them.
    */
-  | { ok: false; reason: 'too_short' | 'no_salutation' | 'no_closing' | 'too_long'; shape: LetterShape };
+  | {
+      ok: false;
+      /**
+       * `no_salutation` and `no_closing` are no longer produced - the rubric decides whether a
+       * text needs either, and the checker judges it. They stay in the type, and their messages
+       * stay in the translations, so nothing that handles a refusal has to change.
+       */
+      reason: 'too_short' | 'no_salutation' | 'no_closing' | 'too_long';
+      shape: LetterShape;
+    };
 
 /**
  * The body is what sits between the salutation and the closing.
@@ -172,7 +216,7 @@ const countWords = (text: string): number =>
 export const readLetterShape = (
   letter: string,
   minSentences = DEFAULT_MIN_SENTENCES,
-  maxSentences = DEFAULT_MAX_SENTENCES,
+  maxSentences: number | null = DEFAULT_MAX_SENTENCES,
   /**
    * Whether the task asked for a letter. When it did not, criterion 1 is the length alone -
    * demanding a closing formula of a story would be marking against a rule nobody set.
@@ -189,33 +233,49 @@ export const readLetterShape = (
     hasSalutation,
     hasClosing,
     words: countWords(letter),
+    bodyWords: countWords(body),
     meetsCriterionOne:
       (!letterShape || (hasSalutation && hasClosing)) &&
       bodySentences >= minSentences &&
-      bodySentences <= maxSentences,
+      /** No upper bound stated means none to fail: the rubric states the range, not the code. */
+      (maxSentences == null || bodySentences <= maxSentences),
   };
 };
 
 export const preCheckLetter = (
   letter: string,
   minSentences = DEFAULT_MIN_SENTENCES,
-  maxSentences = DEFAULT_MAX_SENTENCES,
+  maxSentences: number | null = DEFAULT_MAX_SENTENCES,
   letterShape = true,
 ): PreCheck => {
   const shape = readLetterShape(letter, minSentences, maxSentences, letterShape);
 
-  if (shape.words > wordCeiling(maxSentences)) {
+  if (letter.trim().length > MAX_CHARS) {
     return { ok: false, reason: 'too_long', shape };
   }
   /**
-   * Only a task that asked for a letter is turned away for not being one. This is what used to
-   * tell a student writing a description to open with "Sehr geehrte Frau …".
+   * A missing salutation or closing no longer turns a text away.
+   *
+   * It was free and it was wrong. Every criterion 1 in the author's files contains the words
+   * "привітання й підпис не рахуються" - a rule about what to count, not a requirement that
+   * they exist - so the guess fired on all twelve tasks of module 1, including the ones written
+   * for a group chat. Four of the author's own full-marks answers were refused by it: they sign
+   * off with "Olha" or "Bis gleich", which is how a message to a colleague ends.
+   *
+   * Whether a text needs a greeting is stated in the rubric, in the author's words, and judged
+   * by the checker with her counting note beside it. `hasSalutation` and `hasClosing` are still
+   * read - the counted criterion uses them where a task states a real range - but they decide
+   * nothing on their own any more.
    */
-  if (letterShape) {
-    if (!shape.hasSalutation) return { ok: false, reason: 'no_salutation', shape };
-    if (!shape.hasClosing) return { ok: false, reason: 'no_closing', shape };
-  }
-  if (shape.bodySentences < minSentences) {
+  /**
+   * Only plainly too short is turned away, and it costs the student nothing: no attempt, no call.
+   * Everything between half the minimum and the minimum goes to the checker, which marks it
+   * against criterion 1 in the author's own words.
+   */
+  if (
+    shape.bodySentences < shortestAccepted(minSentences) ||
+    shape.bodyWords < MIN_WORDS
+  ) {
     return { ok: false, reason: 'too_short', shape };
   }
 
