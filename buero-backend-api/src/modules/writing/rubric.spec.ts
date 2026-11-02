@@ -1,96 +1,66 @@
-import { buildSystemPrompt, buildUserPrompt } from './rubric';
-import { MODULE_4_LETTER } from './writing-task';
+import { SCHREIBEN_SYSTEM_PROMPT } from './rubric';
 
 /**
- * The instruction sent to the grader, guarded against going task-specific again.
+ * The instruction sent with every text, guarded against the two ways it has already gone wrong.
  *
- * It was written while the module 4 letter was the only writing task there was, and it named that
- * letter's criteria by number and its grammar point by name. Nothing complained, because the only
- * rubric in the system was the one it was written for. These tests are what complains.
+ * The first was writing it for one task: it named the module 4 letter's criteria by number and
+ * its grammar point by name, and nothing complained, because that letter was the only writing
+ * task in the system. The second was asking the checker a question that is not its to answer.
  */
-
-describe('the grader instruction', () => {
-  const prompt = buildSystemPrompt(1);
-
+describe('the checker instruction', () => {
   /**
-   * The three sentences that made the instruction wrong for every task but one. A rubric about a
-   * forum post was told that its criteria 2, 3 and 4 each need one sentence with a conjunction,
-   * and that its criterion 5 combines two requirements - about criteria it does not have.
+   * A rubric about a forum post was told rules about criteria it does not have - that its
+   * criteria 2, 3 and 4 each need a sentence with a conjunction, that its criterion 5 combines
+   * two requirements. Only the task's own rubric may name its criteria.
    */
   it.each([
     ['criteria named by number', /критер\S*\s+2,\s*3/i],
-    ['criterion 5 described', /критерій\s+5/i],
+    ['criterion 5 described', /критерій\s+5\b/i],
     ['a grammar point carved out by name', /das\/dass/i],
     ['the Verb-Verb rule', /verb-verb/i],
-  ])('no longer contains %s', (_name, pattern) => {
-    expect(prompt).not.toMatch(pattern);
-  });
-
-  /** What replaced them: the same three principles, said without a task in mind. */
-  it.each([
-    ['only the rubric counts', /повний перелік того, що перевіряється/],
-    ['one correct example is enough', /достатньо ОДНОГО\s+правильного приклада/],
-    ['a mistake criterion is lost to every mistake', /кожна така помилка/],
-    ['criteria are read with their own conditions', /це частина\s+правила/],
-  ])('states that %s', (_name, pattern) => {
-    expect(prompt).toMatch(pattern);
-  });
-
-  it('asks for a note on every criterion, awarded or not', () => {
-    expect(prompt).toMatch(/Пишіть\s+note і тоді, коли бал зараховано/);
-  });
-});
-
-describe('naming the criterion that was counted', () => {
-  it('names criterion 1 when that is the one about length', () => {
-    const prompt = buildSystemPrompt(1);
-    expect(prompt).toContain('criterion_1');
-    expect(prompt).toMatch(/Критерій 1 \(довжина\)/);
+  ])('does not contain %s', (_name, pattern) => {
+    expect(SCHREIBEN_SYSTEM_PROMPT).not.toMatch(pattern);
   });
 
   /**
-   * The number is not always 1. The criteria arrive in the order their author typed them, so a
-   * rubric that opens with a grammar point and asks about length third must say three - otherwise
-   * the model is told to echo a value for a criterion that is not the counted one.
+   * Whether a text was copied is settled in code, before the model is called and without
+   * costing the student a check.
+   *
+   * The instruction used to say both things at once: that the student's text need not resemble
+   * the sample, and that a text copied from the sample scores zero on every criterion. Where the
+   * line between the two fell was left to the model, and Claude Opus 5.5 drew it differently for
+   * texts that overlapped the sample equally - two of the author's own letters at 0.905 overlap
+   * were marked 5/6 and 0/6. Six of her ten graded letters came back as straight zeros.
    */
-  it('names the third criterion when length is third', () => {
-    const prompt = buildSystemPrompt(3);
-    expect(prompt).toContain('criterion_3');
-    expect(prompt).not.toContain('criterion_1');
+  it('does not ask the checker to judge copying', () => {
+    expect(SCHREIBEN_SYSTEM_PROMPT).not.toMatch(/скопійован/i);
+    expect(SCHREIBEN_SYSTEM_PROMPT).toMatch(/Схожість на зразок не оцінюй/);
   });
 
-  /** A rubric that never mentions sentences has nothing pre-decided. */
-  it('says nothing about a counted criterion when there is none', () => {
-    const prompt = buildSystemPrompt(null);
-    expect(prompt).not.toMatch(/criterion_/);
-    expect(prompt).not.toMatch(/підрахунком/);
-  });
-});
-
-describe('the request', () => {
-  const letter = 'Sehr geehrte Frau Schmidt,\n\nIch bin krank.\n\nMit freundlichen Grüßen';
-
-  it('numbers the criteria in the author’s own order', () => {
-    const body = buildUserPrompt(MODULE_4_LETTER.criteria, letter, true, 7, 1);
-    MODULE_4_LETTER.criteria.forEach((criterion, index) => {
-      expect(body).toContain(`${index + 1}. ${criterion}`);
-    });
+  /** What the sample is for, said once and not contradicted later. */
+  it('calls the sample an illustration', () => {
+    expect(SCHREIBEN_SYSTEM_PROMPT).toMatch(/лише ілюстрація/);
+    expect(SCHREIBEN_SYSTEM_PROMPT).toMatch(/НЕ мусить бути схожим на зразок/);
   });
 
-  it('passes the counted verdict under the matching name', () => {
-    const body = buildUserPrompt(MODULE_4_LETTER.criteria, letter, false, 4, 2);
-    expect(body).toContain('criterion_2: false');
-    expect(body).toContain('4 речень');
+  /** Off topic and not in German are still the checker's to judge: code cannot read a topic. */
+  it('still refuses a text that is off topic or not in German', () => {
+    expect(SCHREIBEN_SYSTEM_PROMPT).toMatch(/не на тему або не німецькою/);
   });
 
-  it('leaves the counted line out when no criterion is counted', () => {
-    const body = buildUserPrompt(['Текст у Perfekt', 'Три різні дієслова'], letter, true, 7, null);
-    expect(body).not.toMatch(/criterion_/);
-    expect(body).toContain('Текст студента:');
+  /**
+   * The author's own rules for one task outrank the general instruction, which is what lets her
+   * write "в цьому уроці привітання не рахується" without anyone touching code.
+   */
+  it('gives the author’s note priority', () => {
+    expect(SCHREIBEN_SYSTEM_PROMPT).toMatch(/пріоритетна інструкція/);
   });
 
-  it('sends the text as written, trimmed', () => {
-    const body = buildUserPrompt(['a', 'b'], `\n\n${letter}\n\n`, true, 7, 1);
-    expect(body).toContain(`"""\n${letter}\n"""`);
+  /** The answer has to fit the budget, so the instruction states the lengths it asks for. */
+  it.each([
+    ['an empty comment on an awarded criterion', /якщо point = 1, comment = ""/],
+    ['at most three corrections', /не більше 3 пунктів/],
+  ])('asks for %s', (_name, pattern) => {
+    expect(SCHREIBEN_SYSTEM_PROMPT).toMatch(pattern);
   });
 });

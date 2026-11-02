@@ -2,6 +2,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PracticeBlockSummary, PracticeOverview } from '@/api/practiceApi';
 import { encouragementFor, spellBlockCount } from './encouragement';
+import BlockThumb from './ui/BlockThumb';
+import Segments from './ui/Segments';
+import { PRIMARY_BUTTON } from './ui/buttons';
 
 export type PracticeHubProps = {
   overview: PracticeOverview;
@@ -14,9 +17,10 @@ export type PracticeHubProps = {
 /**
  * The hub a student picks a block from.
  *
- * The blocks are one card of rows rather than separate cards: they are parts of a single
- * sitting, and spacing them apart made them read as four unrelated tasks. The order is still
- * the student's - the numbers say how many there are, not which to do first.
+ * The blocks are split the way they are counted: the three that decide whether the lesson is
+ * behind you, then the two that do not. They used to sit in one list with a badge on two of
+ * them, which asked the student to hold the rule in their head while reading five rows; the
+ * heading says it once instead, above the rows it applies to.
  */
 const PracticeHub: React.FC<PracticeHubProps> = ({
   overview,
@@ -27,7 +31,6 @@ const PracticeHub: React.FC<PracticeHubProps> = ({
   const { t, i18n } = useTranslation();
 
   const encouragement = encouragementFor(overview.total_count, overview.done_count);
-  const allDone = overview.total_count > 0 && overview.done_count === overview.total_count;
   /**
    * Where this practice sits, said in two pieces rather than one run-on line.
    *
@@ -36,85 +39,97 @@ const PracticeHub: React.FC<PracticeHubProps> = ({
    * strung together with a separator character.
    */
   const trail = [overview.module_title, overview.lesson_title].filter(Boolean);
-  const hasOptional = overview.blocks.some((entry) => entry.optional);
+
+  const required = overview.blocks.filter((entry) => !entry.optional);
+  const optional = overview.blocks.filter((entry) => entry.optional);
+
+  /**
+   * The parenthetical half of a title set back a step in colour.
+   *
+   * "2.1 - Кому цей подарунок? (Dativ: артиклі)" is a name and a grammar point: the first is
+   * what the student came for, the second is what it teaches. Splitting on the author's own
+   * bracket keeps her wording exactly and only changes how much of it shouts.
+   */
+  const title = overview.title || t('practice.title');
+  const bracket = title.indexOf(' (');
+  const head = bracket === -1 ? title : title.slice(0, bracket);
+  const tail = bracket === -1 ? null : title.slice(bracket + 1);
 
   return (
     <div className="mx-auto flex w-full max-w-[880px] flex-col gap-7 px-4 py-10 sm:px-8">
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <div className="flex flex-col gap-3">
-          {trail.length > 0 ? (
-            <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[0.7rem] font-bold tracking-[0.14em] uppercase">
-              <span className="text-[var(--color-burnt-siena-dark)]">{trail[0]}</span>
-              {trail[1] ? (
-                <span className="text-[var(--color-text-secondary)]">{trail[1]}</span>
-              ) : null}
-            </p>
-          ) : null}
-          <h2 className="font-[family-name:var(--font-heading)] text-[clamp(1.75rem,3.4vw,2.35rem)] leading-[1.05] font-bold tracking-[-0.035em] text-[var(--color-text-primary)]">
-            {overview.title || t('practice.title')}
-          </h2>
-          <p className="text-base text-[var(--color-text-secondary)]">{t('practice.subtitle')}</p>
-        </div>
+      <header className="flex flex-col gap-3">
+        {trail.length > 0 ? (
+          <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[0.7rem] font-bold tracking-[0.14em] uppercase">
+            <span className="text-[var(--color-burnt-siena-dark)]">{trail[0]}</span>
+            {trail[1] ? (
+              <span className="text-[var(--color-text-secondary)]">{trail[1]}</span>
+            ) : null}
+          </p>
+        ) : null}
+        <h2 className="font-[family-name:var(--font-heading)] text-[clamp(1.75rem,3.4vw,2.35rem)] leading-[1.05] font-bold tracking-[-0.035em] text-[var(--color-text-primary)]">
+          {head}
+          {tail ? <span className="text-[var(--color-text-secondary)]"> {tail}</span> : null}
+        </h2>
+        <p className="text-base text-[var(--color-text-secondary)]">{t('practice.subtitle')}</p>
+      </header>
 
-        {/**
-         * How much is behind, as a figure to glance at rather than a sentence to read:
-         * the big number carries it and the label underneath says what it counts.
-         */}
-        <p className="flex flex-col items-end">
-          <span className="font-[family-name:var(--font-heading)] text-[2.75rem] leading-none font-bold tracking-[-0.05em] text-[var(--color-accent-primary)] tabular-nums">
+      {/**
+       * How much is behind, as a figure to glance at rather than a sentence to read: the big
+       * number carries it, the label says what it counts, and the bar underneath shows it at
+       * the width of the page so the gap left is visible without reading anything.
+       */}
+      <section className="flex flex-col gap-4 rounded-[22px] bg-[var(--color-surface-section)] px-6 py-5 sm:flex-row sm:items-center sm:gap-7">
+        <p className="flex items-baseline gap-3 sm:flex-col sm:items-start sm:gap-0">
+          <span className="font-[family-name:var(--font-heading)] text-[2.75rem] leading-none font-bold tracking-[-0.05em] text-[var(--color-accent-primary)] tabular-nums sm:text-[3.25rem]">
             {overview.done_count}
             <span className="text-[var(--color-dawn-pink-dark)]">/{overview.total_count}</span>
           </span>
-          <span className="mt-1.5 text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-text-secondary)] uppercase">
-            {t('practice.blocksLabel')}
-          </span>
         </p>
-      </header>
-
-      <div
-        className="grid gap-1.5"
-        style={{ gridTemplateColumns: `repeat(${Math.max(1, overview.total_count)}, 1fr)` }}
-        aria-hidden
-      >
-        {overview.blocks.map((entry) => (
-          <span
-            key={entry.block}
-            className={[
-              'h-1.5 rounded-full',
-              entry.done ? 'bg-[var(--color-accent-primary)]' : 'bg-[var(--color-border-subtle)]',
-            ].join(' ')}
+        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+          <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+            {t('practice.requiredDone')}
+          </span>
+          <Segments
+            filled={overview.done_count}
+            total={overview.total_count}
+            size="lg"
           />
-        ))}
-      </div>
-
-      <ul className="overflow-hidden rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-neutral-white)]">
-        {overview.blocks.map((entry, index) => (
-          <li key={entry.block}>
-            <BlockRow
-              block={entry}
-              position={index + 1}
-              isFirst={index === 0}
-              onOpen={() => onOpenBlock(entry.block)}
-            />
-          </li>
-        ))}
-      </ul>
+        </div>
+      </section>
 
       {/**
-        * Why the figure counts fewer blocks than the list shows.
-        *
-        * The wording existed in the translations and was never put on screen, so a student
-        * reading "two required blocks left" above five cards had nothing to reconcile the two
-        * with. Shown only when there is actually an optional block, so a practice without one
-        * is not told about a rule it does not have.
-        */}
-      {hasOptional ? (
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          {t('practice.optionalNote')}
-        </p>
+       * What the required blocks are actually for.
+       *
+       * The button to the next lesson used to be disabled until they were done, which said
+       * something untrue: that the lesson was a gate. It is not - the blocks count towards the
+       * course's own progress, and a student who wants to read on may. Saying so in a sentence
+       * costs one line; leaving a dead button to say it cost the student the wrong idea.
+       */}
+      <p className="-mt-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">
+        {t('practice.requiredPurpose')}
+      </p>
+
+      <BlockGroup
+        heading={t('practice.groupRequired')}
+        blocks={required}
+        onOpenBlock={onOpenBlock}
+      />
+
+      {/**
+       * Why the figure counts fewer blocks than the list shows, said above the rows it is
+       * about. The sentence existed in the translations and was once never rendered at all,
+       * leaving a student to reconcile "two required blocks left" with five cards.
+       */}
+      {optional.length > 0 ? (
+        <BlockGroup
+          heading={t('practice.groupOptional')}
+          note={t('practice.optionalNote')}
+          blocks={optional}
+          onOpenBlock={onOpenBlock}
+        />
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-6 border-t border-[var(--color-dawn-pink-dark)]/35 pt-7">
         <p
           className="max-w-[440px] text-base leading-relaxed font-medium text-[var(--color-text-primary)]"
           aria-live="polite"
@@ -129,22 +144,15 @@ const PracticeHub: React.FC<PracticeHubProps> = ({
         </p>
 
         {/**
-         * Always on screen so the student can see where the practice leads, but inert until it
-         * is finished - a button that works only sometimes is clearer than one that appears
-         * from nowhere at the end.
+         * Live whatever the state of the practice.
+         *
+         * It was disabled until every required block was done, which read as a lock on the
+         * course: the student could not tell that the blocks count towards their progress
+         * rather than towards permission to read the next lesson. Nothing here gates anything -
+         * the test at the end of a module will, and that is a different screen.
          */}
         {onMoveOn ? (
-          <button
-            type="button"
-            onClick={onMoveOn}
-            disabled={!allDone}
-            className={[
-              'rounded-full px-7 py-3.5 text-base font-semibold whitespace-nowrap transition',
-              allDone
-                ? 'bg-[var(--color-accent-primary)] text-[var(--color-neutral-white)] hover:opacity-90'
-                : 'cursor-not-allowed bg-[var(--color-surface-section)] text-[var(--color-dawn-pink-dark)]',
-            ].join(' ')}
-          >
+          <button type="button" onClick={onMoveOn} className={PRIMARY_BUTTON}>
             {nextStepLabel}
           </button>
         ) : null}
@@ -153,85 +161,117 @@ const PracticeHub: React.FC<PracticeHubProps> = ({
   );
 };
 
-/** One block: its number or a tick, what is inside it, and where the student got to. */
+/** One heading and the rows under it. */
+const BlockGroup: React.FC<{
+  heading: string;
+  note?: string;
+  blocks: PracticeBlockSummary[];
+  onOpenBlock: (block: PracticeBlockSummary['block']) => void;
+}> = ({ heading, note, blocks, onOpenBlock }) => {
+  if (blocks.length === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+          {heading}
+        </h3>
+        {note ? (
+          <span className="text-sm text-[var(--color-text-secondary)]">{note}</span>
+        ) : null}
+      </div>
+
+      <ul className="flex flex-col gap-2.5">
+        {blocks.map((entry) => (
+          <li key={entry.block}>
+            <BlockRow block={entry} onOpen={() => onOpenBlock(entry.block)} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
+
+/** One block: what it holds, and where the student got to in it. */
 const BlockRow: React.FC<{
   block: PracticeBlockSummary;
-  position: number;
-  isFirst: boolean;
   onOpen: () => void;
-}> = ({ block, position, isFirst, onOpen }) => {
+}> = ({ block, onOpen }) => {
   const { t } = useTranslation();
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={[
-        'grid w-full grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-5 px-6 py-5 text-left transition',
-        isFirst ? '' : 'border-t border-[var(--color-border-subtle)]',
-        block.done
-          ? 'bg-[var(--color-dawn-pink-lighter)]'
-          : 'hover:bg-[var(--color-dawn-pink-light)]',
-      ].join(' ')}
+      className="flex w-full flex-wrap items-center gap-4 rounded-[20px] bg-[var(--color-neutral-white)] p-3.5 pr-5 text-left transition hover:bg-[var(--color-dawn-pink-light)] sm:flex-nowrap sm:gap-[18px]"
     >
-      <span
-        className={[
-          'flex size-11 items-center justify-center rounded-full text-[15px] font-bold',
-          block.done
-            ? 'bg-[var(--color-accent-primary)] text-[var(--color-neutral-white)]'
-            : 'bg-[var(--color-surface-section)] text-[var(--color-text-secondary)]',
-        ].join(' ')}
-        aria-hidden
-      >
-        {block.done ? '✓' : String(position).padStart(2, '0')}
-      </span>
+      <BlockThumb block={block.block} done={block.done} />
 
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="flex flex-wrap items-center gap-x-3">
-          <span className="text-[19px] font-semibold text-[var(--color-text-primary)]">
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
             {t(`practice.blocks.${block.block}.title`)}
           </span>
-          {/**
-           * Said on the block itself rather than only in a note below it: a student deciding
-           * whether to record themselves decides here, not after reading the whole page.
-           */}
-          {block.optional ? (
+          {/** A block whose recordings have not been uploaded yet. */}
+          {!block.ready ? (
             <span className="rounded-full bg-[var(--color-surface-section)] px-2.5 py-0.5 text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-secondary)] uppercase">
-              {t('practice.optional')}
+              {t('practice.awaitingBlock')}
             </span>
           ) : null}
         </span>
         {/* Described by what is actually in it, so the line stays true as the author adds. */}
-        <span className="text-[15px] text-[var(--color-text-secondary)]">
-          {t(`practice.blocks.${block.block}.summary`, {
-            count: block.total || block.task_count,
-          })}
+        <span className="text-sm text-[var(--color-text-secondary)]">
+          {block.ready
+            ? t(`practice.blocks.${block.block}.summary`, {
+                count: block.total || block.task_count,
+              })
+            : t(`practice.blocks.${block.block}.description`)}
         </span>
       </span>
 
-      {block.done ? (
-        /* The score as a figure with its label beneath, the way the header counts blocks. */
-        <span className="flex flex-col items-end whitespace-nowrap">
-          <span className="font-[family-name:var(--font-heading)] text-[1.35rem] leading-none font-bold tracking-[-0.03em] text-[var(--color-success-text)] tabular-nums">
-            {/**
-             * A letter is marked out of its criteria, not out of questions - of which that
-             * block has none. Counting questions here would announce a finished letter as
-             * 0 of 0.
-             */}
-            {block.points
-              ? `${block.points.score}/${block.points.max}`
-              : `${block.correct}/${block.total}`}
-          </span>
-          <span className="mt-1 text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-secondary)] uppercase">
-            {t('practice.blockDone')}
-          </span>
-        </span>
-      ) : (
-        <span className="rounded-full border-[1.5px] border-[var(--color-burnt-siena-lighter)] px-4 py-2 text-[15px] font-semibold whitespace-nowrap text-[var(--color-burnt-siena-dark)]">
-          {t('practice.blockStart')}
-        </span>
-      )}
+      <BlockState block={block} />
     </button>
+  );
+};
+
+/**
+ * What the right-hand end of a row says.
+ *
+ * Three different facts live there, and each needs its own shape. A letter is marked out of
+ * its criteria; a quiz out of its questions; and a recording is not marked at all, so the one
+ * honest thing to report is that it exists - counting its questions would announce a finished
+ * speaking task as 0 of 0.
+ */
+const BlockState: React.FC<{ block: PracticeBlockSummary }> = ({ block }) => {
+  const { t } = useTranslation();
+
+  if (!block.done) {
+    return (
+      <span className={`${PRIMARY_BUTTON} ml-auto sm:ml-0`}>{t('practice.blockStart')}</span>
+    );
+  }
+
+  if (!block.points && block.total === 0) {
+    return (
+      <span className="ml-auto text-sm font-semibold whitespace-nowrap text-[var(--color-burnt-siena-dark)] sm:ml-0">
+        {t('practice.recorded')}
+      </span>
+    );
+  }
+
+  const score = block.points
+    ? `${block.points.score}/${block.points.max}`
+    : `${block.correct}/${block.total}`;
+
+  return (
+    <span className="ml-auto flex flex-col items-end whitespace-nowrap sm:ml-0">
+      <span className="font-[family-name:var(--font-heading)] text-2xl leading-none font-bold tracking-[-0.03em] text-[var(--color-accent-primary)] tabular-nums">
+        {score}
+      </span>
+      <span className="mt-1 text-xs text-[var(--color-text-secondary)]">
+        {block.points ? t('practice.pointsLabel') : t('practice.blockDone')}
+      </span>
+    </span>
   );
 };
 

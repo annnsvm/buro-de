@@ -63,7 +63,8 @@ export class PracticeService {
     const [questions, elements, letters, recordings] = await Promise.all([
       this.prisma.question.findMany({
         where: { materialId },
-        select: { id: true, block: true, points: true },
+        /** `elementId` so a question about an unuploaded recording can be told apart. */
+        select: { id: true, block: true, points: true, elementId: true },
       }),
       /**
        * A speaking or writing block is one task and no questions at all. Counting blocks by
@@ -72,7 +73,8 @@ export class PracticeService {
        */
       this.prisma.practiceElement.findMany({
         where: { materialId },
-        select: { id: true, block: true, kind: true },
+        /** `audioUrl` so a recording that exists only as a row is not counted as work. */
+        select: { id: true, block: true, kind: true, audioUrl: true },
       }),
       /**
        * The letters this student has already written, by task.
@@ -129,9 +131,25 @@ export class PracticeService {
     }
 
     const blocks = PracticeService.ORDER.map((block) => {
-      const inBlock = questions.filter((question) => question.block === block);
+      const everyQuestion = questions.filter((question) => question.block === block);
       const tasks = elements.filter((element) => element.block === block);
-      if (inBlock.length === 0 && tasks.length === 0) return null;
+      if (everyQuestion.length === 0 && tasks.length === 0) return null;
+
+      /**
+       * Recordings the author has described but not uploaded yet.
+       *
+       * Their questions are held back by the player, so counting them here would ask the
+       * student for answers they are never offered - and Hören counts towards finishing the
+       * lesson, so the lesson itself could never be closed.
+       */
+      const awaitingAudio = tasks.filter(
+        (task) => task.kind === PracticeElementKind.audio && !task.audioUrl,
+      );
+      const awaitingIds = new Set(awaitingAudio.map((task) => task.id));
+      const inBlock = everyQuestion.filter(
+        (question) =>
+          !question.elementId || !awaitingIds.has(question.elementId),
+      );
 
       const answered = inBlock.filter((question) => latest.has(question.id));
       const correct = answered.filter((question) => latest.get(question.id));
@@ -161,10 +179,22 @@ export class PracticeService {
         marks.length + spoken.filter((task) => recorded.has(task.id)).length;
       const markable_tasks = written.length + spoken.length;
 
+      /**
+       * Whether there is anything to do in it at all yet.
+       *
+       * A listening block whose recordings have not been uploaded is not work the student can
+       * do, so it is not counted - neither as done nor as outstanding. The screen says the
+       * task is still being prepared.
+       */
+      const ready = inBlock.length > 0 || markable_tasks > 0;
+
       return {
         block,
         /** Shown and encouraged, but not counted - see OPTIONAL. */
         optional: PracticeService.OPTIONAL.includes(block),
+        /** How many recordings this block is still waiting for. */
+        awaiting_audio: awaitingAudio.length,
+        ready,
         /** How many texts, recordings or tasks it holds, for a block that asks no questions. */
         task_count: tasks.length,
         /**
@@ -194,9 +224,11 @@ export class PracticeService {
          * appeared would have been a plain untruth.
          */
         done:
-          inBlock.length > 0
-            ? answered.length === inBlock.length
-            : markable_tasks > 0 && answered_tasks === markable_tasks,
+          !ready
+            ? false
+            : inBlock.length > 0
+              ? answered.length === inBlock.length
+              : answered_tasks === markable_tasks,
       };
     }).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
@@ -219,8 +251,14 @@ export class PracticeService {
        * of the figure, so "3 of 3" can be reached by doing the work that can actually be
        * marked, and the optional two never leave a lesson looking unfinished.
        */
-      done_count: blocks.filter((entry) => !entry.optional && entry.done).length,
-      total_count: blocks.filter((entry) => !entry.optional).length,
+      done_count: blocks.filter(
+        (entry) => !entry.optional && entry.ready && entry.done,
+      ).length,
+      /**
+       * Only the blocks that can be worked on. A block still waiting for its recordings is
+       * left out of both halves, so "2 of 3" never means "and one you cannot finish".
+       */
+      total_count: blocks.filter((entry) => !entry.optional && entry.ready).length,
     };
   }
 }

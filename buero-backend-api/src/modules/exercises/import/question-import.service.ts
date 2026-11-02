@@ -191,6 +191,8 @@ export class QuestionImportService {
             criteria: element.criteria,
             minSentences: element.minSentences,
             maxSentences: element.maxSentences,
+            /** The author's rules for marking this one task. For the checker, never the student. */
+            checkerNote: element.checkerNote,
             /**
              * The file the row asked for, by name. Re-importing must not wipe a recording that
              * has already been uploaded, so `audioUrl` is deliberately not in this update.

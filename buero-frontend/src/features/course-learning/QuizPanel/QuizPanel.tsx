@@ -20,6 +20,11 @@ import type { MaterialAttachment } from '@/types/features/courseManagment/Materi
 import { getExerciseRenderer } from '@/features/course-learning/exercises/exerciseRenderers';
 import ReadingText from '@/features/course-learning/QuizPanel/ReadingText';
 import ListeningAudio from '@/features/course-learning/QuizPanel/ListeningAudio';
+import type { PracticeBlockId } from '@/api/practiceApi';
+import BlockHeader from '@/features/course-learning/PracticePanel/ui/BlockHeader';
+import GapPrompt from '@/features/course-learning/PracticePanel/ui/GapPrompt';
+import QuestionCard from '@/features/course-learning/PracticePanel/ui/QuestionCard';
+import { PRIMARY_BUTTON } from '@/features/course-learning/PracticePanel/ui/buttons';
 import { groupByElement } from '@/features/course-learning/QuizPanel/groupByElement';
 import {
   isAnswered,
@@ -45,6 +50,8 @@ export type QuizPanelProps = {
   attachments?: MaterialAttachment[];
   /** Narrows a practice to one of its blocks; absent for a quiz or the module test. */
   block?: string;
+  /** Drawn in the block's own header, so a practice shows one way back and not two. */
+  onBack?: () => void;
   onQuizResult?: (result: QuizResultSummary | null) => void;
   /**
    * Where to go once this is finished. A practice quiz leads to the next lesson, a
@@ -75,6 +82,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   quizMaterialTitle,
   attachments,
   block,
+  onBack,
   onQuizResult,
   onMoveOn,
   moveOnLabel: moveOnLabelOverride,
@@ -123,8 +131,18 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
 
   const total = questions.length;
   const answeredCount = Object.keys(feedback).length;
+  /** Grammatik, Lesen and Hören run through here; a module test and a plain quiz do not. */
+  const isPracticeBlock = block === 'grammatik' || block === 'lesen' || block === 'horen';
   /** Each text with the questions it is about, so the text can stay in view while they run. */
   const groups = useMemo(() => groupByElement(questions, elements), [questions, elements]);
+  /**
+   * Recordings the author has described but not uploaded. Their questions never arrive, so
+   * without this they would have nothing to be grouped with and would vanish from the screen.
+   */
+  const awaiting = useMemo(
+    () => elements.filter((element) => element.awaiting_audio),
+    [elements],
+  );
 
   /**
    * Opens the quiz without starting anything.
@@ -175,15 +193,25 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
             ]),
           ),
         );
-        const summary: QuizResultSummary = {
-          correct: previous.correct,
-          total: previous.total,
-          percent: Math.round(previous.score),
-          bestPercent: Math.round(previous.score),
-          justFinished: false,
-        };
-        setResult(summary);
-        onQuizResult?.(summary);
+        /**
+         * A result only for a sitting that reached the end.
+         *
+         * A half-answered block comes back now too, so that the three questions a student
+         * answered before they were interrupted are still answered when they return. It has
+         * no score yet, and announcing "3 of 8" as a result would tell them they had finished
+         * and done badly.
+         */
+        if (previous.completed_at) {
+          const summary: QuizResultSummary = {
+            correct: previous.correct,
+            total: previous.total,
+            percent: Math.round(previous.score),
+            bestPercent: Math.round(previous.score),
+            justFinished: false,
+          };
+          setResult(summary);
+          onQuizResult?.(summary);
+        }
       }
     } catch (err: unknown) {
       setStartError(getErrorMessage(err, t('quiz.startFailed')));
@@ -356,9 +384,23 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pb-6 sm:px-6">
-      <h2 className="pt-6 text-xl font-bold text-[var(--color-text-primary)] sm:text-2xl">
-        {quizMaterialTitle || t('quiz.title')}
-      </h2>
+      {/**
+       * A block of a practice gets the practice's own header, drawing included; a quiz or a
+       * module test is a material of its own and has no block to draw, so it keeps the plain
+       * heading it always had.
+       */}
+      {isPracticeBlock ? (
+        <BlockHeader
+          block={block as PracticeBlockId}
+          title={quizMaterialTitle || t('quiz.title')}
+          onBack={onBack}
+          progress={mode !== 'test' ? { answered: answeredCount, total } : undefined}
+        />
+      ) : (
+        <h2 className="pt-6 text-xl font-bold text-[var(--color-text-primary)] sm:text-2xl">
+          {quizMaterialTitle || t('quiz.title')}
+        </h2>
+      )}
 
       {outdated ? (
         <p className="mt-3 rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
@@ -366,7 +408,13 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         </p>
       ) : null}
 
-      <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+      <p
+        className={[
+          'mt-2 text-sm text-[var(--color-text-secondary)]',
+          /** Said once: the block's header already carries the count above. */
+          isPracticeBlock && mode !== 'test' ? 'sr-only' : '',
+        ].join(' ')}
+      >
         {mode !== 'test'
           ? t('quiz.answeredCount', { answered: answeredCount, total })
           : showPoints && passingPoints != null
@@ -379,9 +427,25 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       </p>
 
       {total === 0 ? (
-        <p className="py-12 text-center text-[var(--color-text-secondary)]">
-          {t('quiz.noQuestions')}
-        </p>
+        /**
+         * Nothing to answer. Which is not the same as nothing here.
+         *
+         * A listening block whose recordings have not been uploaded has its questions held
+         * back by the server, so this branch is what the student meets - and "there are no
+         * questions yet" would be the wrong thing to say about a task that exists and is
+         * simply not ready. The tasks are shown instead, each saying so for itself.
+         */
+        awaiting.length > 0 ? (
+          <div className="mt-6 space-y-6">
+            {awaiting.map((element) => (
+              <ListeningAudio key={element.id} element={element} />
+            ))}
+          </div>
+        ) : (
+          <p className="py-12 text-center text-[var(--color-text-secondary)]">
+            {t('quiz.noQuestions')}
+          </p>
+        )
       ) : (
         /**
          * The groups need air between them, and more of it than the questions inside a group
@@ -422,36 +486,38 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                     isAnswered(drafts[question.id]);
 
                   return (
-                    <li
-                      key={question.id}
-                      className={[
-                        'scroll-mt-20 rounded-2xl border-l-4 p-4 transition-colors sm:p-6',
-                        given
-                          ? given.correct
-                            ? 'border-[var(--color-success)] bg-[var(--color-success-soft)]'
-                            : 'border-[var(--color-error)] bg-[var(--color-error-soft)]'
-                          : 'border-transparent bg-[var(--color-surface-section)]',
-                      ].join(' ')}
-                    >
-                      <p className="flex flex-wrap items-center gap-x-3 text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-text-secondary)] uppercase">
-                        <span>{t('quiz.questionPosition', { current: position, total })}</span>
-                        {/**
+                    <li key={question.id} className="scroll-mt-20">
+                      <QuestionCard
+                        position={position}
+                        tone={given ? (given.correct ? 'correct' : 'wrong') : 'neutral'}
+                        /**
                          * Only where a weight actually differs from the rest. A task worth
                          * double should say so before it is answered, not once the points are
                          * already lost - and it is its own mark, so it reads as a property of
                          * the task rather than as more of the same sentence.
-                         */}
-                        {showPoints && question.points > 1 ? (
-                          <span className="rounded-full bg-[var(--color-dawn-pink-light)] px-2.5 py-0.5 text-[var(--color-burnt-siena-dark)]">
-                            {t('quiz.questionPoints', { count: question.points })}
-                          </span>
-                        ) : null}
-                      </p>
-                      <p className="mt-2 text-base font-bold text-[var(--color-text-primary)]">
-                        {question.prompt}
-                      </p>
-
-                      <div className="mt-4">
+                         */
+                        aside={
+                          showPoints && question.points > 1 ? (
+                            <span className="inline-block rounded-full bg-[var(--color-dawn-pink-light)] px-2.5 py-0.5 text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-burnt-siena-dark)] uppercase">
+                              {t('quiz.questionPoints', { count: question.points })}
+                            </span>
+                          ) : null
+                        }
+                        prompt={
+                          <>
+                            {/**
+                             * The big number beside the card is decorative, so the position is
+                             * said here instead. Without it a screen reader lost "question one
+                             * of eight" entirely, and the question arrived with no place in
+                             * the set.
+                             */}
+                            <span className="sr-only">
+                              {t('quiz.questionPosition', { current: position, total })}
+                            </span>
+                            <GapPrompt text={question.prompt} />
+                          </>
+                        }
+                      >
                         {Renderer ? (
                           <Renderer
                             question={question}
@@ -464,19 +530,19 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                             {t('quiz.unsupportedType')}
                           </p>
                         )}
-                      </div>
 
-                      {needsConfirm ? (
-                        <button
-                          type="button"
-                          onClick={() => void check(question)}
-                          className="mt-4 inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                        >
-                          {t('quiz.checkAnswer')}
-                        </button>
-                      ) : null}
+                        {needsConfirm ? (
+                          <button
+                            type="button"
+                            onClick={() => void check(question)}
+                            className={`${PRIMARY_BUTTON} mt-4`}
+                          >
+                            {t('quiz.checkAnswer')}
+                          </button>
+                        ) : null}
 
-                      {given ? <QuestionFeedback given={given} /> : null}
+                        {given ? <QuestionFeedback given={given} /> : null}
+                      </QuestionCard>
                     </li>
                   );
                 })}

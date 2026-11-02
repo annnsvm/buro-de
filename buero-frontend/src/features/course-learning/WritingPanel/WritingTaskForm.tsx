@@ -1,17 +1,31 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type {
-  CriterionVerdict,
-  WritingSubmitResponse,
-  WritingTaskResponse,
+import {
+  type WritingAssessment,
+  type WritingAttempt,
+  type WritingSubmitResponse,
+  type WritingTaskResponse,
 } from '@/api/writingApi';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
 import { usePersistentDraft } from '@/hooks/usePersistentDraft';
+import Folder from '../PracticePanel/ui/Folder';
+import QuestionCard from '../PracticePanel/ui/QuestionCard';
+import Segments from '../PracticePanel/ui/Segments';
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../PracticePanel/ui/buttons';
+import { readMarks } from './marks';
+import { parseWritingPrompt } from './prompt';
 
 export type WritingTaskFormProps = {
   task: WritingTaskResponse;
   /** The author's heading, when a block holds more than one task. */
   heading?: string | null;
+  /** Which task this is inside its block, for the number down the left of the card. */
+  position?: number;
+  /**
+   * Where a checked letter leads next. Offered beside "write it again", and only where there
+   * is somewhere to go: a writing material opened on its own has no practice to return to.
+   */
+  finish?: { label: string; onClick: () => void };
   /** Sends the letter. Which endpoint it reaches is the caller's business, not the form's. */
   onSubmit: (text: string) => Promise<WritingSubmitResponse>;
   /** Re-read the task after a graded submission: the attempts and the best result both move. */
@@ -36,6 +50,8 @@ export type WritingTaskFormProps = {
  * drift apart.
  */
 const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
+  position = 1,
+  finish,
   task,
   heading,
   onSubmit,
@@ -59,6 +75,8 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
     restored: draftRestored,
   } = usePersistentDraft<string>(draftKey, task.best?.text ?? '');
   const [result, setResult] = useState<WritingSubmitResponse | null>(null);
+  /** So "write it again" puts the student back in the box rather than next to it. */
+  const box = useRef<HTMLTextAreaElement | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,6 +105,12 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
   const graded = result?.status === 'graded' ? result : null;
   const best = task.best;
   /** Whatever is newest: the attempt just made, or the best one restored on opening. */
+  /**
+   * The allowance is spent and will not refill. Told apart from every other reason the box is
+   * closed: a pause ends by itself, a tripped budget comes back next month, this one does not.
+   */
+  const usedUp = !task.can_submit && task.blocked_reason === 'used_up';
+
   const shown =
     graded ??
     (best
@@ -95,45 +119,88 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
 
   return (
     <div>
-      {heading ? (
-        <h3 className="text-[1.05rem] font-semibold text-[var(--color-text-primary)]">
-          {heading}
-        </h3>
-      ) : null}
-
-      <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-[var(--color-text-primary)]">
-        {task.task}
-      </p>
+      <QuestionCard
+        position={position}
+        prompt={heading ?? <Prompt task={task.task} />}
+      >
+        {heading ? <Prompt task={task.task} /> : null}
+      </QuestionCard>
 
       {/**
        * The rubric, in full, before writing. It is the same wording the grader is given and the
        * same wording the result quotes back, so nothing can be lost against a rule the student
        * was not shown.
        */}
-      <section className="mt-6 rounded-2xl bg-[var(--color-surface-section)] p-5">
-        <h4 className="text-sm font-bold text-[var(--color-text-primary)]">
-          {t('writing.criteriaTitle', { count: task.max_score })}
-        </h4>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-[var(--color-text-secondary)]">
+      <Folder
+        className="mt-6"
+        tab={t('writing.criteriaTitle', { count: task.max_score })}
+      >
+        <ul className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
           {task.criteria.map((criterion) => (
-            <li key={criterion}>{criterion}</li>
+            <li
+              key={criterion}
+              className="flex min-h-10 items-start gap-3 py-1 text-[0.95rem] text-[var(--color-text-primary)]"
+            >
+              {/** A mark not yet earned: the same bar the result fills in. */}
+              <span
+                aria-hidden
+                className="mt-2 h-2 w-3.5 shrink-0 rounded-sm bg-[var(--color-dawn-pink-dark)]/45"
+              />
+              <span>{criterion}</span>
+            </li>
           ))}
-        </ol>
-      </section>
+        </ul>
+      </Folder>
 
-      <label className="mt-6 block">
-        <span className="text-sm font-semibold text-[var(--color-text-primary)]">
-          {t('writing.yourLetter')}
-        </span>
-        <textarea
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          rows={12}
-          disabled={sending || !task.can_submit}
-          placeholder={t('writing.placeholder')}
-          className="mt-2 block w-full rounded-xl border border-[var(--color-border-default)] px-4 py-3 text-sm leading-relaxed outline-none disabled:opacity-60"
-        />
-      </label>
+      {/**
+        * When the allowance is spent the box goes away and the history takes its place.
+        *
+        * Leaving an empty box that refuses everything sent to it would be worse than saying so:
+        * the student would keep rewriting and keep being turned away. What is left is their own
+        * versions and what the checker said about each, which is the part that still teaches.
+        */}
+      {usedUp ? (
+        <section className="mt-6 rounded-2xl bg-[var(--color-surface-section)] p-5">
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+            {t('writing.allChecksUsed')}
+          </p>
+        </section>
+      ) : (
+        <label className="mt-6 block">
+          <span className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+            {t('writing.yourLetter')}
+          </span>
+          <textarea
+            ref={box}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            rows={12}
+            disabled={sending || !task.can_submit}
+            /**
+              * No placeholder.
+              *
+              * It read "Betreff: … / Sehr geehrte Frau …", which told every student their text
+              * had to be a formal letter. A good third of the tasks are not: a message in a
+              * group chat, a forum post, a note on the fridge, a shop review, an advert for the
+              * neighbours' chat. What the text should look like is in the task, in the author's
+              * words, and an empty box does not argue with it.
+              */
+            /**
+              * Ruled like a sheet of paper, and set in a monospaced face.
+              *
+              * Both are for proof-reading German rather than for decoration: the ruling gives
+              * the eye a line to follow in a language whose sentences run long, and a fixed
+              * width makes a missing space or a doubled letter visible. The lines are painted
+              * as a background on a fixed line-height, so they stay under the text as it grows.
+              */
+            style={{
+              backgroundImage:
+                'repeating-linear-gradient(transparent 0 27px, var(--color-surface-section) 27px 28px)',
+            }}
+            className="mt-3 block w-full resize-y rounded-[18px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] py-3.5 pr-5 pl-8 font-mono text-[0.95rem] leading-7 text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] disabled:opacity-60"
+          />
+        </label>
+      )}
 
       {/**
         * Said out loud, because the whole point is that the student can trust it. Silence after
@@ -145,8 +212,6 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
         </p>
       ) : null}
 
-      <AttemptLine task={task} />
-
       {error ? (
         <p className="mt-4 text-sm text-[var(--color-error)]" role="alert">
           {error}
@@ -155,40 +220,132 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
 
       {result && result.status !== 'graded' ? <Refusal result={result} /> : null}
 
-      <button
-        type="button"
-        onClick={() => void send()}
-        disabled={sending || !text.trim() || !task.can_submit}
-        className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[220px]"
-      >
-        {sending ? t('writing.checking') : t('writing.check')}
-      </button>
+      {usedUp ? null : (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+          <AttemptLine task={task} />
+          <button
+            type="button"
+            onClick={() => void send()}
+            /** Dead while a check is running, which is half of the double-click guard. */
+            disabled={sending || !text.trim() || !task.can_submit}
+            className={`${PRIMARY_BUTTON} w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[220px]`}
+          >
+            {sending ? t('writing.checking') : t('writing.check')}
+          </button>
+        </div>
+      )}
 
       {shown ? (
         <Result
           score={shown.score}
           maxScore={shown.max_score}
-          criteria={shown.assessment.criteria}
+          assessment={shown.assessment}
           criteriaText={task.criteria}
           justGraded={Boolean(graded)}
           repeated={graded?.repeated ?? false}
+          /**
+           * Offered only when there is a check left to spend. With the allowance gone the box
+           * is not on screen at all, and a button that scrolls to nothing is worse than none.
+           */
+          finish={finish}
+          onWriteAgain={
+            usedUp
+              ? undefined
+              : () => {
+                  box.current?.focus();
+                  box.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+          }
         />
+      ) : null}
+
+      {/** Every earlier version, so a student can see what they changed and what it earned. */}
+      <History attempts={task.attempts ?? []} criteriaText={task.criteria} open={usedUp} />
+    </div>
+  );
+};
+
+/**
+ * The task as its author wrote it.
+ *
+ * Her files give it in four labelled parts, and the labels are hers: the situation, what to
+ * write, what the text must contain, and the words to lean on. Shown as one paragraph, the
+ * third of those - the part a mark actually depends on - was the easiest to skim past. A task
+ * written without the labels is shown whole, exactly as before.
+ */
+const Prompt: React.FC<{ task: string }> = ({ task }) => {
+  const { sections, props, plain } = parseWritingPrompt(task);
+
+  if (sections.length === 0 && props.length === 0) {
+    return (
+      <p className="mt-3 leading-relaxed whitespace-pre-line text-[var(--color-text-primary)]">
+        {task}
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-4 flex flex-col gap-4">
+      {plain ? (
+        <p className="leading-relaxed font-normal whitespace-pre-line text-[var(--color-text-primary)]">
+          {plain}
+        </p>
+      ) : null}
+
+      {sections.map((section, index) => (
+        <div key={section.label}>
+          <h4 className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+            {section.label}
+          </h4>
+          <p
+            className={[
+              'mt-1.5 leading-relaxed whitespace-pre-line',
+              /**
+               * The first part is the situation; the rest is what to do about it.
+               *
+               * The weight is set on both, not only on the first: the card around them is
+               * styled semibold for a one-line question, and without saying so the rest of a
+               * four-part task would inherit it and read as four headings.
+               */
+              index === 0
+                ? 'font-semibold text-[var(--color-text-primary)]'
+                : 'font-normal text-[var(--color-text-primary)]',
+            ].join(' ')}
+          >
+            {section.text}
+          </p>
+        </div>
+      ))}
+
+      {/**
+       * The words to lean on, as separate pills rather than one line joined by middots.
+       * They are a list of things to use, and a student picking one reads them one at a time.
+       */}
+      {props.length > 0 ? (
+        <ul className="flex flex-wrap gap-2">
+          {props.map((word) => (
+            <li
+              key={word}
+              className="rounded-2xl bg-[var(--color-burnt-siena-lightest)] px-3 py-1.5 font-mono text-sm font-normal text-[var(--color-text-primary)]"
+            >
+              {word}
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );
 };
 
-/** How many goes are left, said before the button rather than after it is pressed. */
+/**
+ * How many checks are left, out of how many there were.
+ *
+ * Both numbers, because the allowance does not refill: "two left" means something different when
+ * there were three to begin with than when a teacher granted five. It is said before the button
+ * rather than after it is pressed.
+ */
 const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
   const { t } = useTranslation();
-
-  if (task.can_submit) {
-    return (
-      <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-        {t('writing.attemptsLeft', { count: task.attempts_left })}
-      </p>
-    );
-  }
 
   if (task.blocked_reason === 'budget') {
     return (
@@ -198,19 +355,57 @@ const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
     );
   }
 
+  /** Nothing to count down to; the sentence above the history says what happened. */
+  if (task.blocked_reason === 'used_up') return null;
+
   const retry = task.retry_at ? new Date(task.retry_at) : null;
+
   return (
-    <p className="mt-2 text-xs text-[var(--color-text-primary)]">
-      {retry
-        ? t('writing.comeBackAt', {
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--color-text-secondary)]">
+      {/**
+       * The allowance as dots, spent ones filled.
+       *
+       * The same shape the hub uses for blocks and the result uses for criteria, so "how many
+       * of these have I used" reads the same way everywhere. The sentence beside it carries the
+       * meaning; the dots are there to be counted at a glance.
+       */}
+      <Segments
+        filled={Math.max(0, task.attempts_per_window - task.attempts_left)}
+        total={task.attempts_per_window}
+        size="sm"
+      />
+      {t('writing.checksLeft', {
+        left: task.attempts_left,
+        total: task.attempts_per_window,
+      })}
+      {/**
+       * The pause, said on the same line. It is seconds away, so it does not deserve a block of
+       * its own - and it must not read as "you have run out", which is what a bare "come back
+       * later" sounded like.
+       */}
+      {!task.can_submit && task.blocked_reason === 'cooldown' && retry ? (
+        <span className="ml-2 text-[var(--color-text-primary)]">
+          {t('writing.waitASecond', {
+            time: retry.toLocaleTimeString(undefined, {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            }),
+          })}
+        </span>
+      ) : null}
+      {!task.can_submit && task.blocked_reason === 'daily' && retry ? (
+        <span className="ml-2 text-[var(--color-text-primary)]">
+          {t('writing.comeBackAt', {
             time: retry.toLocaleString(undefined, {
               hour: '2-digit',
               minute: '2-digit',
               day: 'numeric',
               month: 'long',
             }),
-          })
-        : t('writing.noAttemptsLeft')}
+          })}
+        </span>
+      ) : null}
     </p>
   );
 };
@@ -222,9 +417,34 @@ const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
  * student nothing - saying so plainly is the difference between a nudge and a punishment.
  */
 const Refusal: React.FC<{
-  result: Extract<WritingSubmitResponse, { status: 'needs_more' | 'blocked' }>;
+  result: Exclude<WritingSubmitResponse, { status: 'graded' }>;
 }> = ({ result }) => {
   const { t } = useTranslation();
+
+  /**
+   * The checker answered with something we could not read, twice.
+   *
+   * Our fault, and said as our fault: the student keeps the check and there is nothing for them
+   * to fix. Reporting it as a problem with their text would send them rewriting a letter that
+   * was never looked at.
+   */
+  if (result.status === 'unavailable') {
+    return (
+      <div className="mt-4 rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm">
+        <p className="font-semibold text-[var(--color-text-primary)]">
+          {t('writing.unavailable')}
+        </p>
+        {/**
+          * Neutral on purpose. The old line said "write more and send again", which is true of a
+          * text that was too short and false of one that was copied, was in the wrong language,
+          * or was never looked at. Each refusal above already says what to do.
+          */}
+        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+          {t('writing.checkNotSpent')}
+        </p>
+      </div>
+    );
+  }
 
   if (result.status === 'needs_more') {
     return (
@@ -237,7 +457,7 @@ const Refusal: React.FC<{
           })}
         </p>
         <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-          {t('writing.attemptNotSpent')}
+          {t('writing.checkNotSpent')}
         </p>
       </div>
     );
@@ -262,65 +482,365 @@ const Refusal: React.FC<{
   );
 };
 
-/** The mark, and one line per criterion saying what earned or lost it. */
+/**
+ * The mark, what to fix, and one line per criterion that did not earn its point.
+ *
+ * An awarded criterion is a tick and nothing else. The checker is told not to explain a point it
+ * gave, and the screen would have no room for it anyway: five sentences saying "yes, this was
+ * fine" bury the one that says what went wrong.
+ */
 const Result: React.FC<{
   score: number;
   maxScore: number;
-  criteria: CriterionVerdict[];
+  assessment: WritingAssessment;
   criteriaText: string[];
   justGraded: boolean;
   repeated: boolean;
-}> = ({ score, maxScore, criteria, criteriaText, justGraded, repeated }) => {
+  /** Offered only while a check is left to spend; the box is gone otherwise. */
+  onWriteAgain?: () => void;
+  /** Where to go once the letter is behind them, when there is anywhere to go. */
+  finish?: { label: string; onClick: () => void };
+}> = ({
+  score,
+  maxScore,
+  assessment,
+  criteriaText,
+  justGraded,
+  repeated,
+  onWriteAgain,
+  finish,
+}) => {
   const { t } = useTranslation();
+  const marks = readMarks(assessment);
+  const corrections = assessment.corrections ?? [];
+  const earned = marks.filter((mark) => mark.earned);
+  const lost = marks.filter((mark) => !mark.earned);
+  const full = maxScore > 0 && score === maxScore;
 
   return (
-    <section
-      className="mt-8 rounded-2xl border border-[var(--color-border-default)] p-5"
-      role="status"
-      aria-live="polite"
-    >
-      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-        {justGraded ? t('writing.yourResult') : t('writing.bestResult')}
-      </p>
-      <p className="mt-1 text-3xl font-bold tabular-nums text-[var(--color-primary)]">
-        {t('writing.pointsOf', { score, total: maxScore })}
-      </p>
+    <section className="mt-8" role="status" aria-live="polite">
+      {/**
+       * The mark as a stamp on a sheet.
+       *
+       * It is the one number the student came back for, so it is read before anything else and
+       * from across the room. The sentence beside it is the checker's own praise - the first
+       * thing it found worth saying - rather than a label the screen made up.
+       */}
+      <header className="flex flex-col items-center gap-6 rounded-3xl bg-[var(--color-surface-section)] p-7 sm:flex-row sm:items-center">
+        <span className="flex size-32 shrink-0 -rotate-6 flex-col items-center justify-center rounded-full border-[3px] border-[var(--color-burnt-siena-dark)] bg-[var(--color-neutral-white)]">
+          <span className="font-[family-name:var(--font-heading)] text-[2.6rem] leading-none font-bold tracking-[-0.04em] text-[var(--color-burnt-siena-dark)] tabular-nums">
+            {score}/{maxScore}
+          </span>
+          <span className="mt-1 text-[0.65rem] font-bold tracking-[0.18em] text-[var(--color-burnt-siena-dark)] uppercase">
+            {t('writing.pointsStamp')}
+          </span>
+        </span>
 
-      {/* Sending the same text again is answered from the record, not paid for twice. */}
-      {repeated ? (
-        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-          {t('writing.repeated')}
-        </p>
+        <div className="min-w-0 text-center sm:text-left">
+          <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+            {justGraded ? t('writing.yourResult') : t('writing.bestResult')}
+          </p>
+          <h4 className="mt-1.5 font-[family-name:var(--font-heading)] text-[1.75rem] leading-tight font-bold tracking-[-0.03em] text-[var(--color-text-primary)]">
+            {full ? t('writing.allPoints') : t('writing.checked')}
+          </h4>
+          {assessment.praise ? (
+            <p className="mt-2 leading-relaxed text-[var(--color-text-primary)]">
+              {assessment.praise}
+            </p>
+          ) : null}
+          {/* Sending the same text again is answered from the record, not paid for twice. */}
+          {repeated ? (
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              {t('writing.repeated')}
+            </p>
+          ) : null}
+        </div>
+      </header>
+
+      <MarkList
+        title={t('writing.earned')}
+        marks={earned}
+        criteriaText={criteriaText}
+        earned
+        score={score}
+        maxScore={maxScore}
+      />
+
+      {/** The criteria that cost a point, each with the sentence that says why. */}
+      {lost.length > 0 ? (
+        <MarkList title={t('writing.notEarned')} marks={lost} criteriaText={criteriaText} />
       ) : null}
 
-      <ul className="mt-4 space-y-3">
-        {[...criteria]
-          .sort((a, b) => a.id - b.id)
-          .map((verdict) => (
-            <li key={verdict.id} className="flex gap-3 text-sm">
-              <span
+      {/**
+       * What to fix, as wrong against right.
+       *
+       * The part a mark on its own cannot give. "You lost a point on word order" leaves the
+       * student to find which words; this names them.
+       */}
+      {corrections.length > 0 ? (
+        <section className="mt-7">
+          <h5 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+            {t('writing.whatToFix')}
+          </h5>
+          <ul className="mt-3 flex flex-col gap-4 rounded-[18px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] px-[22px] py-5">
+            {corrections.map((fix) => (
+              <li key={`${fix.wrong}-${fix.right}`}>
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[var(--color-text-secondary)] line-through decoration-[var(--color-accent-primary)] decoration-2">
+                    {fix.wrong}
+                  </span>
+                  <span className="text-[var(--color-text-secondary)]" aria-hidden>
+                    →
+                  </span>
+                  <span className="rounded-md bg-[var(--color-burnt-siena-lighter)] px-2 py-0.5 font-mono font-medium text-[var(--color-text-primary)]">
+                    {fix.right}
+                  </span>
+                </p>
+                {fix.why ? (
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{fix.why}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/**
+       * Whose comment this is, said plainly.
+       *
+       * It was going to be headed "the teacher's comment", which would have told the student
+       * the author read their letter herself. She does not - the checker writes it against her
+       * criteria - and a student who believed otherwise would take a disagreement about a mark
+       * to her as a personal slight.
+       */}
+      {assessment.summary ? (
+        <section className="mt-7 flex gap-3.5">
+          <span
+            aria-hidden
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-primary)] font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--color-text-on-accent)]"
+          >
+            b
+          </span>
+          <div className="min-w-0">
+            <p className="text-[0.8rem] font-semibold text-[var(--color-text-secondary)]">
+              {t('writing.checkComment')}
+            </p>
+            <p className="mt-0.5 leading-relaxed text-[var(--color-text-primary)]">
+              {assessment.summary}
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {finish || onWriteAgain ? (
+        <div className="mt-7 flex flex-wrap gap-3">
+          {/** On first, because once a letter is marked most students are done with it. */}
+          {finish ? (
+            <button type="button" onClick={finish.onClick} className={PRIMARY_BUTTON}>
+              {finish.label}
+            </button>
+          ) : null}
+          {onWriteAgain ? (
+            <button type="button" onClick={onWriteAgain} className={SECONDARY_BUTTON}>
+              {t('writing.writeAgain')}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+};
+
+/**
+ * One list of criteria, earned or lost.
+ *
+ * Two columns, because a criterion is a short line and a single column of seven left the eye
+ * travelling further than the text was worth. The tick is a plain stroke rather than a tick in
+ * a circle: a circle reads as a control to press.
+ */
+const MarkList: React.FC<{
+  title: string;
+  marks: ReturnType<typeof readMarks>;
+  criteriaText: string[];
+  earned?: boolean;
+  score?: number;
+  maxScore?: number;
+}> = ({ title, marks, criteriaText, earned = false, score, maxScore }) => {
+  const { t } = useTranslation();
+  if (marks.length === 0) return null;
+
+  return (
+    <section className="mt-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h5 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+          {title}
+        </h5>
+        {earned && score != null && maxScore != null ? (
+          <span className="flex items-center gap-3">
+            <Segments filled={score} total={maxScore} />
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              {t('writing.pointsOf', { score, total: maxScore })}
+            </span>
+          </span>
+        ) : null}
+      </div>
+
+      <ul className="mt-3 grid gap-x-8 gap-y-1 sm:grid-cols-2">
+        {marks.map((mark) => (
+          <li key={mark.n} className="flex min-h-10 items-start gap-3 py-1">
+            {earned ? (
+              <svg
                 aria-hidden
-                className={[
-                  'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-                  verdict.met
-                    ? 'bg-[var(--color-success-soft)] text-[var(--color-success-text)]'
-                    : 'bg-[var(--color-error-soft)] text-[var(--color-error)]',
-                ].join(' ')}
+                viewBox="0 0 24 24"
+                className="mt-1 size-[18px] shrink-0"
+                fill="none"
+                stroke="var(--color-accent-primary)"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                {verdict.met ? '✓' : '-'}
+                <path d="M5 13l4.5 4.5L19 7" />
+              </svg>
+            ) : (
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                className="mt-1 size-[18px] shrink-0"
+                fill="none"
+                stroke="var(--color-text-secondary)"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+              >
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            )}
+            <span className="min-w-0 text-[0.95rem]">
+              <span className="text-[var(--color-text-primary)]">
+                {criteriaText[mark.n - 1] ?? ''}
               </span>
-              <span className="min-w-0">
-                <span className="block font-medium text-[var(--color-text-primary)]">
-                  {criteriaText[verdict.id - 1] ?? ''}
+              {/* Only when the point was lost. A tick needs no sentence beneath it. */}
+              {mark.comment ? (
+                <span className="mt-0.5 block text-sm text-[var(--color-text-secondary)]">
+                  {mark.comment}
                 </span>
-                <span className="mt-0.5 block text-[var(--color-text-secondary)]">
-                  {verdict.note}
-                </span>
-              </span>
-            </li>
-          ))}
+              ) : null}
+            </span>
+          </li>
+        ))}
       </ul>
     </section>
+  );
+};
+
+/**
+ * Every version the student sent, and what the checker said about each.
+ *
+ * Folded away while they still have checks - the current result is what matters then - and open
+ * once the allowance is spent, because at that point this is the whole of what they have left to
+ * work from. What changed between the second version and the third is the part that teaches.
+ */
+const History: React.FC<{
+  attempts: WritingAttempt[];
+  criteriaText: string[];
+  open: boolean;
+}> = ({ attempts, criteriaText, open }) => {
+  const { t } = useTranslation();
+
+  /** One attempt is already on screen as the result; a history of it would be the same thing. */
+  if (attempts.length < 2) return null;
+
+  return (
+    <details
+      open={open}
+      className="mt-9 border-t border-[var(--color-dawn-pink-dark)]/35 pt-7"
+    >
+      <summary className="cursor-pointer font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+        {t('writing.earlierAttempts', { count: attempts.length })}
+      </summary>
+
+      <ol className="mt-4 flex flex-col gap-6">
+        {attempts.map((attempt, index) => {
+          const marks = readMarks(attempt.assessment);
+          const lost = marks.filter((mark) => !mark.earned);
+          return (
+            <li key={attempt.submitted_at}>
+              <Folder
+                tab={
+                  <span className="flex items-center gap-3">
+                    <span>
+                      {t('writing.attemptNumber', { number: attempts.length - index })}
+                    </span>
+                    <Segments
+                      filled={attempt.score}
+                      total={attempt.max_score}
+                      size="sm"
+                    />
+                    <span className="font-[family-name:var(--font-heading)] text-[0.95rem] font-bold text-[var(--color-burnt-siena-dark)] tabular-nums">
+                      {attempt.score}/{attempt.max_score}
+                    </span>
+                  </span>
+                }
+              >
+                {/**
+                 * The student's own text, ruled like the sheet they wrote it on and marked
+                 * down the left as something quoted back rather than something to edit.
+                 */}
+                <pre
+                  style={{
+                    backgroundImage:
+                      'repeating-linear-gradient(transparent 0 27px, var(--color-surface-section) 27px 28px)',
+                  }}
+                  className="overflow-x-auto border-l-[1.5px] border-[var(--color-burnt-siena-light)] py-0.5 pl-4 font-mono text-[0.9rem] leading-7 whitespace-pre-wrap text-[var(--color-text-primary)]"
+                >
+                  {attempt.text}
+                </pre>
+
+                {attempt.assessment.summary ? (
+                  <p className="mt-4 leading-relaxed text-[var(--color-text-primary)]">
+                    {attempt.assessment.summary}
+                  </p>
+                ) : null}
+
+                {lost.length > 0 ? (
+                  <>
+                    <p className="mt-5 text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+                      {t('writing.notEarned')}
+                    </p>
+                    <ul className="mt-2 flex flex-col gap-1.5">
+                      {lost.map((mark) => (
+                        <li key={mark.n} className="flex items-start gap-2.5 text-sm">
+                          <svg
+                            aria-hidden
+                            viewBox="0 0 24 24"
+                            className="mt-1 size-4 shrink-0"
+                            fill="none"
+                            stroke="var(--color-text-secondary)"
+                            strokeWidth="2.4"
+                            strokeLinecap="round"
+                          >
+                            <path d="M6 6l12 12M18 6L6 18" />
+                          </svg>
+                          <span className="min-w-0">
+                            <span className="font-semibold text-[var(--color-text-primary)]">
+                              {criteriaText[mark.n - 1] ?? ''}
+                            </span>
+                            {mark.comment ? (
+                              <span className="text-[var(--color-text-secondary)]">
+                                {` - ${mark.comment}`}
+                              </span>
+                            ) : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </Folder>
+            </li>
+          );
+        })}
+      </ol>
+    </details>
   );
 };
 

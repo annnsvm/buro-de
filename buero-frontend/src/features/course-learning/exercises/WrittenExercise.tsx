@@ -19,9 +19,11 @@ const WrittenExercise: React.FC<ExerciseRendererProps> = ({
   const value = Array.isArray(answer) ? (answer[0] ?? '') : answer;
   const isSentence = question.type === 'text_input';
   const inputId = `${question.id}-answer`;
+  const FIELD =
+    'w-full rounded-[14px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] px-4 py-3 font-mono text-[1.05rem] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] disabled:opacity-70';
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <label htmlFor={inputId} className="sr-only">
         {question.prompt}
       </label>
@@ -35,7 +37,7 @@ const WrittenExercise: React.FC<ExerciseRendererProps> = ({
           autoComplete="off"
           spellCheck={false}
           placeholder={t('quiz.writeSentence')}
-          className="w-full rounded-xl border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-4 py-3 text-[var(--color-text-primary)] outline-none focus:border-[var(--color-primary)] disabled:opacity-70"
+          className={`${FIELD} leading-relaxed`}
         />
       ) : (
         <input
@@ -47,10 +49,10 @@ const WrittenExercise: React.FC<ExerciseRendererProps> = ({
           autoComplete="off"
           spellCheck={false}
           placeholder={t('quiz.writeWord')}
-          className="w-full rounded-xl border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-4 py-3 text-[var(--color-text-primary)] outline-none focus:border-[var(--color-primary)] disabled:opacity-70"
+          className={`${FIELD} min-h-13`}
         />
       )}
-      <p className="text-xs text-[var(--color-text-secondary)]">
+      <p className="text-[0.8rem] text-[var(--color-text-secondary)]">
         {t('quiz.umlautHint')}
       </p>
     </div>

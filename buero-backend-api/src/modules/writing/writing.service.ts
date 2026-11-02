@@ -14,9 +14,10 @@ import {
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CourseMaterialService } from '../course-materials/course-material.service';
-import { decideAttempt, ATTEMPTS_PER_TASK } from './attempt-policy';
-import { gradeLetter } from './grade-letter';
-import { preCheckLetter, requiresLetterShape } from './letter-shape';
+import { allowanceFor, decideAttempt } from './attempt-policy';
+import { markWriting, UnreadableMarkingError } from './mark-writing';
+import { readLetterShape, requiresLetterShape } from './letter-shape';
+import { screenSubmission } from './screen-submission';
 import {
   InvalidWritingTaskError,
   parseWritingTask,
@@ -33,6 +34,11 @@ import {
  */
 type TaskSource = {
   task: WritingTask;
+  /**
+   * The author's instructions for whoever marks this one task. Null for a writing material of
+   * its own, which has no such column. It goes to the checker and never to the student.
+   */
+  checkerNote: string | null;
   /** The material the attempt belongs to: the writing material, or the practice holding it. */
   materialId: string;
   /** Null for a writing material of its own; the task's id inside a practice block. */
@@ -123,10 +129,8 @@ export class WritingService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const decision = decideAttempt(
-      await this.countAttempts(userId, source),
-      new Date(),
-    );
+    const counts = await this.countAttempts(userId, source);
+    const decision = decideAttempt(counts, new Date());
     const best = submissions.reduce<(typeof submissions)[number] | null>(
       (found, row) => (found === null || row.score > found.score ? row : found),
       null,
@@ -139,9 +143,22 @@ export class WritingService {
       max_sentences: task.maxSentences,
       max_score: task.criteria.length,
       attempts_used: submissions.length,
-      attempts_per_window: ATTEMPTS_PER_TASK,
+      /**
+       * The student's own allowance: what the course grants plus what a teacher added. It was a
+       * constant, which meant a course set to five checks, or a student granted two more, were
+       * both told they had three.
+       */
+      attempts_per_window: counts.allowedForTask,
       can_submit: decision.allowed,
-      attempts_left: decision.allowed ? decision.attemptsLeft + 1 : 0,
+      /**
+       * How many checks are left, which is a fact about the allowance and not about whether this
+       * second happens to be a good one to send in.
+       *
+       * It used to be read off the decision, so a student inside the thirty-second pause was
+       * told they had none left - and the screen hides the box when that is true. Waiting half a
+       * minute is not the same as running out.
+       */
+      attempts_left: Math.max(0, counts.allowedForTask - submissions.length),
       blocked_reason: decision.allowed ? null : decision.reason,
       retry_at: decision.allowed ? null : (decision.retryAt?.toISOString() ?? null),
       /** The best attempt counts, as it does for quizzes. */
@@ -153,6 +170,21 @@ export class WritingService {
             submitted_at: best.createdAt.toISOString(),
           }
         : null,
+      /**
+       * Every attempt, newest first, with what the checker said about each.
+       *
+       * The allowance does not refill, so when it is spent this history is what the student has
+       * left to work from - their own three versions and the three answers. Sending them away
+       * with only the best score would throw away the part that teaches: what they changed
+       * between the second version and the third, and what the checker made of it.
+       */
+      attempts: submissions.map((row) => ({
+        score: row.score,
+        max_score: row.maxScore,
+        assessment: row.assessment,
+        text: row.text,
+        submitted_at: row.createdAt.toISOString(),
+      })),
     };
   }
 
@@ -202,25 +234,34 @@ export class WritingService {
     }
 
     /**
-     * Length is settled before the limits are touched: a letter that is too short is a request
-     * to write more, not a failed attempt, so it must not cost the student one.
+     * Everything that can be settled without the model is settled here, before the allowance is
+     * touched. None of it costs the student one of their three checks: a text too short is a
+     * request to write more, not a failed attempt, and a text that was copied or is in the wrong
+     * language could never have been marked usefully.
+     *
+     * A text identical to an earlier one was already answered above, from the record. What this
+     * catches is the near-identical: the same letter with a comma moved, which a marker would
+     * not see as a change.
      */
-    /**
-     * Whether a salutation and a closing are required is the rubric's to say, not ours. A task
-     * asking for a story or a forum post used to be refused for not opening "Sehr geehrte
-     * Frau …", which is a rule its author never wrote.
-     */
-    const pre = preCheckLetter(
+    const shape = readLetterShape(
       trimmed,
       task.minSentences,
       task.maxSentences,
       requiresLetterShape(task.criteria),
     );
-    if (!pre.ok) {
+    const refusal = screenSubmission({
+      text: trimmed,
+      shape,
+      minSentences: task.minSentences,
+      previousTexts: await this.previousTexts(userId, source),
+      sampleAnswer: task.modelAnswer ?? null,
+      task: task.task,
+    });
+    if (refusal) {
       return {
         status: 'needs_more' as const,
-        reason: pre.reason,
-        body_sentences: pre.shape.bodySentences,
+        reason: refusal.reason,
+        body_sentences: shape.bodySentences,
         min_sentences: task.minSentences,
         max_sentences: task.maxSentences,
         attempts_left: await this.attemptsLeft(userId, source),
@@ -259,15 +300,27 @@ export class WritingService {
     }
 
     this.client ??= new Anthropic();
-    const result = await gradeLetter(task, trimmed, this.client);
-    if (result.status === 'rejected') {
-      /** The shape check already passed, so this cannot normally happen. */
+    let result: Awaited<ReturnType<typeof markWriting>>;
+    try {
+      result = await markWriting(
+        {
+          task: task.task,
+          criteria: task.criteria,
+          checkerNote: source.checkerNote,
+          sampleAnswer: task.modelAnswer ?? null,
+        },
+        trimmed,
+        this.client,
+      );
+    } catch (error: unknown) {
+      /**
+       * An answer we could not read, twice. That is our fault, so the student keeps the check
+       * and is asked to come back - the one failure that must not be charged for.
+       */
+      if (!(error instanceof UnreadableMarkingError)) throw error;
+      this.logger.error(`Writing check unreadable: ${error.message}`);
       return {
-        status: 'needs_more' as const,
-        reason: result.reason,
-        body_sentences: pre.shape.bodySentences,
-        min_sentences: task.minSentences,
-        max_sentences: task.maxSentences,
+        status: 'unavailable' as const,
         attempts_left: await this.attemptsLeft(userId, source),
       };
     }
@@ -280,10 +333,14 @@ export class WritingService {
         text: trimmed,
         textHash: hash,
         score: result.score,
-        maxScore: task.criteria.length,
-        assessment: result.assessment as unknown as Prisma.InputJsonObject,
+        maxScore: result.maxScore,
+        assessment: result.marked as unknown as Prisma.InputJsonObject,
+        /** The model with the tokens: the same count costs twice as much on one as on another. */
+        model: result.usage.model,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
+        cacheWriteTokens: result.usage.cacheWriteTokens,
+        cacheReadTokens: result.usage.cacheReadTokens,
       },
     });
 
@@ -298,8 +355,8 @@ export class WritingService {
       status: 'graded' as const,
       repeated: false,
       score: result.score,
-      max_score: task.criteria.length,
-      assessment: result.assessment,
+      max_score: result.maxScore,
+      assessment: result.marked,
       attempts_left: decision.attemptsLeft,
     };
   }
@@ -330,6 +387,8 @@ export class WritingService {
     }
     return {
       task: parseWritingTask(material.content),
+      /** A material of its own has no such column; the rubric is all the checker gets. */
+      checkerNote: null,
       materialId: material.id,
       elementId: null,
       title: null,
@@ -437,6 +496,7 @@ export class WritingService {
     minSentences: number | null;
     maxSentences: number | null;
     sampleAnswer: string | null;
+    checkerNote: string | null;
   }): TaskSource {
     return {
       task: parseWritingTask({
@@ -447,6 +507,8 @@ export class WritingService {
         criteria: element.criteria,
         ...(element.sampleAnswer && { modelAnswer: element.sampleAnswer }),
       }),
+      /** The author's rules for marking this one task. For the checker, never the student. */
+      checkerNote: element.checkerNote,
       materialId: element.materialId,
       elementId: element.id,
       title: element.title,
@@ -466,24 +528,61 @@ export class WritingService {
       : { userId, courseMaterialId: source.materialId, practiceElementId: null };
   }
 
+  /**
+   * Every text this student has already sent for this task.
+   *
+   * Used to tell a rewrite from a resend. Read in full rather than counted, because the
+   * comparison ignores punctuation and spacing - a hash of the exact text would miss the letter
+   * that came back with one comma moved.
+   */
+  private async previousTexts(
+    userId: string,
+    source: TaskSource,
+  ): Promise<readonly string[]> {
+    const rows = await this.prisma.writingSubmission.findMany({
+      where: this.whereTask(userId, source),
+      select: { text: true },
+    });
+    return rows.map((row) => row.text);
+  }
+
   private async countAttempts(userId: string, source: TaskSource) {
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const [taskRows, todayAcrossTasks, monthAcrossEveryone] = await Promise.all([
-      this.prisma.writingSubmission.findMany({
-        where: this.whereTask(userId, source),
-        select: { createdAt: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.writingSubmission.count({
-        where: { userId, createdAt: { gte: dayAgo } },
-      }),
-      this.prisma.writingSubmission.count({ where: { createdAt: { gte: monthAgo } } }),
-    ]);
+    const [taskRows, todayAcrossTasks, monthAcrossEveryone, grants, course] =
+      await Promise.all([
+        this.prisma.writingSubmission.findMany({
+          where: this.whereTask(userId, source),
+          select: { createdAt: true },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.writingSubmission.count({
+          where: { userId, createdAt: { gte: dayAgo } },
+        }),
+        this.prisma.writingSubmission.count({ where: { createdAt: { gte: monthAgo } } }),
+        /** Whatever a teacher added for this student on this task. */
+        this.prisma.writingCheckGrant.aggregate({
+          where: this.whereTask(userId, source),
+          _sum: { extra: true },
+        }),
+        /**
+         * The course's own figure. Read through the material and its module, because the
+         * allowance is a property of the course the task belongs to - the same task imported
+         * into two courses can be worth a different number of checks in each.
+         */
+        this.prisma.courseMaterial.findUnique({
+          where: { id: source.materialId },
+          select: { module: { select: { course: { select: { writingChecksPerTask: true } } } } },
+        }),
+      ]);
 
     return {
       taskAttempts: taskRows.map((row) => row.createdAt),
+      allowedForTask: allowanceFor(
+        course?.module?.course?.writingChecksPerTask,
+        grants._sum.extra ?? 0,
+      ),
       todayAcrossTasks,
       monthAcrossEveryone,
     };

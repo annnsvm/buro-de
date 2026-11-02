@@ -191,6 +191,12 @@ const CoursePage: React.FC = () => {
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
         next.set(LESSON_PARAM, materialId);
+        /**
+         * Whichever practice block was open belonged to the lesson being left. Carried over,
+         * the next lesson's practice would open straight into a block the student never
+         * chose - and on Hören, into one that may not exist there at all.
+         */
+        next.delete('block');
         return next;
       });
     },
@@ -261,6 +267,27 @@ const CoursePage: React.FC = () => {
     if (!selectedMaterial || String(selectedMaterial.type).toLowerCase() !== 'video') return null;
     return parseDurationLabelToSeconds(formatMaterialDuration(selectedMaterial)) ?? 480;
   }, [selectedMaterial]);
+
+  /**
+   * A practice counts towards the course once its required blocks are behind the student.
+   *
+   * Recorded here rather than inside the practice, for the same reason the video's completion
+   * is: this page owns the set of finished materials and the ids the endpoint needs. It is
+   * silent on failure - a student in the middle of a lesson should not be interrupted by a
+   * bookkeeping error, and the next visit records it again.
+   */
+  const handlePracticeComplete = useCallback(async () => {
+    if (!courseId || !selectedMaterialId || !selectedModuleId) return;
+    if (currentUser?.role !== 'student') return;
+    if (completedMaterialIds.has(selectedMaterialId)) return;
+    const materialId = selectedMaterialId;
+    try {
+      await completeCourseMaterial(courseId, selectedModuleId, materialId);
+      setCompletedMaterialIds((prev) => new Set(prev).add(materialId));
+    } catch {
+      /** Left unrecorded; the practice itself is unaffected and the next visit tries again. */
+    }
+  }, [courseId, selectedMaterialId, selectedModuleId, currentUser?.role, completedMaterialIds]);
 
   const handleMarkVideoComplete = useCallback(async () => {
     if (!courseId || !selectedMaterialId || !selectedModuleId || currentUser?.role !== 'student') {
@@ -536,6 +563,7 @@ const CoursePage: React.FC = () => {
                 nextMaterialId ? () => goToMaterial(nextMaterialId) : undefined
               }
               nextStepLabel={t(`coursePage.nextStep.${nextStep}`)}
+              onAllRequiredDone={handlePracticeComplete}
             />
           ) : null}
           {flatMaterials.length > 0 && isWritingSelected && selectedMaterial ? (

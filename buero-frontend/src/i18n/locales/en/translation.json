@@ -551,21 +551,27 @@
     "loading": "Loading your courses"
   },
   "writing": {
+    "allChecksUsed": "You have used every check for this task. Look at the sample answer and your earlier feedback.",
     "attemptNotSpent": "No attempt was used - add more and send again.",
+    "attemptNumber": "Attempt {{number}}",
     "attemptsLeft_one": "{{count}} attempt left",
     "attemptsLeft_other": "{{count}} attempts left",
     "bestResult": "Your best result",
     "blocked": "Checking is unavailable right now.",
     "check": "Check",
+    "checkNotSpent": "This did not use up a check.",
     "checking": "Checking…",
+    "checksLeft": "Checks left: {{left}} of {{total}}",
     "comeBackAt": "Your next attempt opens at {{time}}.",
     "criteriaTitle": "How it is marked ({{count}} points)",
     "draftRestored": "Your text was kept on this device and restored.",
+    "earlierAttempts": "Your earlier attempts",
     "loadFailed": "Could not load the task.",
     "loading": "Loading the task…",
     "needsMore": {
-      "no_closing": "No closing formula. End with Mit freundlichen Grüßen for a formal letter, or Liebe Grüße for an informal one.",
-      "no_salutation": "No salutation. Open with Sehr geehrte Frau … or Sehr geehrter Herr … for a formal letter, or with Liebe Frau …, Lieber Herr … or Hallo … for an informal one.",
+      "already_sent": "You have sent this text already. Make your changes and send it again.",
+      "copied": "This looks copied. Please write your own text.",
+      "not_german": "The text has to be in German.",
       "too_long": "This text is too long for the task.",
       "too_short": "The text has {{count}} sentences; it needs {{min}}–{{max}}."
     },
@@ -573,16 +579,26 @@
     "placeholder": "Betreff: …\n\nSehr geehrte Frau …",
     "pointsOf": "{{score}} of {{total}} points",
     "repeated": "You have sent this text before - showing the saved result.",
-    "selfCheckHint": "Automatic checking is unavailable for now. Compare your letter with the model answer and mark yourself against the criteria above.",
+    "selfCheckHint": "Automatic checking is unavailable for now. Compare your text with the model answer and mark yourself against the criteria above.",
     "selfCheckTitle": "Mark yourself",
-    "submitFailed": "Could not send your letter.",
+    "submitFailed": "Could not send the text.",
     "title": "Writing task",
     "tryAgain": "Try again",
-    "yourLetter": "Your letter",
-    "yourResult": "Your result"
+    "unavailable": "The check is unavailable for a moment. Please try again in a minute.",
+    "waitASecond": "Just sent - you can send again at {{time}}.",
+    "whatToFix": "What to fix",
+    "yourLetter": "Your text",
+    "yourResult": "Your result",
+    "allPoints": "Sehr gut! Full marks",
+    "checked": "Your text has been checked",
+    "earned": "Earned",
+    "notEarned": "Not earned",
+    "checkComment": "Automatic check",
+    "pointsStamp": "points",
+    "writeAgain": "Write it again"
   },
   "practice": {
-    "audioMissing": "No recording yet",
+    "audioMissing": "This task is still being prepared: the recording is on its way. Its questions open together with the audio.",
     "backToHub": "← Back to practice",
     "blockDone": "correct",
     "blockStart": "Start →",
@@ -658,7 +674,8 @@
       "saving": "Saving…",
       "stop": "Stop",
       "unsupported": "This browser cannot record audio. Try Chrome, Safari or Firefox.",
-      "yourTake": "Your recording, {{time}}"
+      "yourTake": "Your recording, {{time}}",
+      "noScore": "not graded"
     },
     "subtitle": "Pick where to start",
     "title": "Lesson practice",
@@ -669,6 +686,17 @@
       "empty": "This block has no writing tasks yet.",
       "intro": "Write the letter and send it to be checked. The criteria are shown before you start - re-read your own text against them before spending an attempt.",
       "notReady": "This task is not ready yet - it has no marking criteria."
-    }
+    },
+    "awaitingBlock": "in preparation",
+    "requiredDone": "required blocks done",
+    "groupRequired": "Required",
+    "groupOptional": "Optional",
+    "recorded": "Recorded",
+    "pointsLabel": "points",
+    "requiredPurpose": "The required blocks count towards your course progress. You can move on to the next lesson before them; they will wait here.",
+    "play": "Play",
+    "pause": "Pause",
+    "seek": "Seek through the recording",
+    "glossary": "Words"
   }
 }

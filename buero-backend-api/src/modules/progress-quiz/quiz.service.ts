@@ -6,6 +6,7 @@ import {
 import {
   CourseMaterialType,
   PracticeBlock,
+  PracticeElementKind,
   QuizMode,
   Role,
 } from "src/generated/prisma/enums";
@@ -130,6 +131,31 @@ export class QuizService {
     ]);
 
     /**
+     * A recording the author has described but not uploaded yet.
+     *
+     * The row and the file arrive separately: the CSV names the mp3, and the mp3 is uploaded
+     * afterwards. Between the two the element exists with nothing to play, and the questions
+     * about it cannot honestly be asked - a student answering them is guessing about a
+     * recording they could not hear, and the wrong answers would go into their record.
+     *
+     * So they are held back rather than shown. The element itself is still sent, because the
+     * student is told the task is not ready instead of being shown an empty frame.
+     */
+    const awaitingAudio = new Set(
+      elements
+        .filter(
+          (element) =>
+            element.kind === PracticeElementKind.audio && !element.audioUrl,
+        )
+        .map((element) => element.id),
+    );
+    /** Everything that can actually be answered right now. */
+    const askable = questions.filter(
+      (question) =>
+        !question.elementId || !awaitingAudio.has(question.elementId),
+    );
+
+    /**
      * Which recordings the student has earned the transcript to.
      *
      * A transcript handed over before the questions are answered turns listening into
@@ -138,7 +164,7 @@ export class QuizService {
      * from, so leaving and coming back does not close it again.
      */
     const transcriptOpen = await this.elementsWithEveryQuestionAnswered(
-      questions,
+      askable,
       userId,
     );
 
@@ -154,7 +180,7 @@ export class QuizService {
      */
     const totalPoints =
       mode === QuizMode.test
-        ? questions.reduce((sum, q) => sum + Math.max(1, q.points), 0)
+        ? askable.reduce((sum, q) => sum + Math.max(1, q.points), 0)
         : null;
 
     return {
@@ -169,12 +195,17 @@ export class QuizService {
         title: element.title,
         body: element.body,
         audio_url: element.audioUrl,
+        /**
+         * Described by the author, not uploaded yet. The screen says so in words; without it
+         * the student saw a heading over an empty frame and no reason for it.
+         */
+        awaiting_audio: awaitingAudio.has(element.id),
         /** So the player can promise a transcript before it is open. */
         has_transcript: Boolean(element.transcript),
         /** Held back until every question about it has been answered. */
         transcript: transcriptOpen.has(element.id) ? element.transcript : null,
       })),
-      questions: questions.map((question) => {
+      questions: askable.map((question) => {
       const payload = (question.payload ?? {}) as {
         options?: Array<{ id: string; text: string }>;
         tokens?: string[];
@@ -373,11 +404,10 @@ export class QuizService {
      * the whole practice made it read as an attempt at an older set of questions the moment
      * a text was added to Lesen, and the student was told their quiz had changed.
      */
-    const attempts = await this.prisma.quizAttempt.findMany({
+    const sittings = await this.prisma.quizAttempt.findMany({
       where: {
         userId,
         courseMaterialId: materialId,
-        completedAt: { not: null },
         /**
          * This block's sittings, and the ones recorded before a sitting knew its block.
          *
@@ -389,8 +419,16 @@ export class QuizService {
         ...(block ? { OR: [{ block }, { block: null }] } : {}),
       },
       include: { questionAttempts: { select: { questionId: true } } },
-      orderBy: [{ score: "desc" }, { completedAt: "desc" }],
+      /** Best first among the finished; newest first among those still in progress. */
+      orderBy: [{ score: "desc" }, { completedAt: "desc" }, { createdAt: "desc" }],
     });
+
+    /**
+     * Unfinished sittings are read in the same query rather than a second one: they are the
+     * same rows, told apart by a column, and the two were only ever separated because
+     * nothing used to look at the unfinished ones.
+     */
+    const attempts = sittings.filter((sitting) => sitting.completedAt !== null);
 
     const answeredIds = (attempt: (typeof attempts)[number]) =>
       new Set(attempt.questionAttempts.map((answer) => answer.questionId));
@@ -419,11 +457,38 @@ export class QuizService {
           [...answeredIds(attempt)].every((id) => currentIds.has(id))),
     );
 
+    /**
+     * A sitting the student walked away from, picked up where they left it.
+     *
+     * Only finished sittings were ever replayed, so answering three questions of eight and
+     * closing the tab lost all three - the student came back to a blank block with no sign
+     * that they had started it. Nothing was broken; the work simply had nowhere to be read
+     * back from.
+     *
+     * The most recent one, not the best: an unfinished sitting has no score to be best at,
+     * and the student means to continue the one they were in. It is only offered when every
+     * question it answered is still in the block, which is the same test a finished sitting
+     * has to pass.
+     */
+    const resumable =
+      current.length > 0
+        ? null
+        : (sittings.find(
+            (sitting) =>
+              sitting.completedAt === null &&
+              sitting.questionAttempts.length > 0 &&
+              [...answeredIds(sitting)].every((id) => currentIds.has(id)),
+          ) ?? null);
+
     return {
-      best: current[0] ?? null,
+      best: current[0] ?? resumable ?? null,
       questionCount: currentIds.size,
-      /** True when the student has a finished attempt at this block, but at an older set. */
-      hasOutdated: current.length === 0 && ofThisBlock.length > 0,
+      /**
+       * True when the student has a finished attempt at this block, but at an older set.
+       * A sitting still in progress is not an older set - it is this one, half done.
+       */
+      hasOutdated:
+        current.length === 0 && resumable === null && ofThisBlock.length > 0,
     };
   }
 

@@ -1,6 +1,7 @@
 import {
-  ATTEMPTS_PER_TASK,
-  DAILY_LIMIT_PER_USER,
+  allowanceFor,
+  COOLDOWN_SECONDS,
+  DEFAULT_CHECKS_PER_TASK,
   decideAttempt,
   type AttemptCounts,
 } from './attempt-policy';
@@ -8,89 +9,177 @@ import {
 /**
  * The limits that stand between a bug and the card.
  *
- * Each is checked in both directions: that it lets through what it should, and that it stops
- * what it should. A limit that only ever says yes in tests is not a limit.
+ * Each is checked in both directions: that it lets through what it should, and that it stops what
+ * it should. A limit that only ever says yes in tests is not a limit.
+ *
+ * What is tested here changed with the amendment. The allowance used to roll - three attempts in
+ * any 24 hours, refilling as the oldest aged out - and is now three for the whole time a student
+ * has access. The old tests are gone with the old rule; these are the new one.
  */
-const NOW = new Date('2026-09-29T12:00:00Z');
-const hoursAgo = (hours: number) =>
-  new Date(NOW.getTime() - hours * 60 * 60 * 1000);
+const NOW = new Date('2026-11-02T12:00:00Z');
+const minutesAgo = (minutes: number) => new Date(NOW.getTime() - minutes * 60 * 1000);
+const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * 60 * 60 * 1000);
 
 const counts = (over: Partial<AttemptCounts> = {}): AttemptCounts => ({
   taskAttempts: [],
+  allowedForTask: DEFAULT_CHECKS_PER_TASK,
   todayAcrossTasks: 0,
   monthAcrossEveryone: 0,
   ...over,
 });
 
-describe('attempts at one task', () => {
-  it('lets a first attempt through and says how many remain', () => {
+describe('the allowance for one task', () => {
+  it('lets a first check through and says how many remain', () => {
     expect(decideAttempt(counts(), NOW)).toEqual({
       allowed: true,
       attemptNumber: 1,
-      attemptsLeft: ATTEMPTS_PER_TASK - 1,
+      attemptsLeft: 2,
     });
   });
 
   it('counts down as they are used', () => {
-    const decision = decideAttempt(counts({ taskAttempts: [hoursAgo(1)] }), NOW);
-    expect(decision).toMatchObject({ allowed: true, attemptNumber: 2, attemptsLeft: 1 });
+    expect(decideAttempt(counts({ taskAttempts: [hoursAgo(2)] }), NOW)).toMatchObject({
+      allowed: true,
+      attemptNumber: 2,
+      attemptsLeft: 1,
+    });
   });
 
-  it('stops after the third and says when to come back', () => {
+  it('stops after the third', () => {
     const decision = decideAttempt(
-      counts({ taskAttempts: [hoursAgo(1), hoursAgo(2), hoursAgo(3)] }),
+      counts({ taskAttempts: [hoursAgo(2), hoursAgo(3), hoursAgo(4)] }),
       NOW,
     );
-    expect(decision).toMatchObject({ allowed: false, reason: 'wait' });
-    if (!decision.allowed) {
-      // The wait ends when the oldest of the three falls out of the window.
-      expect(decision.retryAt).toEqual(new Date('2026-09-30T09:00:00Z'));
-    }
+    expect(decision).toMatchObject({ allowed: false, reason: 'used_up' });
   });
 
   /**
-   * The window rolls rather than resetting at a fixed hour: attempts made more than a day ago no
-   * longer count, so a student is never held back by something they did last week.
+   * The difference the amendment makes. Under the old rule these three would have aged out and
+   * the student would have had three more; now the task is finished with and the sample opens.
    */
-  it('forgets attempts older than the window', () => {
-    const decision = decideAttempt(
-      counts({ taskAttempts: [hoursAgo(25), hoursAgo(26), hoursAgo(27)] }),
-      NOW,
-    );
-    expect(decision).toMatchObject({ allowed: true, attemptsLeft: ATTEMPTS_PER_TASK - 1 });
+  it('does not refill with time', () => {
+    const lastYear = [hoursAgo(9000), hoursAgo(9001), hoursAgo(9002)];
+    expect(decideAttempt(counts({ taskAttempts: lastYear }), NOW)).toMatchObject({
+      allowed: false,
+      reason: 'used_up',
+    });
   });
 
-  it('frees exactly one go as the oldest ages out', () => {
+  /** Nothing to wait for, so nothing is promised. A teacher can add to the allowance. */
+  it('offers no retry time when it is spent', () => {
     const decision = decideAttempt(
-      counts({ taskAttempts: [hoursAgo(25), hoursAgo(2), hoursAgo(3)] }),
+      counts({ taskAttempts: [hoursAgo(2), hoursAgo(3), hoursAgo(4)] }),
       NOW,
     );
-    expect(decision).toMatchObject({ allowed: true, attemptsLeft: 0 });
+    if (!decision.allowed) expect(decision.retryAt).toBeNull();
   });
 
-  it('numbers the attempt by the whole history, not by the window', () => {
-    // Four earlier attempts, all aged out: this is the fifth the student has made.
+  it('follows the course when the course asks for more', () => {
     const decision = decideAttempt(
-      counts({ taskAttempts: [hoursAgo(30), hoursAgo(31), hoursAgo(32), hoursAgo(33)] }),
+      counts({ allowedForTask: 5, taskAttempts: [hoursAgo(2), hoursAgo(3), hoursAgo(4)] }),
       NOW,
     );
-    expect(decision).toMatchObject({ allowed: true, attemptNumber: 5 });
+    expect(decision).toMatchObject({ allowed: true, attemptNumber: 4, attemptsLeft: 1 });
+  });
+
+  it('numbers the check by the whole history', () => {
+    const decision = decideAttempt(
+      counts({ allowedForTask: 6, taskAttempts: [hoursAgo(30), hoursAgo(31), hoursAgo(32)] }),
+      NOW,
+    );
+    expect(decision).toMatchObject({ allowed: true, attemptNumber: 4 });
+  });
+});
+
+describe('the pause between checks', () => {
+  it('turns away a second check sent straight after the first', () => {
+    const decision = decideAttempt(counts({ taskAttempts: [NOW] }), NOW);
+    expect(decision).toMatchObject({ allowed: false, reason: 'cooldown' });
+  });
+
+  it('says when it will be ready', () => {
+    const decision = decideAttempt(counts({ taskAttempts: [NOW] }), NOW);
+    if (!decision.allowed) {
+      expect(decision.retryAt).toEqual(new Date(NOW.getTime() + COOLDOWN_SECONDS * 1000));
+    }
+  });
+
+  it('lets the next one through once it has passed', () => {
+    expect(decideAttempt(counts({ taskAttempts: [minutesAgo(1)] }), NOW).allowed).toBe(true);
+  });
+
+  /**
+   * The pause is read off the newest check, whatever order they arrive in. Reading the first of
+   * the list would let a student straight through if an older row happened to come back first.
+   */
+  it('measures from the newest check, not the first in the list', () => {
+    const decision = decideAttempt(
+      counts({ taskAttempts: [hoursAgo(5), NOW, hoursAgo(2)] }),
+      NOW,
+    );
+    expect(decision).toMatchObject({ allowed: false, reason: 'cooldown' });
+  });
+
+  /**
+   * A student who clicks twice has not used two checks. Telling them to wait is true; telling
+   * them their checks are gone would not be.
+   */
+  it('comes before the allowance, so a double click is never reported as running out', () => {
+    const decision = decideAttempt(
+      counts({ taskAttempts: [NOW, hoursAgo(2), hoursAgo(3)] }),
+      NOW,
+    );
+    expect(decision).toMatchObject({ allowed: false, reason: 'cooldown' });
+  });
+});
+
+describe('how the allowance is worked out', () => {
+  it('uses the course figure', () => {
+    expect(allowanceFor(5)).toBe(5);
+  });
+
+  it('adds what a teacher granted', () => {
+    expect(allowanceFor(3, 2)).toBe(5);
+  });
+
+  /** A missing setting must not lock a student out of their own work. */
+  it.each([[null], [undefined], [0]])('falls back to three when the course says %p', (value) => {
+    expect(allowanceFor(value as number | null | undefined)).toBe(DEFAULT_CHECKS_PER_TASK);
+  });
+
+  it('ignores a negative grant rather than taking checks away', () => {
+    expect(allowanceFor(3, -5)).toBe(3);
   });
 });
 
 describe('the daily cap across every task', () => {
-  it('stops a student working through many tasks in one afternoon', () => {
-    const decision = decideAttempt(
-      counts({ todayAcrossTasks: DAILY_LIMIT_PER_USER }),
-      NOW,
-    );
-    expect(decision).toMatchObject({ allowed: false, reason: 'daily' });
+  const withDaily = (limit: number, usedToday: number) => {
+    const previous = process.env.LLM_WRITING_DAILY_LIMIT;
+    process.env.LLM_WRITING_DAILY_LIMIT = String(limit);
+    jest.resetModules();
+    const { decideAttempt: decide } =
+      require('./attempt-policy') as typeof import('./attempt-policy');
+    const decision = decide(counts({ todayAcrossTasks: usedToday }), NOW);
+    process.env.LLM_WRITING_DAILY_LIMIT = previous;
+    jest.resetModules();
+    return decision;
+  };
+
+  /**
+   * Off by default now. It guarded a refilling allowance; with a lifetime one the most a student
+   * can ever spend is their allowance times the number of tasks, and switched on it would stop
+   * someone working through a module in one sitting.
+   */
+  it('is off unless a limit is set', () => {
+    expect(withDaily(0, 10_000).allowed).toBe(true);
+  });
+
+  it('stops a student once past it, when it is set', () => {
+    expect(withDaily(10, 10)).toMatchObject({ allowed: false, reason: 'daily' });
   });
 
   it('lets them through one short of it', () => {
-    expect(
-      decideAttempt(counts({ todayAcrossTasks: DAILY_LIMIT_PER_USER - 1 }), NOW).allowed,
-    ).toBe(true);
+    expect(withDaily(10, 9).allowed).toBe(true);
   });
 });
 
@@ -101,14 +190,15 @@ describe('the monthly breaker', () => {
     jest.resetModules();
     // Re-imported so the module reads the budget that was just set.
 
-    const { decideAttempt: decide } = require('./attempt-policy') as typeof import('./attempt-policy');
+    const { decideAttempt: decide } =
+      require('./attempt-policy') as typeof import('./attempt-policy');
     const decision = decide(counts({ monthAcrossEveryone: used }), NOW);
     process.env.LLM_WRITING_MONTHLY_BUDGET_CHECKS = previous;
     jest.resetModules();
     return decision;
   };
 
-  it('trips once the month\'s allowance is spent', () => {
+  it("trips once the month's allowance is spent", () => {
     expect(withBudget(100, 100)).toMatchObject({ allowed: false, reason: 'budget' });
   });
 
@@ -122,7 +212,7 @@ describe('the monthly breaker', () => {
   });
 
   /** The breaker outranks everything: it is about the card, not about one student. */
-  it('outranks a student who still had attempts left', () => {
+  it('outranks a student who still had checks left', () => {
     expect(withBudget(1, 5)).toMatchObject({ allowed: false, reason: 'budget' });
   });
 });

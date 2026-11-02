@@ -25,6 +25,7 @@ const element = (id: string): PracticeElement => ({
   title: id,
   body: 'Text',
   audio_url: null,
+  awaiting_audio: false,
   has_transcript: false,
   transcript: null,
 });

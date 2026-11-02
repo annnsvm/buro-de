@@ -9,9 +9,18 @@ import { getErrorMessage } from '@/helpers/getErrorMessage';
 import { useAppSelector } from '@/redux/hooks';
 import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
 import WritingTaskForm from '@/features/course-learning/WritingPanel/WritingTaskForm';
+import BlockHeader from './ui/BlockHeader';
 
 export type PracticeWritingBlockProps = {
   courseMaterialId: string;
+  /** Drawn in the header, so a block shows one way back rather than two. */
+  onBack?: () => void;
+  /**
+   * Where a finished letter leads: on to the next lesson when nothing else in the practice
+   * is waiting, and back to the other blocks when something is. The practice decides which;
+   * the block only offers it.
+   */
+  finish?: { label: string; onClick: () => void };
 };
 
 /**
@@ -23,6 +32,8 @@ export type PracticeWritingBlockProps = {
  */
 const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
   courseMaterialId,
+  onBack,
+  finish,
 }) => {
   const { t } = useTranslation();
   /** In the draft key so two people sharing a browser never see each other's letter. */
@@ -76,18 +87,14 @@ const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
   const headed = tasks.length > 1;
 
   return (
-    <section className="pt-6">
-      <header className="flex flex-col gap-2">
-        <span className="text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-burnt-siena-dark)] uppercase">
-          {t('practice.optional')}
-        </span>
-        <h2 className="font-[family-name:var(--font-heading)] text-[clamp(1.5rem,3vw,2rem)] leading-[1.08] font-bold tracking-[-0.035em] text-[var(--color-text-primary)]">
-          {t('practice.blocks.schreiben.title')}
-        </h2>
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          {t('practice.writing.intro')}
-        </p>
-      </header>
+    <section>
+      <BlockHeader
+        block="schreiben"
+        title={t('practice.blocks.schreiben.title')}
+        badges={[t('practice.optional')]}
+        onBack={onBack}
+        intro={t('practice.writing.intro')}
+      />
 
       {tasks.length === 0 && unusable.length === 0 ? (
         <p className="mt-8 text-sm text-[var(--color-text-secondary)]">
@@ -96,7 +103,7 @@ const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
       ) : null}
 
       <div className="mt-8 flex flex-col gap-12">
-        {tasks.map((task) => (
+        {tasks.map((task, index) => (
           <WritingTaskForm
             /**
              * Keyed on the best attempt so a fresh mark restarts the box from the letter that
@@ -108,6 +115,8 @@ const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
               user ? `writing:${user.id}:${courseMaterialId}:${task.element_id}` : null
             }
             heading={headed ? task.title : null}
+            position={index + 1}
+            finish={finish}
             onSubmit={(text) => submitPracticeWriting(task.element_id, text)}
             onGraded={load}
           />

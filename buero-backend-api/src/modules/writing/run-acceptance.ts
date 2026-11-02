@@ -6,121 +6,176 @@
 import 'dotenv/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { ACCEPTANCE_LETTERS, type AcceptanceLetter } from './acceptance-letters';
-import { gradeLetter } from './grade-letter';
+import { readLetterShape, requiresLetterShape } from './letter-shape';
+import { markWriting } from './mark-writing';
+import {
+  addUsage,
+  costOf,
+  emptyTotals,
+  printCost,
+  writeReport,
+  type MarkRow,
+} from './run-report';
+import { screenSubmission } from './screen-submission';
 import { MODULE_4_LETTER, type WritingTask } from './writing-task';
 
 /**
- * Runs the ten graded letters through the checker and prints where it disagrees with the author.
+ * The ten graded letters, run through the checker that is actually in service.
  *
  * This is the acceptance test of the *prompt*, not of the model: every mark in the table was
  * agreed by the teacher who wrote the rubric, so a disagreement means the rubric was translated
- * badly, or the rubric itself allows two readings. It is kept out of the jest suite on purpose -
- * it costs real money and needs a key, so it is run deliberately rather than on every commit.
+ * badly, or the rubric itself allows two readings. These ten are the only texts in the project
+ * with marks the author stands behind, which makes them the one set that can say whether a
+ * change of model changes the marking.
  *
- *   ANTHROPIC_API_KEY=... npx ts-node -P tsconfig.json src/modules/writing/run-acceptance.ts
- */
-
-/**
- * Per-million-token rates, so the cost printed at the end is the cost of the run that just
- * happened. Quoting one model's prices while another was called made the number wrong in the
- * one place it is read. Roughly 1000 tokens in and 400 out per letter, plus thinking, which is
- * billed as output.
- */
-const PRICES: Record<string, { in: number; out: number }> = {
-  'claude-opus-5-5': { in: 4, out: 20 },
-  'claude-opus-5': { in: 5, out: 25 },
-  'claude-sonnet-5-5': { in: 2, out: 10 },
-  'claude-haiku-5-5': { in: 0.1, out: 0.5 },
-};
-
-const RUN_MODEL = process.env.LLM_WRITING_MODEL ?? 'claude-opus-5';
-const { in: PRICE_PER_MTOK_IN, out: PRICE_PER_MTOK_OUT } =
-  PRICES[RUN_MODEL] ?? PRICES['claude-opus-5-5'];
-
-const mark = (met: boolean) => (met ? '1' : '0');
-
-/**
- * Takes the task and the set rather than reaching for the module 4 letter.
+ * It used to call `gradeLetter`, which no longer marks anything for a student - so a green run
+ * proved the old prompt still worked and said nothing about the one in service. The free check
+ * is the production one too, for the same reason.
  *
- * The run printed "/6" as a literal, which is that letter's number of criteria and nothing else.
- * A second task - a description, a forum post - has its own rubric of its own length, and the
- * whole point of checking one is that the instruction is no longer written for a letter.
+ * Kept out of the jest suite on purpose: it costs real money and needs a key, so it is run
+ * deliberately rather than on every commit.
+ *
+ *   npx ts-node -P tsconfig.json src/modules/writing/run-acceptance.ts
  */
+
+const RUN_MODEL = process.env.LLM_WRITING_MODEL ?? 'claude-opus-5-5';
+
+const mark = (point: number) => (point === 1 ? '1' : '0');
+
 const main = async (
   task: WritingTask = MODULE_4_LETTER,
   samples: readonly AcceptanceLetter[] = ACCEPTANCE_LETTERS,
 ) => {
   const client = new Anthropic();
   const maxScore = task.criteria.length;
-  let inputTokens = 0;
-  let outputTokens = 0;
+  const totals = emptyTotals();
+  const rows: MarkRow[] = [];
   const disagreements: string[] = [];
+  let agreed = 0;
+  let marked = 0;
 
   console.log(`\nМодель: ${RUN_MODEL}`);
   console.log(
-    `\n${'лист'.padEnd(5)}${'очікувано'.padEnd(12)}${'отримано'.padEnd(12)}результат`,
+    `\n${'лист'.padEnd(6)}${'очікувано'.padEnd(14)}${'отримано'.padEnd(14)}результат`,
   );
-  console.log('─'.repeat(52));
+  console.log('-'.repeat(60));
 
   for (const sample of samples) {
-    const result = await gradeLetter(task, sample.letter, client);
+    const expected = sample.expected.map(Number);
 
-    if (result.status === 'rejected') {
+    const shape = readLetterShape(
+      sample.letter,
+      task.minSentences,
+      task.maxSentences,
+      requiresLetterShape(task.criteria),
+    );
+    /**
+     * Length and language, but not the copy check.
+     *
+     * Seven of these ten letters were built by taking the model answer and breaking one thing in
+     * it - L1 is the model answer word for word - so they overlap it by 0.82 to 1.00 and the copy
+     * check turns them away before anything is marked. That is the check doing its job, and it
+     * is tested on its own; what this run has to compare is the *marking*, and marking needs the
+     * text to reach the model. So the copy check is given nothing to compare against here.
+     */
+    const refusal = screenSubmission({
+      text: sample.letter,
+      shape,
+      minSentences: task.minSentences,
+      previousTexts: [],
+      sampleAnswer: null,
+      task: '',
+    });
+
+    if (refusal) {
       /**
        * Turned away by the free check. The author expects exactly one letter here, and it is not
        * a disagreement - it is the cheap path working.
        */
       console.log(
-        `${sample.id.padEnd(5)}${String(sample.expectedTotal).padEnd(12)}${'-'.padEnd(12)}` +
-          `відсіяно кодом (${result.reason}), модель не викликалася`,
+        `${sample.id.padEnd(6)}${String(sample.expectedTotal).padEnd(14)}${'-'.padEnd(14)}` +
+          `відсіяно кодом (${refusal.reason}), модель не викликалася`,
       );
+      rows.push({
+        id: sample.id,
+        score: null,
+        maxScore,
+        refusedBy: refusal.reason,
+        points: [],
+        comments: {},
+        expected,
+      });
       continue;
     }
 
-    inputTokens += result.usage.inputTokens;
-    outputTokens += result.usage.outputTokens;
-
-    const got = result.assessment.criteria
-      .slice()
-      .sort((a, b) => a.id - b.id)
-      .map((verdict) => verdict.met);
-    const expected = sample.expected.map((value) => value === 1);
-
-    const wrong = expected
-      .map((want, index) => (want === got[index] ? null : index + 1))
-      .filter((id): id is number => id !== null);
-
-    console.log(
-      `${sample.id.padEnd(5)}` +
-        `${`${sample.expectedTotal}/${maxScore} ${expected.map(mark).join('')}`.padEnd(12)}` +
-        `${`${result.score}/${maxScore} ${got.map(mark).join('')}`.padEnd(12)}` +
-        (wrong.length === 0 ? '✓' : `✗ розійшлися критерії: ${wrong.join(', ')}`),
+    const result = await markWriting(
+      {
+        task: task.task,
+        criteria: task.criteria,
+        checkerNote: null,
+        sampleAnswer: task.modelAnswer ?? null,
+      },
+      sample.letter,
+      client,
     );
 
-    for (const id of wrong) {
-      const verdict = result.assessment.criteria.find((item) => item.id === id);
+    marked += 1;
+    addUsage(totals, result.usage);
+
+    /** Sorted by the criterion number, because the order of the marks is the model's choice. */
+    const marks = result.marked.criteria.slice().sort((a, b) => a.n - b.n);
+    const points = marks.map((m) => (m.point === 1 ? 1 : 0));
+    const comments: Record<number, string> = {};
+    for (const m of marks) if (m.point !== 1) comments[m.n] = m.comment;
+
+    const wrong = expected
+      .map((want, index) => (want === points[index] ? null : index + 1))
+      .filter((n): n is number => n !== null);
+    if (wrong.length === 0) agreed += 1;
+
+    console.log(
+      `${sample.id.padEnd(6)}` +
+        `${`${sample.expectedTotal}/${maxScore} ${expected.map(mark).join('')}`.padEnd(14)}` +
+        `${`${result.score}/${maxScore} ${points.map(mark).join('')}`.padEnd(14)}` +
+        (wrong.length === 0 ? 'ok' : `розійшлися критерії: ${wrong.join(', ')}`),
+    );
+
+    rows.push({
+      id: sample.id,
+      score: result.score,
+      maxScore,
+      refusedBy: null,
+      points,
+      comments,
+      expected,
+    });
+
+    for (const n of wrong) {
       disagreements.push(
-        `${sample.id}, критерій ${id} - ${task.criteria[id - 1]}\n` +
-          `   очікувано: ${expected[id - 1] ? 'зараховано' : 'не зараховано'}; ` +
-          `модель: ${got[id - 1] ? 'зараховано' : 'не зараховано'}\n` +
-          `   пояснення моделі: ${verdict?.note ?? '-'}`,
+        `${sample.id}, критерій ${n} - ${task.criteria[n - 1]}\n` +
+          `   очікувано: ${expected[n - 1] === 1 ? 'зараховано' : 'не зараховано'}; ` +
+          `модель: ${points[n - 1] === 1 ? 'зараховано' : 'не зараховано'}\n` +
+          `   перевірник: ${comments[n] ?? '-'}`,
       );
     }
   }
 
   if (disagreements.length > 0) {
-    console.log(`\n${'─'.repeat(52)}\nРозбіжності\n`);
+    console.log(`\n${'-'.repeat(60)}\nРозбіжності\n`);
     for (const line of disagreements) console.log(`${line}\n`);
-  } else {
-    console.log('\nУсі оцінки збіглися з еталоном.');
   }
 
-  const cost =
-    (inputTokens / 1e6) * PRICE_PER_MTOK_IN +
-    (outputTokens / 1e6) * PRICE_PER_MTOK_OUT;
-  if (inputTokens > 0) {
-    console.log(`\nВитрачено приблизно $${cost.toFixed(3)}`);
-  }
+  console.log('-'.repeat(60));
+  console.log(`збіглося з еталоном: ${agreed}/${marked} перевірених`);
+  printCost(RUN_MODEL, totals);
+
+  writeReport({
+    model: RUN_MODEL,
+    set: 'module-4-letters',
+    totals,
+    cost: costOf(RUN_MODEL, totals),
+    rows,
+  });
 };
 
 void main().catch((error: unknown) => {

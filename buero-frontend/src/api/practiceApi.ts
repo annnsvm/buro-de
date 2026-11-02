@@ -29,6 +29,13 @@ export type PracticeBlockSummary = {
   /** Texts, recordings or tasks inside it - what a block that asks no questions holds. */
   task_count: number;
   /**
+   * How many recordings this block is still waiting for, and whether there is anything in it
+   * to do at all yet. A block with nothing ready is counted neither as done nor as
+   * outstanding, so the figure at the top never asks for work that cannot be started.
+   */
+  awaiting_audio: number;
+  ready: boolean;
+  /**
    * The mark for a block scored out of criteria rather than questions - a letter is marked
    * out of the author's rubric, and counting its questions would report 0 of 0.
    */

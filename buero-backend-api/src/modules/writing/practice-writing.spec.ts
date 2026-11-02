@@ -50,6 +50,8 @@ describe("a writing task inside a practice block", () => {
       count: jest.Mock;
       create: jest.Mock;
     };
+    /** The allowance a teacher added, read alongside the submissions that spent it. */
+    writingCheckGrant: { aggregate: jest.Mock };
   };
 
   beforeEach(async () => {
@@ -71,6 +73,9 @@ describe("a writing task inside a practice block", () => {
         findFirst: jest.fn().mockResolvedValue(null),
         count: jest.fn().mockResolvedValue(0),
         create: jest.fn(),
+      },
+      writingCheckGrant: {
+        aggregate: jest.fn().mockResolvedValue({ _sum: { extra: 0 } }),
       },
     };
 
