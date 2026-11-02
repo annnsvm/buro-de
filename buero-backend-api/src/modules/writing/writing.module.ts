@@ -5,6 +5,8 @@ import { UserModule } from '../user/user.module';
 import { CourseMaterialsModule } from '../course-materials/course-materials.module';
 import { WritingController } from './writing.controller';
 import { WritingService } from './writing.service';
+import { WritingUsageController } from './writing-usage.controller';
+import { WritingUsageService } from './writing-usage.service';
 
 /**
  * `AuthModule` and `UserModule` are here because the controller's guards depend on them. Leaving
@@ -13,8 +15,8 @@ import { WritingService } from './writing.service';
  */
 @Module({
   imports: [PrismaModule, AuthModule, UserModule, CourseMaterialsModule],
-  controllers: [WritingController],
-  providers: [WritingService],
+  controllers: [WritingController, WritingUsageController],
+  providers: [WritingService, WritingUsageService],
   exports: [WritingService],
 })
 export class WritingModule {}
