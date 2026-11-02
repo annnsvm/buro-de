@@ -695,6 +695,7 @@
     "requiredPurpose": "The required blocks count towards your course progress. You can move on to the next lesson before them; they will wait here.",
     "play": "Play",
     "pause": "Pause",
-    "seek": "Seek through the recording"
+    "seek": "Seek through the recording",
+    "glossary": "Words"
   }
 }
