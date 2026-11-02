@@ -35,7 +35,7 @@ const ChoiceExercise: React.FC<ExerciseRendererProps> = ({
   };
 
   return (
-    <fieldset className="space-y-3" disabled={disabled}>
+    <fieldset className="space-y-2" disabled={disabled}>
       <legend className="sr-only">{question.prompt}</legend>
       {multi ? (
         <p className="text-sm text-[var(--color-text-secondary)]">
@@ -51,11 +51,13 @@ const ChoiceExercise: React.FC<ExerciseRendererProps> = ({
             key={option.id}
             htmlFor={inputId}
             className={[
-              'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition',
+              'flex min-h-13 cursor-pointer items-center gap-3.5 rounded-[14px] border-[1.5px] bg-[var(--color-neutral-white)] px-4 py-2.5 transition',
               checked
-                ? 'border-[var(--color-primary)] bg-[var(--color-neutral-white)]'
-                : 'border-[var(--color-border-default)] bg-[var(--color-neutral-white)] hover:border-[var(--color-primary)]',
+                ? 'border-[var(--color-accent-primary)] bg-[var(--color-burnt-siena-lightest)]'
+                : 'border-transparent hover:border-[var(--color-burnt-siena-lighter)]',
               disabled ? 'cursor-not-allowed opacity-70' : '',
+              /** The focus ring belongs to the row, since the control itself is not drawn. */
+              'focus-within:ring-2 focus-within:ring-[var(--color-accent-primary)]',
             ].join(' ')}
           >
             <input
@@ -66,12 +68,34 @@ const ChoiceExercise: React.FC<ExerciseRendererProps> = ({
               checked={checked}
               onChange={() => toggle(option.id)}
               disabled={disabled}
-              className="h-4 w-4 shrink-0 accent-[var(--color-primary)]"
+              /**
+               * Hidden to the eye, not to the keyboard.
+               *
+               * `sr-only` keeps it focusable and operable with the arrow keys and the space
+               * bar; `hidden` or `display:none` would have taken the whole question away from
+               * anyone not using a mouse. The square beside it is what gets drawn instead.
+               */
+              className="sr-only"
             />
-            <span className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase">
+            <span
+              aria-hidden
+              className={[
+                'flex size-7 shrink-0 items-center justify-center rounded-lg font-[family-name:var(--font-heading)] text-sm font-bold uppercase transition',
+                checked
+                  ? 'bg-[var(--color-accent-primary)] text-[var(--color-text-on-accent)]'
+                  : 'bg-[var(--color-burnt-siena-lightest)] text-[var(--color-text-secondary)]',
+              ].join(' ')}
+            >
               {letterLabel(index)}
             </span>
-            <span className="text-[var(--color-text-primary)]">{option.text}</span>
+            <span
+              className={[
+                'text-[var(--color-text-primary)]',
+                checked ? 'font-semibold' : '',
+              ].join(' ')}
+            >
+              {option.text}
+            </span>
           </label>
         );
       })}
