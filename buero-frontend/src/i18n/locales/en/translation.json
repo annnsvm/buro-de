@@ -571,8 +571,6 @@
     "needsMore": {
       "already_sent": "You have sent this text already. Make your changes and send it again.",
       "copied": "This looks copied. Please write your own text.",
-      "no_closing": "No closing formula. End with Mit freundlichen Grüßen for a formal letter, or Liebe Grüße for an informal one.",
-      "no_salutation": "No salutation. Open with Sehr geehrte Frau … or Sehr geehrter Herr … for a formal letter, or with Liebe Frau …, Lieber Herr … or Hallo … for an informal one.",
       "not_german": "The text has to be in German.",
       "too_long": "This text is too long for the task.",
       "too_short": "The text has {{count}} sentences; it needs {{min}}–{{max}}."

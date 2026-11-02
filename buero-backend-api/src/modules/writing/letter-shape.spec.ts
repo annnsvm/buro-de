@@ -3,11 +3,36 @@ import {
   countedCriterionIndex,
   countSentences,
   MAX_CHARS,
-  preCheckLetter,
   readLetterShape,
   requiresLetterShape,
-  wordCeiling,
 } from './letter-shape';
+import { screenSubmission } from './screen-submission';
+
+/**
+ * The free check as the service performs it: the shape read here, the refusal decided there.
+ *
+ * These tests used to call `preCheckLetter`, which did both in one call and was replaced in
+ * service by `screenSubmission` - so they went on passing while testing a function no student's
+ * text was ever put through. The copy check is given nothing to compare against, because what
+ * is under test is length and shape.
+ */
+const preCheck = (
+  letter: string,
+  minSentences = 6,
+  maxSentences: number | null = 8,
+  letterShape = true,
+) => {
+  const shape = readLetterShape(letter, minSentences, maxSentences, letterShape);
+  const refusal = screenSubmission({
+    text: letter,
+    shape,
+    minSentences,
+    previousTexts: [],
+    sampleAnswer: null,
+    task: '',
+  });
+  return { ok: refusal === null, reason: refusal?.reason, shape };
+};
 
 /**
  * The part of the rubric that is settled by counting rather than by the model.
@@ -109,7 +134,7 @@ describe('what the free check turns away', () => {
    * and loses criterion 1 there.
    */
   it('refuses a letter that is plainly too short, without calling anything', () => {
-    const result = preCheckLetter(TOO_SHORT);
+    const result = preCheck(TOO_SHORT);
     expect(result.ok).toBe(false);
     /** Short is short. It is no longer refused for the formulas it happens to be missing. */
     if (!result.ok) expect(result.reason).toBe('too_short');
@@ -127,7 +152,7 @@ describe('what the free check turns away', () => {
     const noGreeting =
       'Ich bin heute krank geworden. Die Besprechung muss ich absagen. ' +
       'Das tut mir leid. Ich gehe zum Arzt. Ich hoffe auf Verständnis. Vielen Dank.';
-    expect(preCheckLetter(noGreeting, 6, 8).ok).toBe(true);
+    expect(preCheck(noGreeting, 6, 8).ok).toBe(true);
   });
 
   /** The author's own answers, which the check used to refuse. */
@@ -140,7 +165,7 @@ describe('what the free check turns away', () => {
       'Hallo Tom,\nich bin heute krank geworden. Die Besprechung muss ich absagen. ' +
       'Das tut mir leid. Ich gehe gleich zum Arzt. Vielen Dank für Ihr Verständnis.\n\n' +
       signoff;
-    expect(preCheckLetter(text, 4, null).ok).toBe(true);
+    expect(preCheck(text, 4, null).ok).toBe(true);
   });
 
   /**
@@ -155,19 +180,19 @@ describe('what the free check turns away', () => {
     const five =
       'Ich bin heute krank geworden. Die Besprechung muss ich leider absagen. ' +
       'Das tut mir sehr leid. Ich gehe gleich zum Arzt. Vielen Dank für Ihr Verständnis.';
-    const result = preCheckLetter(letter(five), 6, 8);
+    const result = preCheck(letter(five), 6, 8);
     expect(result.ok).toBe(true);
   });
 
   it('refuses a body of two sentences when six were asked for', () => {
-    const result = preCheckLetter(letter('Eins zwei drei. Vier fünf sechs.'), 6, 8);
+    const result = preCheck(letter('Eins zwei drei. Vier fünf sechs.'), 6, 8);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('too_short');
   });
 
   /** Six full stops around nothing is the other shape of too short. */
   it('refuses a handful of words however many full stops they carry', () => {
-    const result = preCheckLetter(letter('Ja. Nein. Gut. Danke. Tschuess. Okay.'), 6, 8);
+    const result = preCheck(letter('Ja. Nein. Gut. Danke. Tschuess. Okay.'), 6, 8);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('too_short');
   });
@@ -178,7 +203,7 @@ describe('what the free check turns away', () => {
         'Ich gehe zum Arzt. Ich hoffe auf Verständnis. Morgen melde ich mich. ' +
         'Die Unterlagen liegen auf dem Tisch. Frau Berg weiß davon. Vielen Dank.',
     );
-    const result = preCheckLetter(nine);
+    const result = preCheck(nine);
     expect(result.ok).toBe(true);
     // It reaches the model, and loses criterion 1 when it gets there.
     if (result.ok) expect(result.shape.meetsCriterionOne).toBe(false);
@@ -186,13 +211,13 @@ describe('what the free check turns away', () => {
 
   it('refuses an essay outright, before it can cost anything', () => {
     const essay = letter(`${'Ich bin heute leider krank und kann nicht kommen. '.repeat(40)}`);
-    const result = preCheckLetter(essay);
+    const result = preCheck(essay);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('too_long');
   });
 
   it('lets the model answer through', () => {
-    expect(preCheckLetter(MODEL_ANSWER).ok).toBe(true);
+    expect(preCheck(MODEL_ANSWER).ok).toBe(true);
   });
 });
 
@@ -213,7 +238,7 @@ describe('criterion 1 against the author\'s ten acceptance letters', () => {
 
   it('filters exactly the letter the author marked as too short', () => {
     const refused = ACCEPTANCE_LETTERS.filter(
-      (sample) => !preCheckLetter(sample.letter).ok,
+      (sample) => !preCheck(sample.letter).ok,
     ).map((sample) => sample.id);
 
     // L6 is the only one that must never reach a paid call.
@@ -266,7 +291,7 @@ describe('a task that is not a letter', () => {
     'Am Nachmittag arbeite ich an einem Angebot. Um fünf gehe ich nach Hause.';
 
   it('is accepted without a salutation or a closing', () => {
-    const pre = preCheckLetter(DESCRIPTION, 6, 10, false);
+    const pre = preCheck(DESCRIPTION, 6, 10, false);
     expect(pre.ok).toBe(true);
   });
 
@@ -278,7 +303,7 @@ describe('a task that is not a letter', () => {
 
   /** Length is still length: too short is too short, letter or not. */
   it('is still refused when it is too short', () => {
-    const pre = preCheckLetter('Mein Tag ist lang. Ich arbeite viel.', 6, 10, false);
+    const pre = preCheck('Mein Tag ist lang. Ich arbeite viel.', 6, 10, false);
     expect(pre).toMatchObject({ ok: false, reason: 'too_short' });
   });
 });
@@ -299,7 +324,7 @@ describe('an informal letter', () => {
   });
 
   it('is let through to be graded', () => {
-    expect(preCheckLetter(INFORMAL, 6, 8).ok).toBe(true);
+    expect(preCheck(INFORMAL, 6, 8).ok).toBe(true);
   });
 
   it.each([
@@ -349,17 +374,10 @@ describe('an informal letter', () => {
 /**
  * The ceiling that stops one submission costing what twenty should, scaled to the task.
  *
- * A flat 300 words refused a task that asked for fifteen sentences before it could be read.
+ * A flat 300 words refused a task that asked for fifteen sentences before it could be read,
+ * so the guard is a character cap now and the ceiling it replaced is gone.
  */
-describe('the word ceiling', () => {
-  it('stays at 300 for a short letter', () => {
-    expect(wordCeiling(8)).toBe(300);
-  });
-
-  it('rises for a task that asks for more', () => {
-    expect(wordCeiling(20)).toBe(600);
-  });
-
+describe('the cap on what one text may cost', () => {
   /**
    * The guard is a character cap now, not a ceiling worked out from the number of sentences:
    * almost every task states no upper bound at all, so there is nothing to work one out from.
@@ -368,7 +386,7 @@ describe('the word ceiling', () => {
   it('refuses a text over the character cap, whatever the task asked for', () => {
     const essay = 'Ich bin heute leider krank und kann nicht kommen. '.repeat(50);
     expect(essay.length).toBeGreaterThan(MAX_CHARS);
-    expect(preCheckLetter(essay, 6, null, false)).toMatchObject({
+    expect(preCheck(essay, 6, null, false)).toMatchObject({
       ok: false,
       reason: 'too_long',
     });
@@ -377,7 +395,7 @@ describe('the word ceiling', () => {
   it('accepts a long text that stays under the cap', () => {
     const long = 'Ich bin heute leider krank und kann nicht kommen. '.repeat(20);
     expect(long.length).toBeLessThan(MAX_CHARS);
-    expect(preCheckLetter(long, 6, null, false).ok).toBe(true);
+    expect(preCheck(long, 6, null, false).ok).toBe(true);
   });
 });
 

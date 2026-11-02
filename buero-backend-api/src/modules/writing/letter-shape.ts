@@ -15,16 +15,6 @@ export const DEFAULT_MIN_SENTENCES = 6;
 export const DEFAULT_MAX_SENTENCES = 8;
 
 /**
- * The ceiling that keeps one submission from costing what twenty should.
- *
- * It is a floor plus an allowance per sentence the task asked for, not a flat number: a task
- * that asks for fifteen sentences would be refused outright by a limit set for a letter of
- * eight.
- */
-export const MIN_WORD_CEILING = 300;
-export const WORDS_PER_SENTENCE = 30;
-
-/**
  * The hard cap on what is sent, in characters.
  *
  * A guard on cost, not on writing: one submission must not be able to cost what twenty should.
@@ -44,12 +34,6 @@ export const MIN_WORDS = 15;
 
 export const shortestAccepted = (minSentences: number): number =>
   Math.max(1, Math.ceil(minSentences / 2));
-
-export const wordCeiling = (maxSentences: number): number =>
-  Math.max(MIN_WORD_CEILING, Math.round(maxSentences * WORDS_PER_SENTENCE));
-
-/** @deprecated The flat ceiling, kept so nothing that imports it breaks. */
-export const MAX_WORDS = MIN_WORD_CEILING;
 
 /**
  * How a German text of this level opens.
@@ -156,23 +140,6 @@ export type LetterShape = {
   meetsCriterionOne: boolean;
 };
 
-export type PreCheck =
-  | { ok: true; shape: LetterShape }
-  /**
-   * Turned away before the model is called. `reason` is what the student is told, and the
-   * attempt is not counted against them.
-   */
-  | {
-      ok: false;
-      /**
-       * `no_salutation` and `no_closing` are no longer produced - the rubric decides whether a
-       * text needs either, and the checker judges it. They stay in the type, and their messages
-       * stay in the translations, so nothing that handles a refusal has to change.
-       */
-      reason: 'too_short' | 'no_salutation' | 'no_closing' | 'too_long';
-      shape: LetterShape;
-    };
-
 /**
  * The body is what sits between the salutation and the closing.
  *
@@ -240,44 +207,4 @@ export const readLetterShape = (
       /** No upper bound stated means none to fail: the rubric states the range, not the code. */
       (maxSentences == null || bodySentences <= maxSentences),
   };
-};
-
-export const preCheckLetter = (
-  letter: string,
-  minSentences = DEFAULT_MIN_SENTENCES,
-  maxSentences: number | null = DEFAULT_MAX_SENTENCES,
-  letterShape = true,
-): PreCheck => {
-  const shape = readLetterShape(letter, minSentences, maxSentences, letterShape);
-
-  if (letter.trim().length > MAX_CHARS) {
-    return { ok: false, reason: 'too_long', shape };
-  }
-  /**
-   * A missing salutation or closing no longer turns a text away.
-   *
-   * It was free and it was wrong. Every criterion 1 in the author's files contains the words
-   * "привітання й підпис не рахуються" - a rule about what to count, not a requirement that
-   * they exist - so the guess fired on all twelve tasks of module 1, including the ones written
-   * for a group chat. Four of the author's own full-marks answers were refused by it: they sign
-   * off with "Olha" or "Bis gleich", which is how a message to a colleague ends.
-   *
-   * Whether a text needs a greeting is stated in the rubric, in the author's words, and judged
-   * by the checker with her counting note beside it. `hasSalutation` and `hasClosing` are still
-   * read - the counted criterion uses them where a task states a real range - but they decide
-   * nothing on their own any more.
-   */
-  /**
-   * Only plainly too short is turned away, and it costs the student nothing: no attempt, no call.
-   * Everything between half the minimum and the minimum goes to the checker, which marks it
-   * against criterion 1 in the author's own words.
-   */
-  if (
-    shape.bodySentences < shortestAccepted(minSentences) ||
-    shape.bodyWords < MIN_WORDS
-  ) {
-    return { ok: false, reason: 'too_short', shape };
-  }
-
-  return { ok: true, shape };
 };

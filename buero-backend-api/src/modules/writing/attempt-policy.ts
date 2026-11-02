@@ -43,11 +43,6 @@ export const MONTHLY_BUDGET_CHECKS = Number(
   process.env.LLM_WRITING_MONTHLY_BUDGET_CHECKS ?? 0,
 );
 
-/** @deprecated The window the allowance replaced. Kept so nothing that imports it breaks. */
-export const ATTEMPTS_PER_TASK = DEFAULT_CHECKS_PER_TASK;
-/** @deprecated As above. */
-export const ATTEMPT_WINDOW_HOURS = Number(process.env.LLM_WRITING_WINDOW_HOURS ?? 24);
-
 export type Decision =
   | { allowed: true; attemptNumber: number; attemptsLeft: number }
   | {

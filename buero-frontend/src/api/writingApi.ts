@@ -104,18 +104,18 @@ export type WritingSubmitResponse =
   | {
       status: 'needs_more';
       /**
-       * None of these costs a check. `no_salutation` and `no_closing` are no longer produced -
-       * the rubric decides whether a text needs either - but their messages stay, so an older
-       * answer still reads sensibly.
+       * None of these costs a check: every one of them is settled before the checker is called.
+       *
+       * `no_salutation` and `no_closing` used to be among them, guessed from the text. The rubric
+       * decides whether a text needs either, in the author's words, so the server stopped
+       * producing them and they are gone from here too.
        */
       reason:
         | 'too_short'
         | 'too_long'
         | 'not_german'
         | 'already_sent'
-        | 'copied'
-        | 'no_salutation'
-        | 'no_closing';
+        | 'copied';
       body_sentences: number;
       min_sentences: number;
       max_sentences: number;

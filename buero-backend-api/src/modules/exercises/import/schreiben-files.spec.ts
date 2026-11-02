@@ -3,9 +3,10 @@ import { join } from "path";
 import { parseQuestionCsv } from "./parse-question-csv";
 import {
   countedCriterionIndex,
-  preCheckLetter,
+  readLetterShape,
   requiresLetterShape,
 } from "../../writing/letter-shape";
+import { screenSubmission } from "../../writing/screen-submission";
 import { parseWritingTask } from "../../writing/writing-task";
 
 /**
@@ -114,13 +115,26 @@ describe("every one of the 53 tasks", () => {
     "%s has a model answer that reaches the checker",
     (_id, { element, task }) => {
       const german = String(element.sampleAnswer ?? "").split(/\n\s*Переклад:/)[0];
-      const pre = preCheckLetter(
+      const shape = readLetterShape(
         german,
         task.minSentences,
         task.maxSentences,
         requiresLetterShape(task.criteria),
       );
-      expect(pre.ok).toBe(true);
+      /**
+       * Screened the way a student's text is screened, minus the copy check: the text here *is*
+       * the sample, so comparing it against itself would refuse all 53.
+       */
+      expect(
+        screenSubmission({
+          text: german,
+          shape,
+          minSentences: task.minSentences,
+          previousTexts: [],
+          sampleAnswer: null,
+          task: "",
+        }),
+      ).toBeNull();
     },
   );
 

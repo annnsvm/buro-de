@@ -86,9 +86,12 @@ async function bootstrap() {
     "ANTHROPIC_API_KEY",
     "LLM_WRITING_MODEL",
     "LLM_WRITING_EFFORT",
-    "LLM_WRITING_ATTEMPTS_PER_TASK",
+    "LLM_WRITING_MAX_OUTPUT_TOKENS",
+    "LLM_WRITING_THINKING_HEADROOM",
+    "LLM_WRITING_COOLDOWN_SECONDS",
     "LLM_WRITING_DAILY_LIMIT",
     "LLM_WRITING_MONTHLY_BUDGET_CHECKS",
+    "LLM_WRITING_COPIED_SHARE",
   ] as const;
 
   const missing = requiredEnv.filter((key) => !configService.get(key));
