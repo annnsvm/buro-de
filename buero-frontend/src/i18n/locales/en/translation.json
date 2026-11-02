@@ -674,7 +674,8 @@
       "saving": "Saving…",
       "stop": "Stop",
       "unsupported": "This browser cannot record audio. Try Chrome, Safari or Firefox.",
-      "yourTake": "Your recording, {{time}}"
+      "yourTake": "Your recording, {{time}}",
+      "noScore": "not graded"
     },
     "subtitle": "Pick where to start",
     "title": "Lesson practice",

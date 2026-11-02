@@ -46,6 +46,20 @@ describe('the Sprechen block of a practice', () => {
     fetchSpeakingTasks.mockResolvedValue({ tasks: [task()] });
   });
 
+  /**
+   * Two badges, not one line joined by a middot.
+   *
+   * They are two different facts - the block is optional, and nothing in it is marked - and
+   * this product tells two labels apart by layout rather than by a separator character.
+   */
+  it('says both that it is optional and that it is not marked', async () => {
+    renderWithProviders(<PracticeSpeakingBlock courseMaterialId="practice-1" />);
+
+    expect(await screen.findByText('за бажанням')).toBeInTheDocument();
+    expect(screen.getByText('без оцінки')).toBeInTheDocument();
+    expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+  });
+
   it('shows the prompt', async () => {
     renderWithProviders(<PracticeSpeakingBlock courseMaterialId="practice-1" />);
     expect(

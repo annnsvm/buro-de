@@ -6,6 +6,10 @@ import {
   type SpeakingTask,
 } from '@/api/speakingApi';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
+import BlockHeader from './ui/BlockHeader';
+import Folder from './ui/Folder';
+import QuestionCard from './ui/QuestionCard';
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from './ui/buttons';
 import { asClock, useRecorder } from './useRecorder';
 
 export type PracticeSpeakingBlockProps = {
@@ -81,18 +85,18 @@ const PracticeSpeakingBlock: React.FC<PracticeSpeakingBlockProps> = ({
   }
 
   return (
-    <section className="pt-6">
-      <header className="flex flex-col gap-2">
-        <span className="text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-burnt-siena-dark)] uppercase">
-          {t('practice.optional')}
-        </span>
-        <h2 className="font-[family-name:var(--font-heading)] text-[clamp(1.5rem,3vw,2rem)] leading-[1.08] font-bold tracking-[-0.035em] text-[var(--color-text-primary)]">
-          {t('practice.blocks.sprechen.title')}
-        </h2>
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          {t('practice.speaking.intro')}
-        </p>
-      </header>
+    <section>
+      {/**
+       * Two badges rather than one line joined by a separator: they are two different facts -
+       * that the block is optional, and that nothing in it is marked - and a middot between
+       * them is not this product's way of saying so.
+       */}
+      <BlockHeader
+        block="sprechen"
+        title={t('practice.blocks.sprechen.title')}
+        badges={[t('practice.optional'), t('practice.speaking.noScore')]}
+        intro={t('practice.speaking.intro')}
+      />
 
       {tasks.length === 0 ? (
         <p className="mt-8 text-sm text-[var(--color-text-secondary)]">
@@ -144,25 +148,16 @@ const SpeakingTaskCard: React.FC<{
   }, [onSaved, recorder, sending, t, task.element_id]);
 
   return (
-    <article className="rounded-2xl border border-[var(--color-border-default)] p-5">
-      <div className="flex items-start gap-4">
-        <span
-          className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-section)] text-[13px] font-bold text-[var(--color-text-secondary)] tabular-nums"
-          aria-hidden
-        >
-          {String(position).padStart(2, '0')}
-        </span>
-        <p className="text-[15px] leading-relaxed whitespace-pre-line text-[var(--color-text-primary)]">
-          {task.task}
-        </p>
-      </div>
-
+    <QuestionCard
+      position={position}
+      prompt={<span className="whitespace-pre-line">{task.task}</span>}
+    >
       {recorder.state === 'unsupported' ? (
         <p className="mt-4 text-sm text-[var(--color-text-secondary)]">
           {t('practice.speaking.unsupported')}
         </p>
       ) : (
-        <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {recorder.state === 'recording' ? (
             <>
               <button
@@ -186,7 +181,7 @@ const SpeakingTaskCard: React.FC<{
             <button
               type="button"
               onClick={() => void recorder.start()}
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--color-accent-primary)] px-6 py-2.5 text-sm font-semibold text-[var(--color-neutral-white)]"
+              className={PRIMARY_BUTTON}
             >
               <span className="size-2.5 rounded-full bg-current" aria-hidden />
               {recorder.take || task.recording
@@ -202,17 +197,28 @@ const SpeakingTaskCard: React.FC<{
        * before the button that sends it - and discarding costs nothing.
        */}
       {recorder.take ? (
-        <div className="mt-4 rounded-xl bg-[var(--color-surface-section)] p-4">
+        <div className="mt-4">
           <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
             {t('practice.speaking.yourTake', { time: asClock(recorder.take.seconds) })}
           </p>
-          <audio src={recorder.take.url} controls className="mt-3 w-full" />
-          <div className="mt-3 flex flex-wrap gap-2">
+          {/**
+           * The browser's own player, kept.
+           *
+           * A take is seconds long and the student is listening back to themselves, which the
+           * native control already does well - and it brings its own seeking and volume. The
+           * one worth rebuilding was the listening task's, where the speed switch earns it.
+           */}
+          <audio
+            src={recorder.take.url}
+            controls
+            className="mt-2.5 w-full rounded-full"
+          />
+          <div className="mt-3 flex flex-wrap gap-2.5">
             <button
               type="button"
               onClick={() => void send()}
               disabled={sending}
-              className="rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className={`${PRIMARY_BUTTON} disabled:opacity-50`}
             >
               {sending
                 ? t('practice.speaking.saving')
@@ -222,7 +228,7 @@ const SpeakingTaskCard: React.FC<{
               type="button"
               onClick={recorder.discard}
               disabled={sending}
-              className="rounded-full border border-[var(--color-border-default)] px-6 py-2 text-sm"
+              className={SECONDARY_BUTTON}
             >
               {t('practice.speaking.discard')}
             </button>
@@ -248,7 +254,11 @@ const SpeakingTaskCard: React.FC<{
           <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
             {t('practice.speaking.saved')}
           </p>
-          <audio src={task.recording.audio_url} controls className="mt-2 w-full" />
+          <audio
+            src={task.recording.audio_url}
+            controls
+            className="mt-2.5 w-full rounded-full"
+          />
         </div>
       ) : null}
 
@@ -257,31 +267,35 @@ const SpeakingTaskCard: React.FC<{
        * because none would be honest.
        */}
       {task.answer_open && task.sample_answer ? (
-        <div className="mt-5 rounded-xl border border-[var(--color-border-subtle)] p-4">
-          <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-burnt-siena-dark)] uppercase">
-            {t('practice.speaking.modelAnswer')}
-          </p>
-          <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-[var(--color-text-primary)]">
+        <Folder className="mt-5" tab={t('practice.speaking.modelAnswer')}>
+          <p className="text-[1.05rem] leading-[1.65] whitespace-pre-line text-[var(--color-text-primary)]">
             {task.sample_answer}
           </p>
+          {/**
+           * The phrases to lean on, as the author listed them.
+           *
+           * The mockup also highlights the Dativ forms inside the answer itself. Nothing in
+           * the data says which forms those are - picking them would mean guessing at her
+           * grammar point - so they are left unmarked rather than marked wrongly.
+           */}
           {task.hints.length > 0 ? (
-            <ul className="mt-3 flex flex-wrap gap-2">
+            <ul className="mt-4 flex flex-wrap gap-2">
               {task.hints.map((hint) => (
                 <li
                   key={hint}
-                  className="rounded-full bg-[var(--color-surface-section)] px-3 py-1 text-xs text-[var(--color-text-secondary)]"
+                  className="rounded-2xl border-[1.5px] border-[var(--color-surface-section)] px-3 py-1.5 font-mono text-sm text-[var(--color-text-secondary)]"
                 >
                   {hint}
                 </li>
               ))}
             </ul>
           ) : null}
-          <p className="mt-3 text-xs text-[var(--color-text-secondary)]">
+          <p className="mt-4 border-t border-dashed border-[var(--color-surface-section)] pt-3 text-sm text-[var(--color-text-secondary)]">
             {t('practice.speaking.compareHint')}
           </p>
-        </div>
+        </Folder>
       ) : null}
-    </article>
+    </QuestionCard>
   );
 };
 
