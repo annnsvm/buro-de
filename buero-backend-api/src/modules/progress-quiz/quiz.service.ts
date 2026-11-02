@@ -404,11 +404,10 @@ export class QuizService {
      * the whole practice made it read as an attempt at an older set of questions the moment
      * a text was added to Lesen, and the student was told their quiz had changed.
      */
-    const attempts = await this.prisma.quizAttempt.findMany({
+    const sittings = await this.prisma.quizAttempt.findMany({
       where: {
         userId,
         courseMaterialId: materialId,
-        completedAt: { not: null },
         /**
          * This block's sittings, and the ones recorded before a sitting knew its block.
          *
@@ -420,8 +419,16 @@ export class QuizService {
         ...(block ? { OR: [{ block }, { block: null }] } : {}),
       },
       include: { questionAttempts: { select: { questionId: true } } },
-      orderBy: [{ score: "desc" }, { completedAt: "desc" }],
+      /** Best first among the finished; newest first among those still in progress. */
+      orderBy: [{ score: "desc" }, { completedAt: "desc" }, { createdAt: "desc" }],
     });
+
+    /**
+     * Unfinished sittings are read in the same query rather than a second one: they are the
+     * same rows, told apart by a column, and the two were only ever separated because
+     * nothing used to look at the unfinished ones.
+     */
+    const attempts = sittings.filter((sitting) => sitting.completedAt !== null);
 
     const answeredIds = (attempt: (typeof attempts)[number]) =>
       new Set(attempt.questionAttempts.map((answer) => answer.questionId));
@@ -450,11 +457,38 @@ export class QuizService {
           [...answeredIds(attempt)].every((id) => currentIds.has(id))),
     );
 
+    /**
+     * A sitting the student walked away from, picked up where they left it.
+     *
+     * Only finished sittings were ever replayed, so answering three questions of eight and
+     * closing the tab lost all three - the student came back to a blank block with no sign
+     * that they had started it. Nothing was broken; the work simply had nowhere to be read
+     * back from.
+     *
+     * The most recent one, not the best: an unfinished sitting has no score to be best at,
+     * and the student means to continue the one they were in. It is only offered when every
+     * question it answered is still in the block, which is the same test a finished sitting
+     * has to pass.
+     */
+    const resumable =
+      current.length > 0
+        ? null
+        : (sittings.find(
+            (sitting) =>
+              sitting.completedAt === null &&
+              sitting.questionAttempts.length > 0 &&
+              [...answeredIds(sitting)].every((id) => currentIds.has(id)),
+          ) ?? null);
+
     return {
-      best: current[0] ?? null,
+      best: current[0] ?? resumable ?? null,
       questionCount: currentIds.size,
-      /** True when the student has a finished attempt at this block, but at an older set. */
-      hasOutdated: current.length === 0 && ofThisBlock.length > 0,
+      /**
+       * True when the student has a finished attempt at this block, but at an older set.
+       * A sitting still in progress is not an older set - it is this one, half done.
+       */
+      hasOutdated:
+        current.length === 0 && resumable === null && ofThisBlock.length > 0,
     };
   }
 
