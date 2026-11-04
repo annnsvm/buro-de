@@ -17,6 +17,8 @@ export type PracticeBlockName =
 export type EditorElement = {
   id: string;
   block: PracticeBlockName;
+  /** As above: a text or a recording is as hidden as a question until it is published. */
+  published?: boolean;
   kind: 'text' | 'audio' | 'rec' | 'write';
   title: string;
   body: string | null;
@@ -60,6 +62,11 @@ export type SaveElementPayload = {
 export type EditorQuestion = {
   id: string;
   type: QuizQuestionType;
+  /**
+   * Whether a student can see this yet. New work is hidden until the teacher publishes
+   * the block; a correction to something already published reaches them at once.
+   */
+  published?: boolean;
   prompt: string;
   accepted_answers: string[];
   explanation: string | null;
@@ -225,6 +232,25 @@ export const uploadElementAudioBatch = async (
     `${API_ENDPOINTS.courseMaterials.elements(courseId, moduleId, materialId)}/audio-batch`,
     form,
     { transformRequest: stripJsonContentType },
+  );
+  return data;
+};
+
+/**
+ * Makes the work of one block visible to students.
+ *
+ * Without a block, the whole material. Only the unpublished are touched, so a question
+ * that went up last week keeps the date it actually appeared.
+ */
+export const publishMaterial = async (
+  courseId: string,
+  moduleId: string,
+  materialId: string,
+  block?: PracticeBlockName,
+): Promise<{ questions: number; elements: number }> => {
+  const url = API_ENDPOINTS.courseMaterials.publish(courseId, moduleId, materialId);
+  const { data } = await apiInstance.post<{ questions: number; elements: number }>(
+    block ? `${url}?block=${block}` : url,
   );
   return data;
 };

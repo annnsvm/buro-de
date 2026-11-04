@@ -9,6 +9,7 @@ import {
   fetchEditorQuestions,
   updateEditorElement,
   updateEditorQuestion,
+  publishMaterial,
   uploadElementAudio,
   uploadElementAudioBatch,
   type EditorElement,
@@ -308,6 +309,31 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const shown = hasBlocks ? questions.filter((question) => question.block === block) : questions;
   const blockElements = elements.filter((element) => element.block === block);
 
+  /**
+   * What the student cannot see yet, in the block on screen.
+   *
+   * Counted rather than summed from the whole material, because publishing is per block:
+   * finished Grammatik goes up while Hören is still half a transcript, and the number on
+   * the button has to be the number that button will publish.
+   */
+  const unpublished = [
+    ...shown.filter((question) => question.published === false),
+    ...blockElements.filter((element) => element.published === false),
+  ].length;
+
+  const publish = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await publishMaterial(courseId, moduleId, materialId, hasBlocks ? block : undefined);
+      await load();
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Не вдалося опублікувати'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {hasBlocks ? (
@@ -406,6 +432,34 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         />
       ) : null}
 
+      {/**
+       * What students cannot see yet, and the one button that changes that.
+       *
+       * Everything imported or typed here arrives hidden. Shown as a line rather than a
+       * badge somewhere, because the teacher's question at the end of an hour's work is
+       * "is this live?" and the answer should not have to be hunted for.
+       */}
+      {unpublished > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[var(--color-surface-section)] px-5 py-4">
+          <p className="text-sm text-[var(--color-text-primary)]">
+            <span className="font-semibold">Чернетка: {unpublished}</span> - студенти цього
+            ще не бачать.
+          </p>
+          <button
+            type="button"
+            onClick={() => void publish()}
+            disabled={saving}
+            className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {saving
+              ? 'Публікуємо…'
+              : hasBlocks
+                ? `Опублікувати ${BLOCK_LABELS[block]}`
+                : 'Опублікувати'}
+          </button>
+        </div>
+      ) : null}
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-[var(--color-text-secondary)]">Питань у квізі: {shown.length}</p>
         <button
@@ -454,6 +508,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   {/* Zero-padded, so a list of ten questions keeps one column. */}
                   <span className="tabular-nums">{String(index + 1).padStart(2, '0')}</span>
                   <span>{TYPE_LABELS[question.type]}</span>
+                  {/** Said on the row itself, so it is clear which ones are waiting. */}
+                  {question.published === false ? (
+                    <span className="rounded-full bg-[var(--color-dawn-pink-light)] px-2.5 py-0.5 text-[var(--color-burnt-siena-dark)]">
+                      чернетка
+                    </span>
+                  ) : null}
                   {scoredByPoints && question.points > 1 ? (
                     <span className="rounded-full bg-[var(--color-dawn-pink-light)] px-2.5 py-0.5 text-[var(--color-burnt-siena-dark)]">
                       {question.points} бали
