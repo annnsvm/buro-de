@@ -45,6 +45,47 @@ export class QuestionEditorService {
     return questions.map((question) => this.toResponse(question));
   }
 
+  /**
+   * Makes work visible to students - one block at a time, or the whole material.
+   *
+   * Importing fifty questions and adding one by hand are the same event as far as a
+   * student is concerned: nothing happened. The teacher decides when it did. Until then
+   * the work is saved - it simply is not served to anyone learning.
+   *
+   * A block at a time, because that is how a lesson gets written: Grammatik is finished
+   * and worth showing while Hören is still half a transcript. Publishing the material
+   * whole would put the half-written half on screen with the finished one.
+   *
+   * Visibility was already independent - every question carries its own date, so one
+   * block's drafts never hid another's published work. This makes the *act* match: what
+   * you publish is what you were looking at.
+   *
+   * Only the unpublished are touched. Something published weeks ago keeps the date it
+   * actually appeared, so "when did this reach students" stays answerable.
+   */
+  async publish(
+    courseId: string,
+    moduleId: string,
+    materialId: string,
+    block?: PracticeBlock,
+  ) {
+    await this.assertQuizMaterial(courseId, moduleId, materialId);
+
+    const publishedAt = new Date();
+    const where = { materialId, publishedAt: null, ...(block ? { block } : {}) };
+    const [questions, elements] = await this.prisma.$transaction([
+      this.prisma.question.updateMany({ where, data: { publishedAt } }),
+      this.prisma.practiceElement.updateMany({ where, data: { publishedAt } }),
+    ]);
+
+    return {
+      published_at: publishedAt.toISOString(),
+      block: block ?? null,
+      questions: questions.count,
+      elements: elements.count,
+    };
+  }
+
   async save(
     courseId: string,
     moduleId: string,
@@ -429,12 +470,15 @@ export class QuestionEditorService {
     minSentences?: number | null;
     maxSentences?: number | null;
     orderIndex: number;
+    publishedAt?: Date | null;
     _count?: { questions: number };
   }) {
     return {
       id: element.id,
       block: element.block,
       kind: element.kind,
+      /** As above: the editor is the only place a draft is visible at all. */
+      published: element.publishedAt !== null && element.publishedAt !== undefined,
       title: element.title,
       body: element.body,
       audio_url: element.audioUrl,
@@ -506,6 +550,7 @@ export class QuestionEditorService {
     orderIndex: number;
     block: PracticeBlock;
     elementId: string | null;
+    publishedAt?: Date | null;
   }) {
     const payload = (question.payload ?? {}) as {
       options?: Array<{ id: string; text: string }>;
@@ -515,6 +560,11 @@ export class QuestionEditorService {
       id: question.id,
       type: question.type,
       prompt: question.prompt,
+      /**
+       * Whether a student can see this yet. The editor is the one place that shows both:
+       * everywhere else, a draft simply is not there.
+       */
+      published: question.publishedAt !== null && question.publishedAt !== undefined,
       /** The teacher edits the answer key, so unlike the player they do see it. */
       accepted_answers: question.acceptedAnswers,
       explanation: question.explanation,

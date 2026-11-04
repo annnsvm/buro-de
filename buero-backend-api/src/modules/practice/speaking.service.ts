@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PracticeElementKind, Role } from 'src/generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PUBLISHED } from '../../common/content/published';
 import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 import { CourseMaterialService } from '../course-materials/course-material.service';
 
@@ -38,7 +39,7 @@ export class SpeakingService {
     await this.assertCanOpen(materialId, userId, role);
 
     const elements = await this.prisma.practiceElement.findMany({
-      where: { materialId, kind: PracticeElementKind.rec },
+      where: { materialId, kind: PracticeElementKind.rec, ...PUBLISHED },
       orderBy: { orderIndex: 'asc' },
     });
     const recordings = elements.length
@@ -89,8 +90,12 @@ export class SpeakingService {
     if (!file) {
       throw new BadRequestException('Запис не надіслано');
     }
-    const element = await this.prisma.practiceElement.findUnique({
-      where: { id: elementId },
+    /**
+     * `findFirst` rather than `findUnique`, so the draft check travels with the lookup:
+     * a task nobody has published is not a task a student may record against.
+     */
+    const element = await this.prisma.practiceElement.findFirst({
+      where: { id: elementId, ...PUBLISHED },
     });
     if (!element || element.kind !== PracticeElementKind.rec) {
       throw new NotFoundException(`Завдання з id ${elementId} не знайдено`);

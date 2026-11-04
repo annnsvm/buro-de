@@ -43,7 +43,7 @@ describe("a writing task inside a practice block", () => {
   let service: WritingService;
   let prisma: {
     courseMaterial: { findUnique: jest.Mock };
-    practiceElement: { findUnique: jest.Mock; findMany: jest.Mock };
+    practiceElement: { findFirst: jest.Mock; findMany: jest.Mock };
     writingSubmission: {
       findMany: jest.Mock;
       findFirst: jest.Mock;
@@ -65,7 +65,7 @@ describe("a writing task inside a practice block", () => {
         }),
       },
       practiceElement: {
-        findUnique: jest.fn().mockResolvedValue(writeElement()),
+        findFirst: jest.fn().mockResolvedValue(writeElement()),
         findMany: jest.fn().mockResolvedValue([writeElement()]),
       },
       writingSubmission: {
@@ -212,7 +212,7 @@ describe("a writing task inside a practice block", () => {
 
   /** A task reached directly without a rubric is the author's mistake, not a server fault. */
   it("answers 400, not 500, for a task that cannot be marked", async () => {
-    prisma.practiceElement.findUnique.mockResolvedValue(
+    prisma.practiceElement.findFirst.mockResolvedValue(
       writeElement({ criteria: [] }),
     );
 

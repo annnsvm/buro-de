@@ -138,6 +138,39 @@ export class CourseMaterialsController {
     return this.questionEditor.list(courseId, moduleId, materialId);
   }
 
+  @Post(":id/publish")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({
+    summary: 'Опублікувати матеріал для студентів',
+    description:
+      'Робить видимими питання, тексти й записи, які ще не опубліковані. З параметром ' +
+      'block - лише цього блоку, щоб готову граматику можна було показати, поки Hören ще ' +
+      'пишеться. Без нього - весь матеріал. ' +
+      'Імпорт і ручне додавання нічого студентам не показують, поки вчитель не натисне це. ' +
+      'Виправлення вже опублікованого доходить до студента одразу й публікації не потребує. ' +
+      'Тільки для вчителів.',
+  })
+  @ApiQuery({
+    name: 'block',
+    required: false,
+    enum: PracticeBlock,
+    description: 'Опублікувати лише цей блок. Без нього - увесь матеріал.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Скільки питань і матеріалів стало видимими',
+  })
+  publishMaterial(
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') materialId: string,
+    @Query('block') block?: PracticeBlock,
+  ) {
+    return this.questionEditor.publish(courseId, moduleId, materialId, block);
+  }
+
   @Post(":id/questions")
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard, RolesGuard)

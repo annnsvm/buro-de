@@ -11,6 +11,7 @@ import {
   Role,
 } from "src/generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
+import { PUBLISHED } from "../../common/content/published";
 import { shuffle } from "./shuffle";
 import { CourseMaterialService } from "../course-materials/course-material.service";
 import {
@@ -114,7 +115,7 @@ export class QuizService {
 
     const [questions, elements] = await Promise.all([
       this.prisma.question.findMany({
-        where: { materialId, ...(block && { block }) },
+        where: { materialId, ...PUBLISHED, ...(block && { block }) },
         orderBy: { orderIndex: "asc" },
       }),
       /**
@@ -128,7 +129,7 @@ export class QuizService {
        * without a question of its own is ignored downstream, so a plain quiz is unaffected.
        */
       this.prisma.practiceElement.findMany({
-        where: { materialId, ...(block && { block }) },
+        where: { materialId, ...PUBLISHED, ...(block && { block }) },
         orderBy: { orderIndex: "asc" },
       }),
     ]);
@@ -312,7 +313,7 @@ export class QuizService {
         where: { quizAttemptId: attempt.id },
       }),
       this.prisma.question.findMany({
-        where: { materialId, ...(block ? { block } : {}) },
+        where: { materialId, ...PUBLISHED, ...(block ? { block } : {}) },
       }),
     ]);
     const questionsById = new Map(questions.map((q) => [q.id, q]));
@@ -426,7 +427,7 @@ export class QuizService {
     block?: PracticeBlock,
   ) {
     const questions = await this.prisma.question.findMany({
-      where: { materialId, ...(block ? { block } : {}) },
+      where: { materialId, ...PUBLISHED, ...(block ? { block } : {}) },
       select: { id: true },
     });
     const currentIds = new Set(questions.map((question) => question.id));
@@ -673,7 +674,11 @@ export class QuizService {
     }
 
     const question = await this.prisma.question.findFirst({
-      where: { id: body.question_id, materialId: attempt.courseMaterialId },
+      where: {
+        id: body.question_id,
+        materialId: attempt.courseMaterialId,
+        ...PUBLISHED,
+      },
     });
     if (!question) {
       throw new NotFoundException(
@@ -704,6 +709,7 @@ export class QuizService {
       this.prisma.question.count({
         where: {
           materialId: attempt.courseMaterialId,
+          ...PUBLISHED,
           ...(attempt.block ? { block: attempt.block } : {}),
         },
       }),
@@ -838,7 +844,7 @@ export class QuizService {
     userId: string,
   ): Promise<boolean> {
     const questions = await this.prisma.question.findMany({
-      where: { materialId: courseMaterialId },
+      where: { materialId: courseMaterialId, ...PUBLISHED },
       select: { id: true },
     });
     if (questions.length === 0) return false;
@@ -939,7 +945,7 @@ export class QuizService {
      * happened to send - previously one correct answer out of ten scored 100%.
      */
     const questions = await this.prisma.question.findMany({
-      where: { materialId: attempt.courseMaterialId },
+      where: { materialId: attempt.courseMaterialId, ...PUBLISHED },
       orderBy: { orderIndex: "asc" },
     });
     if (questions.length === 0) {

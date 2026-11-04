@@ -13,6 +13,7 @@ import {
 } from 'src/generated/prisma/enums';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PUBLISHED } from '../../common/content/published';
 import { CourseMaterialService } from '../course-materials/course-material.service';
 import { allowanceFor, decideAttempt } from './attempt-policy';
 import { markWriting, UnreadableMarkingError } from './mark-writing';
@@ -401,8 +402,9 @@ export class WritingService {
     userId: string,
     role: Role,
   ): Promise<TaskSource> {
-    const element = await this.prisma.practiceElement.findUnique({
-      where: { id: elementId },
+    /** A task still in draft is not found: a student cannot be marked against it. */
+    const element = await this.prisma.practiceElement.findFirst({
+      where: { id: elementId, ...PUBLISHED },
       include: { material: { include: { module: true } } },
     });
     if (!element) {
@@ -454,7 +456,7 @@ export class WritingService {
       );
     }
     const elements = await this.prisma.practiceElement.findMany({
-      where: { materialId, kind: PracticeElementKind.write },
+      where: { materialId, kind: PracticeElementKind.write, ...PUBLISHED },
       orderBy: { orderIndex: 'asc' },
     });
 

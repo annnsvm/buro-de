@@ -31,7 +31,7 @@ describe("the speaking block", () => {
   let service: SpeakingService;
   let prisma: {
     courseMaterial: { findUnique: jest.Mock };
-    practiceElement: { findUnique: jest.Mock; findMany: jest.Mock };
+    practiceElement: { findFirst: jest.Mock; findMany: jest.Mock };
     speakingRecording: { findMany: jest.Mock; upsert: jest.Mock };
   };
   let cloudinary: { uploadFile: jest.Mock };
@@ -51,7 +51,7 @@ describe("the speaking block", () => {
         }),
       },
       practiceElement: {
-        findUnique: jest.fn().mockResolvedValue(recElement()),
+        findFirst: jest.fn().mockResolvedValue(recElement()),
         findMany: jest.fn().mockResolvedValue([recElement()]),
       },
       speakingRecording: {
@@ -156,7 +156,7 @@ describe("the speaking block", () => {
 
   /** A writing task is not a speaking one, whatever id arrives in the URL. */
   it("refuses a task of another kind", async () => {
-    prisma.practiceElement.findUnique.mockResolvedValue(
+    prisma.practiceElement.findFirst.mockResolvedValue(
       recElement({ kind: PracticeElementKind.write }),
     );
     await expect(
