@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -25,6 +26,7 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { PracticeBlock, Role } from "src/generated/prisma/enums";
 import type { UserWithoutPassword } from "../user/types/user-response.type";
 import { QuizService } from "./quiz.service";
+import { SaveDraftDto } from "./dto/save-draft.dto";
 import { CreateAttemptDto } from "./dto/create-attempt.dto";
 import { AnswerQuestionDto } from "./dto/answer-question.dto";
 import { SubmitQuizDto } from "./dto/submit-quiz.dto";
@@ -108,6 +110,28 @@ export class QuizController {
       dto.course_material_id,
       dto.block
     );
+  }
+
+  @Patch("attempts/:attemptId/draft")
+  @ApiOperation({
+    summary: "Зберегти чернетку відповідей тесту",
+    description:
+      "Записує поточні відповіді у answers_snapshot, не перевіряючи їх. Потрібно, щоб " +
+      "закрита вкладка не забирала з собою відповіді на довгий тест. 400, якщо спробу вже " +
+      "завершено. 404, якщо спроба не знайдена або не належить користувачу.",
+  })
+  @ApiParam({ name: "attemptId", description: "UUID спроби" })
+  @ApiBody({ type: SaveDraftDto })
+  @ApiResponse({ status: 200, description: "Збережено" })
+  @ApiResponse({ status: 400, description: "Спробу вже завершено" })
+  @ApiResponse({ status: 401, description: "Не авторизовано" })
+  @ApiResponse({ status: 404, description: "Спроба не знайдена" })
+  saveDraft(
+    @CurrentUser("id") userId: string,
+    @Param("attemptId") attemptId: string,
+    @Body() dto: SaveDraftDto
+  ) {
+    return this.quizService.saveDraft(attemptId, userId, dto.answers);
   }
 
   @Get("attempts/:attemptId")

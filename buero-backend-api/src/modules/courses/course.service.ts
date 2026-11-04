@@ -10,6 +10,7 @@ import {
   Language,
   Level,
   PracticeBlock,
+  QuizMode,
   Role,
   UserCourseAccessType,
 } from "../../generated/prisma/enums";
@@ -17,6 +18,12 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { stripQuizAnswers } from "../../common/content/strip-quiz-answers";
 import { TRIAL_FREE_MODULE_COUNT } from "../../common/access/trial-scope";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
+import {
+  openModules,
+  type GateAttempt,
+  type GateModule,
+  type ModuleGate,
+} from "./module-gate";
 import { CreateCourseDto } from "./dto/create-course.dto";
 import {
   ListCoursesQueryDto,
@@ -244,10 +251,27 @@ export class CourseService {
         .map((mod) => (typeof mod.id === "string" ? mod.id : null))
         .filter((moduleId): moduleId is string => moduleId !== null);
 
+      /**
+       * Which test a module builds on - as advice, not as a lock.
+       *
+       * A module used to be closed until the one before it had been passed. The author
+       * took that out, and she was right to: her students are adults who buy the level
+       * they think they are at, and a good share of them are halfway through it. Someone
+       * who bought the course to revise module 6 was being told to sit five tests first,
+       * and the honest answer to that is "no thanks".
+       *
+       * What is left is the knowledge itself. A module whose predecessor's test has not
+       * been passed says so in one line the student can ignore, and nothing is shut.
+       */
+      const gate = isTeacher
+        ? null
+        : await this.moduleGate(orderedModules, userId);
+
       const scoped = this.applyContentAccess(
         course as Record<string, unknown>,
         this.resolveReadableModules(access, isTeacher, trialModuleIds),
         isTeacher,
+        gate,
       );
       const serialized = this.serializeCourse(scoped);
 
@@ -289,10 +313,72 @@ export class CourseService {
   }
 
   /** Drops `content` and attachments of every module the viewer may not read. */
+  /**
+   * Which modules the student has reached, and which test is holding back the rest.
+   *
+   * A guest has no attempts and so reaches only the first module - but a guest cannot read
+   * any module's content anyway, so the gate never decides anything on its own.
+   */
+  private async moduleGate(
+    modules: ReadonlyArray<{ id?: unknown }>,
+    userId: string | null,
+  ): Promise<ModuleGate> {
+    const ordered: GateModule[] = modules.map((mod) => {
+      const record = mod as Record<string, unknown>;
+      const materials = Array.isArray(record.materials) ? record.materials : [];
+      const test = materials.find(
+        (mat) =>
+          (mat as Record<string, unknown>).quizMode === QuizMode.test &&
+          typeof (mat as Record<string, unknown>).id === "string",
+      ) as Record<string, unknown> | undefined;
+      return {
+        id: typeof record.id === "string" ? record.id : "",
+        test: test
+          ? {
+              id: test.id as string,
+              passingScore:
+                typeof test.passingScore === "number" ? test.passingScore : null,
+            }
+          : null,
+      };
+    });
+
+    const testIds = ordered
+      .map((mod) => mod.test?.id)
+      .filter((id): id is string => Boolean(id));
+
+    if (!userId || testIds.length === 0) {
+      return openModules(ordered, new Map());
+    }
+
+    const attempts = await this.prisma.quizAttempt.findMany({
+      where: {
+        userId,
+        courseMaterialId: { in: testIds },
+        completedAt: { not: null },
+      },
+      select: { courseMaterialId: true, score: true, completedAt: true },
+    });
+
+    const byMaterial = new Map<string, GateAttempt[]>();
+    for (const attempt of attempts) {
+      const list = byMaterial.get(attempt.courseMaterialId) ?? [];
+      list.push({
+        courseMaterialId: attempt.courseMaterialId,
+        score: attempt.score == null ? null : Number(attempt.score),
+        completedAt: attempt.completedAt,
+      });
+      byMaterial.set(attempt.courseMaterialId, list);
+    }
+
+    return openModules(ordered, byMaterial);
+  }
+
   private applyContentAccess(
     course: Record<string, unknown>,
     readable: ReadableModules,
     isTeacher: boolean,
+    gate: ModuleGate | null,
   ): Record<string, unknown> {
     const modules = course.modules;
     if (!Array.isArray(modules)) return course;
@@ -302,9 +388,21 @@ export class CourseService {
         const materials = mod.materials;
         if (!Array.isArray(materials)) return mod;
         const moduleId = typeof mod.id === "string" ? mod.id : "";
+        /** Paying for the course is the only thing that opens a module. */
         const unlocked = readable === "all" || readable.has(moduleId);
         return {
           ...mod,
+          locked: !unlocked,
+          /** One word, so the screen can offer the right way out. */
+          lock_reason: unlocked ? null : "access",
+          /**
+           * The test this module builds on, when the student has not passed it. Advice for
+           * a line they can ignore - it closes nothing, and a module they paid for stays
+           * open whatever it says.
+           */
+          suggested_test_id: unlocked
+            ? (gate?.blockedBy.get(moduleId) ?? null)
+            : null,
           materials: materials.map((mat: Record<string, unknown>) =>
             this.applyMaterialAccess(mat, unlocked, isTeacher),
           ),

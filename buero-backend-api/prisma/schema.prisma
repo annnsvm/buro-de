@@ -538,6 +538,10 @@ model SpeakingRecording {
 model PracticeElement {
   id         String              @id @default(uuid())
   materialId String              @map("material_id")
+  /// When this text, recording or task became visible to students; null while a draft.
+  /// The same rule as a question: new is hidden, a correction to something already
+  /// published is not.
+  publishedAt DateTime?          @map("published_at")
   block      PracticeBlock
   kind       PracticeElementKind
   /// Shown as the heading above the text or the player.
@@ -581,6 +585,8 @@ model PracticeElement {
   checkGrants WritingCheckGrant[]
 
   @@index([materialId, block, orderIndex])
+  /// As above: a student only ever asks for what has been published. */
+  @@index([materialId, publishedAt])
   @@map("practice_elements")
 }
 
@@ -744,6 +750,12 @@ model PlacementResult {
 model Question {
   id              String       @id
   materialId      String       @map("material_id")
+  /// When this question became visible to students, or null while it is still a draft.
+  ///
+  /// Everything arrives unpublished - a CSV import of fifty questions shows a student
+  /// nothing until the teacher says so. Editing a question that is already published does
+  /// not take it back: a typo fixed is meant to reach the student at once.
+  publishedAt     DateTime?    @map("published_at")
   type            QuestionType @default(single_choice)
   prompt          String
   payload         Json
@@ -778,6 +790,8 @@ model Question {
 
   @@index([materialId, orderIndex])
   @@index([elementId])
+  /// Every student request asks for one material's published questions. */
+  @@index([materialId, publishedAt])
   @@map("questions")
 }
 

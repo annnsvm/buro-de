@@ -68,7 +68,7 @@ const editor = () =>
       moduleId="m1"
       materialId="mat1"
       scoredByPoints={false}
-      hasBlocks
+      blocks={['grammatik', 'lesen', 'horen', 'sprechen', 'schreiben']}
     />,
   );
 

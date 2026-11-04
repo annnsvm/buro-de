@@ -1,5 +1,6 @@
 import { apiInstance } from '@/api/apiInstance';
 import { API_ENDPOINTS } from '@/api/apiEndpoints';
+import type { PracticeBlockId } from '@/api/practiceApi';
 
 /** Mirrors the QuestionType enum on the server. */
 export type QuizQuestionType =
@@ -28,6 +29,11 @@ export type QuizQuestion = {
   points: number;
   /** The text or audio this question is about; null for grammar practice. */
   element_id: string | null;
+  /**
+   * Which skill it belongs to. A module test is taken part by part and the parts are the
+   * skills; absent on an older server, where a test is simply one long list.
+   */
+  block?: PracticeBlockId | null;
   order_index: number;
   options?: QuizQuestionOption[];
   /** Words to arrange, already shuffled by the server. */
@@ -120,6 +126,11 @@ export type QuizQuestionResult = {
   correct: boolean;
   quality: AnswerQuality;
   explanation: string | null;
+  /**
+   * The lesson that taught this one question, so a mistake can point at it. Null until the
+   * author fills in that column, and absent on an older server.
+   */
+  review_lesson?: string | null;
 };
 
 /** What comes back the moment a single answer is given. */
@@ -128,6 +139,8 @@ export type AnswerQuestionResponse = {
   correct: boolean;
   quality: AnswerQuality;
   explanation: string | null;
+  /** The lesson that taught this question, for a test result's list of mistakes. */
+  review_lesson?: string | null;
   /** The wording(s) that would have been right, for the question just answered. */
   accepted_answers: string[];
   answered: number;
@@ -157,6 +170,11 @@ export const answerQuizQuestion = async (
 export type LastQuizAttempt = {
   attempt_id: string;
   completed_at: string | null;
+  /**
+   * What was typed into a sitting still in progress, unmarked. Empty for a finished one,
+   * whose answers come back graded in `answers`.
+   */
+  draft_answers: SubmitQuizAnswerItem[];
   score: number;
   total: number;
   correct: number;
@@ -245,6 +263,20 @@ export type SubmitQuizResponse = {
   parts: QuizPartResult[];
   results: Array<QuizQuestionResult & { accepted_answers: string[] }>;
   attempt: QuizAttemptResponse;
+};
+
+/**
+ * Keeps what has been typed into a test so far, without marking any of it.
+ *
+ * A test is answered as a whole, so nothing used to reach the server until the student
+ * pressed finish - and a closed tab took the lot. This is the draft, not the submission:
+ * it replaces whatever was kept before and returns no mark.
+ */
+export const saveQuizDraft = async (
+  attemptId: string,
+  body: { answers: SubmitQuizAnswerItem[] },
+): Promise<void> => {
+  await apiInstance.patch(API_ENDPOINTS.quiz.draft(attemptId), body);
 };
 
 export const submitQuizAttempt = async (

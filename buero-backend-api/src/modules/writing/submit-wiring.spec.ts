@@ -84,7 +84,7 @@ describe("sending a writing task to be checked", () => {
   let service: WritingService;
   let prisma: {
     courseMaterial: { findUnique: jest.Mock };
-    practiceElement: { findUnique: jest.Mock; findMany: jest.Mock };
+    practiceElement: { findFirst: jest.Mock; findMany: jest.Mock };
     writingSubmission: {
       findMany: jest.Mock;
       findFirst: jest.Mock;
@@ -108,7 +108,7 @@ describe("sending a writing task to be checked", () => {
         }),
       },
       practiceElement: {
-        findUnique: jest.fn().mockResolvedValue(element()),
+        findFirst: jest.fn().mockResolvedValue(element()),
         findMany: jest.fn().mockResolvedValue([element()]),
       },
       writingSubmission: {

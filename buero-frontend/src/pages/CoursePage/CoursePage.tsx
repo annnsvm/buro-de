@@ -214,6 +214,19 @@ const CoursePage: React.FC = () => {
   );
 
   /**
+   * The module's own name, for a heading that has to say which module it belongs to.
+   *
+   * A module test falls back to "Final test: Module 2" when the teacher has not named it
+   * herself - the test of one module has to be told from the test of another, and the
+   * material's default name cannot do that on its own.
+   */
+  const selectedModuleTitle = useMemo(
+    () =>
+      structureModules.find((module) => module.id === selectedModuleId)?.title ?? null,
+    [structureModules, selectedModuleId],
+  );
+
+  /**
    * A practice opens on its hub of blocks; a quiz and the module test go straight to their
    * questions. Both end up in the same question panel - the hub is a step in front of it.
    */
@@ -545,6 +558,7 @@ const CoursePage: React.FC = () => {
               courseId={courseId}
               moduleId={selectedModuleId ?? undefined}
               quizMaterialTitle={selectedMaterial.title || t('coursePage.quiz')}
+              moduleTitle={selectedModuleTitle}
               attachments={mapApiAttachments(selectedMaterial.attachments)}
               onQuizResult={setQuizResult}
               onMoveOn={

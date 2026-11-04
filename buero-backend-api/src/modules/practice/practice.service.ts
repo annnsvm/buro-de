@@ -6,6 +6,7 @@ import {
   Role,
 } from 'src/generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PUBLISHED } from '../../common/content/published';
 import { CourseMaterialService } from '../course-materials/course-material.service';
 
 /**
@@ -62,7 +63,7 @@ export class PracticeService {
 
     const [questions, elements, letters, recordings] = await Promise.all([
       this.prisma.question.findMany({
-        where: { materialId },
+        where: { materialId, ...PUBLISHED },
         /** `elementId` so a question about an unuploaded recording can be told apart. */
         select: { id: true, block: true, points: true, elementId: true },
       }),
@@ -72,7 +73,7 @@ export class PracticeService {
        * saw the work existed.
        */
       this.prisma.practiceElement.findMany({
-        where: { materialId },
+        where: { materialId, ...PUBLISHED },
         /** `audioUrl` so a recording that exists only as a row is not counted as work. */
         select: { id: true, block: true, kind: true, audioUrl: true },
       }),

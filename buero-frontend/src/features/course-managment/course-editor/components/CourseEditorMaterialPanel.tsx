@@ -2,7 +2,20 @@ import React from 'react';
 import { Container, Section } from '@/components/layout';
 import CourseMaterialCreateTab from '@/features/course-managment/components/CourseManagementWorkspace/courseMaterial';
 import QuestionEditor from '@/features/course-managment/components/QuestionEditor/QuestionEditor';
+import type { PracticeBlockName } from '@/api/questionEditorApi';
 import type { CourseEditorMaterialPanelProps } from '@/types/features/courseManagment/CourseEditorComponents.types';
+
+/** Every block a practice can hold, in the order the course teaches them. */
+const PRACTICE_BLOCKS: readonly PracticeBlockName[] = [
+  'grammatik',
+  'lesen',
+  'horen',
+  'sprechen',
+  'schreiben',
+];
+
+/** A module test has no letter and no spoken answer: three skills, marked on the spot. */
+const TEST_BLOCKS: readonly PracticeBlockName[] = ['grammatik', 'lesen', 'horen'];
 
 const CourseEditorMaterialPanel: React.FC<CourseEditorMaterialPanelProps> = ({
   courseId,
@@ -63,8 +76,19 @@ const CourseEditorMaterialPanel: React.FC<CourseEditorMaterialPanelProps> = ({
                  * silently does not apply.
                  */
                 scoredByPoints={editedMaterial.material.quizMode === 'test'}
-                /** Only a practice is divided into Grammatik, Lesen, Hören and Sprechen. */
-                hasBlocks={editedMaterial.material.type === 'practice'}
+                /**
+                 * Which parts this material has, which is not the same question as what
+                 * kind it is. A practice has all five; a module test has three - no letter
+                 * and no spoken answer in it, by the author's decision. Anything else is
+                 * one plain list.
+                 */
+                blocks={
+                  editedMaterial.material.type === 'practice'
+                    ? PRACTICE_BLOCKS
+                    : editedMaterial.material.quizMode === 'test'
+                      ? TEST_BLOCKS
+                      : []
+                }
               />
             </div>
           </div>

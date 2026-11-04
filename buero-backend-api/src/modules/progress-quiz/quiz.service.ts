@@ -11,6 +11,7 @@ import {
   Role,
 } from "src/generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
+import { PUBLISHED } from "../../common/content/published";
 import { shuffle } from "./shuffle";
 import { CourseMaterialService } from "../course-materials/course-material.service";
 import {
@@ -114,20 +115,23 @@ export class QuizService {
 
     const [questions, elements] = await Promise.all([
       this.prisma.question.findMany({
-        where: { materialId, ...(block && { block }) },
+        where: { materialId, ...PUBLISHED, ...(block && { block }) },
         orderBy: { orderIndex: "asc" },
       }),
       /**
        * The texts and audio the questions are about. Fetched alongside rather than from their
        * own endpoint: a reading task is one thing on screen, and two requests could show the
        * questions before the text they refer to.
+       *
+       * Loaded for a whole material as well as for one block. A module test has no block of
+       * its own, so asking for one returned nothing - and a test with a Lesen part showed its
+       * questions with no text above them and a Hören part with nothing to play. Anything
+       * without a question of its own is ignored downstream, so a plain quiz is unaffected.
        */
-      block
-        ? this.prisma.practiceElement.findMany({
-            where: { materialId, block },
-            orderBy: { orderIndex: "asc" },
-          })
-        : Promise.resolve([]),
+      this.prisma.practiceElement.findMany({
+        where: { materialId, ...PUBLISHED, ...(block && { block }) },
+        orderBy: { orderIndex: "asc" },
+      }),
     ]);
 
     /**
@@ -217,6 +221,12 @@ export class QuizService {
         points: question.points,
         /** Which text or audio this question is about, if any. */
         element_id: question.elementId,
+        /**
+         * Which skill it belongs to. A module test is taken part by part, and the parts
+         * are the skills - so the screen has to be able to tell one question's part from
+         * another's without asking the server again.
+         */
+        block: question.block,
         order_index: question.orderIndex,
         ...(Array.isArray(payload.options) && {
           options: payload.options.map((option) => ({
@@ -303,7 +313,7 @@ export class QuizService {
         where: { quizAttemptId: attempt.id },
       }),
       this.prisma.question.findMany({
-        where: { materialId, ...(block ? { block } : {}) },
+        where: { materialId, ...PUBLISHED, ...(block ? { block } : {}) },
       }),
     ]);
     const questionsById = new Map(questions.map((q) => [q.id, q]));
@@ -335,12 +345,26 @@ export class QuizService {
       correct: correctById.get(question.id) ?? false,
       partTitle: question.partTitle,
       reviewLesson: question.reviewLesson,
+      /** The skill, where the author named one: a test is read by skill, not by lesson. */
+      block: question.block,
     }));
     const scored = scoreAttempt(mode, gradedQuestions);
 
     return {
       attempt_id: attempt.id,
       completed_at: attempt.completedAt?.toISOString() ?? null,
+      /**
+       * What was typed and not yet sent, for a sitting still in progress. Empty for a
+       * finished one, whose answers come back graded in `answers` below.
+       */
+      draft_answers: attempt.completedAt
+        ? []
+        : Object.values(
+            (attempt.answersSnapshot as Record<
+              string,
+              { question_id: string; answer: string | string[] }
+            > | null) ?? {},
+          ),
       score,
       total: questions.length,
       correct: answers.filter((answer) => answer.isCorrect).length,
@@ -371,6 +395,15 @@ export class QuizService {
             quality: graded.quality,
             /** Shown whatever the result; only the answer key waits for a pass. */
             explanation: question.explanation,
+            /**
+             * Which lesson this one question came from.
+             *
+             * It was reported for the part only, which is the right size for a test broken
+             * down by lesson and the wrong one for a test broken down by skill: a student
+             * looking at a Hören mistake needs the lesson that taught it, not the lesson
+             * that happened to be first in the part.
+             */
+            review_lesson: question.reviewLesson,
             accepted_answers: reveal ? describeAcceptedAnswers(question) : [],
             raw_answer: answer.rawAnswer as string | string[],
           },
@@ -394,7 +427,7 @@ export class QuizService {
     block?: PracticeBlock,
   ) {
     const questions = await this.prisma.question.findMany({
-      where: { materialId, ...(block ? { block } : {}) },
+      where: { materialId, ...PUBLISHED, ...(block ? { block } : {}) },
       select: { id: true },
     });
     const currentIds = new Set(questions.map((question) => question.id));
@@ -470,13 +503,27 @@ export class QuizService {
      * question it answered is still in the block, which is the same test a finished sitting
      * has to pass.
      */
+    /**
+     * A sitting holds work in one of two shapes, and either counts.
+     *
+     * A practice records each answer as it is marked, so its work is in `question_attempts`.
+     * A test marks nothing until it is handed in, so its work is the draft in
+     * `answers_snapshot` - and requiring the first of those locked every test draft out of
+     * being resumed, which is exactly the loss the draft was written to prevent.
+     */
+    const hasWork = (sitting: (typeof sittings)[number]): boolean =>
+      sitting.questionAttempts.length > 0 ||
+      Object.keys(
+        (sitting.answersSnapshot as Record<string, unknown> | null) ?? {},
+      ).length > 0;
+
     const resumable =
       current.length > 0
         ? null
         : (sittings.find(
             (sitting) =>
               sitting.completedAt === null &&
-              sitting.questionAttempts.length > 0 &&
+              hasWork(sitting) &&
               [...answeredIds(sitting)].every((id) => currentIds.has(id)),
           ) ?? null);
 
@@ -522,6 +569,57 @@ export class QuizService {
       );
     }
     return material;
+  }
+
+  /**
+   * Keeps what the student has typed so far, without marking any of it.
+   *
+   * A module test is answered as a whole: nothing reaches the server until the student
+   * presses finish, so a closed tab used to take twenty answers with it. The sitting now
+   * carries them in `answers_snapshot` - the column the schema already set aside for
+   * resuming - and they are written back on the next visit.
+   *
+   * Deliberately not graded and not turned into `question_attempts`: the answers are a
+   * draft. Grading them here would leak the result mid-test, and recording them as real
+   * answers would have them counted twice when the test is finally submitted.
+   */
+  async saveDraft(
+    attemptId: string,
+    userId: string,
+    answers: ReadonlyArray<{ question_id: string; answer: string | string[] }>,
+  ) {
+    const attempt = await this.prisma.quizAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, userId: true, completedAt: true },
+    });
+    if (!attempt || attempt.userId !== userId) {
+      throw new NotFoundException(`Спробу з id ${attemptId} не знайдено`);
+    }
+    /**
+     * A finished sitting is a record, not a draft. Writing over it would let a student
+     * change the answers behind a mark they already have.
+     */
+    if (attempt.completedAt) {
+      throw new BadRequestException(
+        "Спробу вже завершено, відповіді не приймаються",
+      );
+    }
+
+    const snapshot: Record<string, { question_id: string; answer: string | string[] }> =
+      {};
+    for (const item of answers) {
+      snapshot[`question_${item.question_id}`] = {
+        question_id: item.question_id,
+        answer: item.answer,
+      };
+    }
+
+    await this.prisma.quizAttempt.update({
+      where: { id: attemptId },
+      data: { answersSnapshot: snapshot as object },
+    });
+
+    return { attempt_id: attemptId, saved: answers.length };
   }
 
   async getAttempt(attemptId: string, userId: string) {
@@ -576,7 +674,11 @@ export class QuizService {
     }
 
     const question = await this.prisma.question.findFirst({
-      where: { id: body.question_id, materialId: attempt.courseMaterialId },
+      where: {
+        id: body.question_id,
+        materialId: attempt.courseMaterialId,
+        ...PUBLISHED,
+      },
     });
     if (!question) {
       throw new NotFoundException(
@@ -607,6 +709,7 @@ export class QuizService {
       this.prisma.question.count({
         where: {
           materialId: attempt.courseMaterialId,
+          ...PUBLISHED,
           ...(attempt.block ? { block: attempt.block } : {}),
         },
       }),
@@ -741,7 +844,7 @@ export class QuizService {
     userId: string,
   ): Promise<boolean> {
     const questions = await this.prisma.question.findMany({
-      where: { materialId: courseMaterialId },
+      where: { materialId: courseMaterialId, ...PUBLISHED },
       select: { id: true },
     });
     if (questions.length === 0) return false;
@@ -842,7 +945,7 @@ export class QuizService {
      * happened to send - previously one correct answer out of ten scored 100%.
      */
     const questions = await this.prisma.question.findMany({
-      where: { materialId: attempt.courseMaterialId },
+      where: { materialId: attempt.courseMaterialId, ...PUBLISHED },
       orderBy: { orderIndex: "asc" },
     });
     if (questions.length === 0) {
@@ -858,6 +961,8 @@ export class QuizService {
       correct: boolean;
       quality: AnswerMatchQuality;
       explanation: string | null;
+      /** The lesson that taught this one question, for the result's list of mistakes. */
+      review_lesson: string | null;
     }> = [];
     const answeredIds = new Set<string>();
     let correctCount = 0;
@@ -888,6 +993,7 @@ export class QuizService {
         quality: graded.quality,
         // Authored alongside the question; shown only now that it has been answered.
         explanation: question.explanation,
+        review_lesson: question.reviewLesson,
       });
       if (graded.correct) correctCount += 1;
     }
@@ -900,6 +1006,7 @@ export class QuizService {
         correct: false,
         quality: "none",
         explanation: question.explanation,
+        review_lesson: question.reviewLesson,
       });
     }
 
@@ -923,6 +1030,8 @@ export class QuizService {
       correct: correctById.get(question.id) ?? false,
       partTitle: question.partTitle,
       reviewLesson: question.reviewLesson,
+      /** The skill, where the author named one: a test is read by skill, not by lesson. */
+      block: question.block,
     }));
     const scored = scoreAttempt(mode, graded);
     const parts = summariseParts(mode, graded);

@@ -35,6 +35,8 @@ export const API_ENDPOINTS = {
       `/courses/${courseId}/modules/${moduleId}/materials/import`,
     questions: (courseId: string, moduleId: string, materialId: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/questions`,
+    publish: (courseId: string, moduleId: string, materialId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/publish`,
     question: (courseId: string, moduleId: string, materialId: string, questionId: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/questions/${questionId}`,
     elements: (courseId: string, moduleId: string, materialId: string) =>
@@ -83,6 +85,7 @@ export const API_ENDPOINTS = {
     getAttempt: (attemptId: string) => `/quiz/attempts/${attemptId}`,
     submit: (attemptId: string) => `/quiz/attempts/${attemptId}/submit`,
     answer: (attemptId: string) => `/quiz/attempts/${attemptId}/answers`,
+    draft: (attemptId: string) => `/quiz/attempts/${attemptId}/draft`,
     questions: (materialId: string) => `/quiz/materials/${materialId}/questions`,
     lastAttempt: (materialId: string) => `/quiz/materials/${materialId}/last-attempt`,
   },
