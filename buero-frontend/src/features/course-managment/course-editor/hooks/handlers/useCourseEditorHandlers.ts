@@ -75,7 +75,7 @@ export const useCourseEditorHandlers = ({
       setCreateCourseError(null);
       navigate(getTeacherCourseEditPath(newCourseId), { replace: true });
     } catch (err: unknown) {
-      setCreateCourseError(parseApiErrorMessage(err, 'Failed to create course'));
+      setCreateCourseError(parseApiErrorMessage(err, 'Не вдалося створити курс'));
     } finally {
       setIsCreatingCourse(false);
     }
@@ -101,7 +101,7 @@ export const useCourseEditorHandlers = ({
       reset(values);
       setLastCourseCommitKind('update');
     } catch (err: unknown) {
-      setCreateCourseError(parseApiErrorMessage(err, 'Failed to update course'));
+      setCreateCourseError(parseApiErrorMessage(err, 'Не вдалося оновити курс'));
     } finally {
       setIsUpdatingCourse(false);
     }
@@ -118,7 +118,7 @@ export const useCourseEditorHandlers = ({
       setCoverPreviewUrl(coverUrlFromApi(up.data));
       setLastCourseCommitKind('update');
     } catch (err: unknown) {
-      setCreateCourseError(parseApiErrorMessage(err, 'Failed to upload cover'));
+      setCreateCourseError(parseApiErrorMessage(err, 'Не вдалося завантажити обкладинку'));
     } finally {
       setIsUpdatingCourse(false);
     }
@@ -247,13 +247,13 @@ export const useCourseEditorHandlers = ({
     }
     if (deleteTarget.kind === 'course') {
       return {
-        title: 'Delete course?',
+        title: 'Видалити курс?',
         description: deleteCourseCopy(deleteTarget.moduleCount),
       };
     }
     if (deleteTarget.kind === 'module') {
       return {
-        title: `Delete module "${deleteTarget.moduleTitle.trim() || 'Untitled'}"?`,
+        title: `Видалити модуль «${deleteTarget.moduleTitle.trim() || 'Без назви'}»?`,
         description: deleteModuleCopy({
           videoLessons: deleteTarget.videoLessons,
           quizzes: deleteTarget.quizzes,
@@ -262,7 +262,7 @@ export const useCourseEditorHandlers = ({
       };
     }
     return {
-      title: 'Delete material?',
+      title: 'Видалити матеріал?',
       description: deleteMaterialCopy({
         title: deleteTarget.title,
         kind: deleteTarget.materialKind,
@@ -272,7 +272,7 @@ export const useCourseEditorHandlers = ({
 
   const handleMaterialCreate = async (payload: CreateCourseMaterialModalValues) => {
     if (!courseId || !activeModuleIdForMaterial) {
-      throw new Error('Course or module is not selected');
+      throw new Error('Не вибрано курс або модуль');
     }
     setIsCreatingMaterial(true);
     try {

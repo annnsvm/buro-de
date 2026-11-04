@@ -4,6 +4,17 @@ import Icon from '../../Icon';
 import { ModuleMaterialProps } from '@/types/components/ui/ModuleMaterial.types';
 import { ICON_NAMES } from '@/helpers/iconNames';
 
+/**
+ * The line under a material's name in the sidebar: a video says how long it is, and
+ * everything else says what it is. Falling through to the raw type name showed the
+ * teacher "quiz" and "practice" in a panel that is otherwise entirely in Ukrainian.
+ */
+const KIND_LABELS: Partial<Record<string, string>> = {
+  quiz: 'Тест',
+  practice: 'Практика',
+  writing: 'Письмо',
+};
+
 const ModuleMaterial: React.FC<ModuleMaterialProps> = ({
   material,
   onSelectMaterial,
@@ -18,8 +29,8 @@ const ModuleMaterial: React.FC<ModuleMaterialProps> = ({
     type === 'video' && typeof content?.duration === 'string'
       ? content.duration
       : type === 'video'
-        ? 'Video'
-        : type.replace('_', ' ');
+          ? 'Відео'
+          : (KIND_LABELS[type] ?? type.replace('_', ' '));
 
   const handleDeleteKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -30,10 +41,10 @@ const ModuleMaterial: React.FC<ModuleMaterialProps> = ({
 
   const deleteAriaLabel =
     type === 'video'
-      ? 'Delete video lesson'
+      ? 'Видалити відеоурок'
       : type === 'quiz'
-        ? 'Delete quiz'
-        : 'Delete material';
+        ? 'Видалити тест'
+        : 'Видалити матеріал';
 
   const renderDragHandle = () =>
     dragHandleProps ? (
@@ -60,7 +71,7 @@ const ModuleMaterial: React.FC<ModuleMaterialProps> = ({
         </span>
         <div className="flex min-w-0 flex-col gap-1">
           <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-            {title || 'Untitled material'}
+            {title || 'Матеріал без назви'}
           </span>
           <span className="text-xs capitalize text-[var(--color-text-secondary)]">{durationLabel}</span>
         </div>

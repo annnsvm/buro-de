@@ -34,8 +34,8 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const formatSize = (bytes: number | null | undefined): string => {
   if (bytes == null || bytes < 0) return '';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
 };
 
 const attachmentIcon = (item: { kind: string; mimeType?: string | null }) => {
@@ -94,7 +94,7 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
       setPendingAdds([]);
       setPendingDeleteIds([]);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load attachments'));
+      setError(getErrorMessage(err, 'Не вдалося завантажити файли уроку'));
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +127,7 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
       }
       await load();
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not save attachments'));
+      setError(getErrorMessage(err, 'Не вдалося зберегти файли уроку'));
       throw err;
     } finally {
       setIsFlushing(false);
@@ -147,11 +147,11 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
     event.target.value = '';
     if (!file) return;
     if (file.size > MAX_BYTES) {
-      setError('File is too large. Maximum size is 10 MB.');
+      setError('Файл завеликий - максимум 10 МБ.');
       return;
     }
     if (file.type && !ALLOWED_MIME_TYPES.includes(file.type)) {
-      setError('Unsupported file type. Allowed: PDF, images, Word, Excel, TXT, ZIP.');
+      setError('Такий тип файлу не підходить. Можна: PDF, зображення, Word, Excel, TXT, ZIP.');
       return;
     }
     setError(null);
@@ -162,18 +162,18 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
     const title = linkTitle.trim();
     const url = linkUrl.trim();
     if (!title || !url) {
-      setError('Link title and URL are required');
+      setError('Потрібні і назва, і адреса');
       return;
     }
     let parsed: URL;
     try {
       parsed = new URL(url);
     } catch {
-      setError('Enter a valid URL including https://');
+      setError('Адреса має починатися з https://');
       return;
     }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      setError('Enter a valid URL including https://');
+      setError('Адреса має починатися з https://');
       return;
     }
     setError(null);
@@ -192,7 +192,7 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
     try {
       await downloadAttachmentFile(courseId, moduleId, materialId, item.id, item.fileName || item.title);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not download file'));
+      setError(getErrorMessage(err, 'Не вдалося завантажити файл'));
     } finally {
       setDownloadingId(null);
     }
@@ -215,9 +215,9 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
 
   return (
     <div className="mt-6 border-t border-[var(--color-border-subtle)] pt-6">
-      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Lesson attachments</p>
+      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Файли уроку</p>
       <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-        Optional. Added files and links are stored only after you click Save changes, then Confirm.
+        Необов’язково. Файли й посилання збережуться лише після «Зберегти зміни» → «Підтвердити».
       </p>
 
       <input
@@ -236,21 +236,21 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
           onClick={() => inputRef.current?.click()}
           disabled={busy}
         >
-          Upload file
+          Завантажити файл
         </Button>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        <FormField label="Link title" name="attachmentLinkTitle">
+        <FormField label="Назва посилання" name="attachmentLinkTitle">
           <Input
             id="attachmentLinkTitle"
-            placeholder="e.g. Extra reading"
+            placeholder="Напр. Додаткове читання"
             value={linkTitle}
             onChange={(e) => setLinkTitle(e.target.value)}
             disabled={busy}
           />
         </FormField>
-        <FormField label="Link URL" name="attachmentLinkUrl">
+        <FormField label="Адреса посилання" name="attachmentLinkUrl">
           <Input
             id="attachmentLinkUrl"
             placeholder="https://"
@@ -260,7 +260,7 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
           />
         </FormField>
         <Button type="button" variant="solid" onClick={handleAddLink} disabled={busy}>
-          Add link
+          Додати посилання
         </Button>
       </div>
 
@@ -273,10 +273,10 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
       {isLoading ? (
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
           <Spinner className="size-4" />
-          Loading attachments
+          Завантажуємо файли
         </div>
       ) : savedItems.length === 0 && pendingAdds.length === 0 ? (
-        <p className="mt-4 text-sm text-[var(--color-text-secondary)]">No attachments yet.</p>
+        <p className="mt-4 text-sm text-[var(--color-text-secondary)]">Файлів для цього уроку поки немає.</p>
       ) : (
         <ul className="mt-4 space-y-2">
           {savedItems.map((item) => {
@@ -295,10 +295,10 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
                   <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">{item.title}</p>
                   <p className="truncate text-xs text-[var(--color-text-secondary)]">
                     {willRemove
-                      ? 'Will be removed after Confirm'
+                      ? 'Зникне після підтвердження'
                       : item.kind === 'link'
                         ? item.url
-                        : [item.fileName, sizeLabel].filter(Boolean).join(' · ')}
+                        : [item.fileName, sizeLabel].filter(Boolean).join(', ')}
                   </p>
                 </div>
                 {willRemove ? (
@@ -308,13 +308,13 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
                     disabled={busy}
                     className="rounded px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-section)] disabled:opacity-50"
                   >
-                    Undo
+                    Повернути
                   </button>
                 ) : (
                   <>
                     <button
                       type="button"
-                      aria-label={item.kind === 'link' ? `Open ${item.title}` : `Download ${item.title}`}
+                      aria-label={item.kind === 'link' ? `Відкрити ${item.title}` : `Завантажити ${item.title}`}
                       onClick={() => void handleDownload(item)}
                       disabled={busy || downloadingId === item.id}
                       className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-section)] disabled:opacity-50"
@@ -327,7 +327,7 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
                     </button>
                     <button
                       type="button"
-                      aria-label={`Remove ${item.title}`}
+                      aria-label={`Прибрати ${item.title}`}
                       onClick={() => handleRemoveSaved(item.id)}
                       disabled={busy}
                       className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-section)] disabled:opacity-50"
@@ -345,7 +345,10 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
               mimeType: item.kind === 'file' ? item.file.type : null,
             });
             const title = item.kind === 'file' ? item.file.name : item.title;
-            const detail = item.kind === 'file' ? `${formatSize(item.file.size)} · not saved yet` : `${item.url} · not saved yet`;
+            const detail =
+              item.kind === 'file'
+                ? `${formatSize(item.file.size)}, ще не збережено`
+                : `${item.url}, ще не збережено`;
             return (
               <li
                 key={item.draftId}
@@ -358,7 +361,7 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
                 </div>
                 <button
                   type="button"
-                  aria-label={`Remove ${title}`}
+                  aria-label={`Прибрати ${title}`}
                   onClick={() => handleRemovePending(item.draftId)}
                   disabled={busy}
                   className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-section)] disabled:opacity-50"

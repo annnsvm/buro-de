@@ -14,23 +14,23 @@ const CourseDurationSection: React.FC<CourseDurationSectionProps> = ({
 
   return (
     <section
-      aria-label="Course duration and video lessons"
+      aria-label="Тривалість курсу та відеоуроки"
       className="align-items-left mt-6 grid grid-cols-2 gap-4"
     >
       <div className="align-items-left rounded-2xl bg-[var(--color-surface-background)] p-6">
         <p className="text-[10px] font-bold tracking-wider text-[var(--color-text-secondary)] uppercase">
-          Duration
+          Тривалість
         </p>
         <div className="flex items-center gap-3">
           <Icon name={ICON_NAMES.SCHEDULE} size={24} className="text-[var(--color-neutral-light)]" />
           <p className="text-lg font-bold text-[var(--color-text-primary)]">
-            {durationHoursPart}h {durationMinutesPart}m
+            {durationHoursPart} год {durationMinutesPart} хв
           </p>
         </div>
       </div>
       <div className="align-items-left rounded-2xl bg-[var(--color-surface-background)] p-6">
         <p className="text-[10px] font-bold tracking-wider text-[var(--color-text-secondary)] uppercase">
-          Lessons
+          Уроки
         </p>
         <div className="flex items-center gap-3">
           <Icon name={ICON_NAMES.BOOK} size={24} className="text-[var(--color-neutral-light)]" />

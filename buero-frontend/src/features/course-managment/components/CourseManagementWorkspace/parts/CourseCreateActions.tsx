@@ -22,22 +22,22 @@ const CourseCreateActions: React.FC<CourseCreateActionsProps> = ({
 
   const editSyncedLabel =
     lastCommitKind === 'update'
-      ? 'Updated'
+      ? 'Оновлено'
       : lastCommitKind === 'create'
-        ? 'Created'
-        : 'Saved';
+        ? 'Створено'
+        : 'Збережено';
 
   const buttonLabel = isUpdating ? (
     <span className="inline-flex items-center gap-2">
       <Spinner variant="onPrimary" className="size-5" />
-      Updating
+      Оновлюємо
     </span>
   ) : isEditMode ? (
     canUpdate ? (
       needsConfirm ? (
-        'Confirm'
+        'Підтвердити'
       ) : (
-        'Save changes'
+        'Зберегти зміни'
       )
     ) : (
       editSyncedLabel
@@ -45,10 +45,10 @@ const CourseCreateActions: React.FC<CourseCreateActionsProps> = ({
   ) : isCreating ? (
     <span className="inline-flex items-center gap-2">
       <Spinner variant="onPrimary" className="size-5" />
-      Creating
+      Створюємо
     </span>
   ) : (
-    'Create course'
+    'Створити курс'
   );
 
   const buttonDisabled = isEditMode ? !canUpdate || isUpdating : !canCreate || isCreating;
@@ -68,15 +68,15 @@ const CourseCreateActions: React.FC<CourseCreateActionsProps> = ({
   return (
     <section
       className="rounded-2xl bg-[var(--color-surface-background)] p-6"
-      aria-label="Create course actions"
+      aria-label="Збереження курсу"
     >
       <div className="flex flex-col flex-wrap items-center justify-between gap-3">
         <div className="min-w-[220px] flex-1 self-start">
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">Create course</p>
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">{isEditMode ? 'Зміни курсу' : 'Створення курсу'}</p>
           <p className="mt-1 text-center text-xs text-[var(--color-text-secondary)]">
             {isEditMode
-              ? 'Module order, lesson order, and course details save only after Save changes → Confirm.'
-              : 'After creating the course you can add modules and materials.'}
+              ? 'Порядок модулів, порядок уроків і дані курсу зберігаються лише після «Зберегти зміни» → «Підтвердити».'
+              : 'Коли курс створено, до нього можна додавати модулі й матеріали.'}
           </p>
         </div>
 

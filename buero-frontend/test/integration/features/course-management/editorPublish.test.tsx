@@ -98,7 +98,7 @@ describe('work a student cannot see yet', () => {
 
     draw();
 
-    await screen.findByText(/Питань у квізі/);
+    await screen.findByText(/Питань у частині/);
     expect(screen.queryByText(/Чернетка:/)).not.toBeInTheDocument();
   });
 });

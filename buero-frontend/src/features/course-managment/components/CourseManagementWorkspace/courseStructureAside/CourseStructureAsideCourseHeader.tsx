@@ -28,24 +28,24 @@ const CourseStructureAsideCourseHeader: React.FC<CourseStructureAsideCourseHeade
   return (
     <div className="pb-2">
       <p className="text-xs font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">
-        Course
+        Курс
       </p>
       <div className="mt-1 flex items-start justify-between gap-2">
         <button
           type="button"
           onClick={handleSelect}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect()}
-          aria-label="Edit course"
+          aria-label="Редагувати курс"
           className="min-w-0 flex-1 text-left"
         >
           <h3 className="text-[1.15rem] font-bold text-[var(--color-text-primary)]">
-            {courseTitle?.trim() ? courseTitle.trim() : 'Untitled course'}
+            {courseTitle?.trim() ? courseTitle.trim() : 'Курс без назви'}
           </h3>
         </button>
         {onRequestDeleteCourse ? (
           <button
             type="button"
-            aria-label="Delete course"
+            aria-label="Видалити курс"
             tabIndex={0}
             onClick={handleDeleteClick}
             onKeyDown={handleDeleteKeyDown}

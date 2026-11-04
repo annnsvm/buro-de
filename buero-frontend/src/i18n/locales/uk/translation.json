@@ -42,7 +42,12 @@
     "verifyResend": "Надіслати код ще раз",
     "verifyResent": "Новий код надіслано",
     "verifyFailed": "Невірний або прострочений код",
-    "verifyBack": "Змінити email"
+    "verifyBack": "Змінити email",
+    "logoutTitle": "Вийти з акаунта?",
+    "logoutDescription": "Щоб повернутися до курсів і свого прогресу, треба буде увійти знову.",
+    "logoutConfirm": "Вийти",
+    "logoutCancel": "Скасувати",
+    "logoutFailed": "Не вдалося вийти. Спробуйте ще раз."
   },
   "footer": {
     "siteFooter": "Підвал сайту",

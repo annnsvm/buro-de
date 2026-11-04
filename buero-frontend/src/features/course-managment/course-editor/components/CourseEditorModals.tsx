@@ -22,17 +22,17 @@ const CourseEditorModals: React.FC<CourseEditorModalsProps> = ({
 
     <ConfirmPublishCourseModal
       {...publishModalProps}
-      title="Publish course?"
+      title="Опублікувати курс?"
       description={PUBLISH_COURSE_MODAL_DESCRIPTION}
-      submittingLabel="Publishing"
+      submittingLabel="Публікуємо"
     />
 
     <ConfirmPublishCourseModal
       {...unpublishModalProps}
-      title="Unpublish course?"
+      title="Зняти курс з публікації?"
       description={UNPUBLISH_COURSE_MODAL_DESCRIPTION}
-      confirmButtonLabel="Unpublish"
-      submittingLabel="Unpublishing"
+      confirmButtonLabel="Зняти з публікації"
+      submittingLabel="Знімаємо"
     />
   </>
 );

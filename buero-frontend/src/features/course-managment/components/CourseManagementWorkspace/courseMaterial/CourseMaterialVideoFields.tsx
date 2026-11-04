@@ -108,10 +108,10 @@ const CourseMaterialVideoFields: React.FC<
 
   return (
     <>
-      <FormField label="YouTube link or video id" name="youtubeVideoIdTab">
+      <FormField label="Посилання на YouTube або id відео" name="youtubeVideoIdTab">
         <Input
           id="youtubeVideoIdTab"
-          placeholder="Video id or paste watch / youtu.be / embed URL"
+          placeholder="id відео або посилання watch / youtu.be / embed"
           value={youtubeVideoId}
           onChange={(e) => onYoutubeVideoIdChange(e.target.value)}
           onBlur={handleBlur}
@@ -152,7 +152,7 @@ const CourseMaterialVideoFields: React.FC<
         <div ref={playerHost} />
       </div>
 
-      <FormField label="Video duration" name="youtubeVideoDurationTab">
+      <FormField label="Тривалість відео" name="youtubeVideoDurationTab">
         <Input
           id="youtubeVideoDurationTab"
           placeholder="Підставиться саме"

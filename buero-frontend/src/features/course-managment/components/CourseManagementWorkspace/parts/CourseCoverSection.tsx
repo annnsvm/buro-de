@@ -29,14 +29,14 @@ const CourseCoverSection: React.FC<CourseCoverSectionProps> = ({
   };
 
   return (
-    <section aria-label="Course cover">
+    <section aria-label="Обкладинка курсу">
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
         onChange={handlePick}
         className="sr-only"
-        aria-label="Upload course cover"
+        aria-label="Завантажити обкладинку курсу"
         disabled={disabled}
       />
       <div
@@ -44,7 +44,7 @@ const CourseCoverSection: React.FC<CourseCoverSectionProps> = ({
         tabIndex={disabled ? -1 : 0}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        aria-label="Add course image"
+        aria-label="Додати зображення курсу"
         className={`relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-2xl bg-[var(--color-neutral-lighter)] ${
           disabled ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
         }`}
@@ -53,7 +53,7 @@ const CourseCoverSection: React.FC<CourseCoverSectionProps> = ({
           <>
             <img
               src={coverPreviewUrl}
-              alt="Course cover"
+              alt="Обкладинка курсу"
               className="h-full w-full object-cover"
               decoding="async"
             />
@@ -65,18 +65,18 @@ const CourseCoverSection: React.FC<CourseCoverSectionProps> = ({
                   onClear();
                   if (inputRef.current) inputRef.current.value = '';
                 }}
-                aria-label="Remove image"
+                aria-label="Прибрати зображення"
                 className="absolute top-3 right-3 rounded-full bg-black/50 px-3 py-1.5 text-sm font-medium text-white hover:bg-black/70"
               >
-                Remove
+                Прибрати
               </button>
             ) : null}
           </>
         ) : (
           <div className="flex flex-col items-center gap-3 text-[var(--color-text-secondary)]">
             <Icon name={ICON_NAMES.ADD_PHOTO} size={180} ariaHidden />
-            <p className="text-sm font-medium text-[var(--color-text-primary)]">Upload course image</p>
-            <p className="text-xs">Click to choose a file</p>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">Завантажте зображення курсу</p>
+            <p className="text-xs">Натисніть, щоб вибрати файл</p>
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 export const PUBLISH_COURSE_MODAL_DESCRIPTION =
-  'Publishing makes your course visible in the public catalog where applicable. Students will be able to find and enroll.\n\nDo you want to publish this course now?';
+  'Після публікації курс з\u2019явиться в каталозі: студенти зможуть його знайти й купити.\n\nОпублікувати курс зараз?';
 
 export const UNPUBLISH_COURSE_MODAL_DESCRIPTION =
-  'Unpublishing removes this course from the public catalog. New students will not see it until you publish again.\n\nExisting enrollments and progress are not deleted.\n\nDo you want to unpublish this course now?';
+  'Курс зникне з каталогу, і нові студенти його не побачать, доки ви не опублікуєте його знову.\n\nУ тих, хто вже купив курс, залишаються і доступ, і прогрес.\n\nЗняти курс з публікації зараз?';

@@ -42,7 +42,12 @@
     "verifyResend": "Send code again",
     "verifyResent": "A new code has been sent",
     "verifyFailed": "Invalid or expired code",
-    "verifyBack": "Change email"
+    "verifyBack": "Change email",
+    "logoutTitle": "Log out?",
+    "logoutDescription": "You will need to sign in again to reach your courses and your progress.",
+    "logoutConfirm": "Log out",
+    "logoutCancel": "Cancel",
+    "logoutFailed": "Could not log out. Please try again."
   },
   "footer": {
     "siteFooter": "Site footer",

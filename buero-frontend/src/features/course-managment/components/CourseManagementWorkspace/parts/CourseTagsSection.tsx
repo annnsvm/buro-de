@@ -78,9 +78,9 @@ const CourseTagsSection: React.FC<CourseTagsSectionProps> = ({ tags, disabled, o
   return (
     <section
       className="rounded-2xl bg-[var(--color-surface-background)] p-6"
-      aria-label="Tags editor"
+      aria-label="Теги курсу"
     >
-      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Add tags</p>
+      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Теги</p>
       <div className="mt-4 flex flex-wrap gap-2">
         {tags.map((t) => {
           const isActive = t === activeTag;
@@ -101,7 +101,7 @@ const CourseTagsSection: React.FC<CourseTagsSectionProps> = ({ tags, disabled, o
                 className={`rounded-full px-3 py-1.5 text-left ${
                   disabled ? 'cursor-not-allowed' : 'cursor-pointer'
                 } ${isActive ? 'pr-10' : ''}`}
-                aria-label={`Select tag ${t}`}
+                aria-label={`Вибрати тег ${t}`}
               >
                 {t}
               </button>
@@ -109,7 +109,7 @@ const CourseTagsSection: React.FC<CourseTagsSectionProps> = ({ tags, disabled, o
                 <button
                   type="button"
                   onClick={handleDeleteActiveTag}
-                  aria-label={`Remove tag ${t}`}
+                  aria-label={`Прибрати тег ${t}`}
                   disabled={disabled}
                   className="absolute top-1/2 right-1.5 grid h-7 w-7 -translate-y-1/2 place-items-center text-[var(--color-neutral-darkest)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
@@ -125,11 +125,11 @@ const CourseTagsSection: React.FC<CourseTagsSectionProps> = ({ tags, disabled, o
         <div className="relative min-w-[220px] flex-1">
           <Input
             id="tagInput"
-            placeholder={isEditing ? 'Edit tag and press Enter' : 'Put a tag'}
+            placeholder={isEditing ? 'Змініть тег і натисніть Enter' : 'Введіть тег'}
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={handleTagInputKeyDown}
-            aria-label="Tag input"
+            aria-label="Поле тега"
             disabled={disabled}
             className={tagInput ? 'pr-10' : ''}
           />
@@ -137,7 +137,7 @@ const CourseTagsSection: React.FC<CourseTagsSectionProps> = ({ tags, disabled, o
             <button
               type="button"
               onClick={handleClearInput}
-              aria-label="Clear tag input"
+              aria-label="Очистити поле тега"
               disabled={disabled}
               className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-section)] disabled:cursor-not-allowed disabled:opacity-70"
             >
@@ -151,7 +151,7 @@ const CourseTagsSection: React.FC<CourseTagsSectionProps> = ({ tags, disabled, o
           onClick={isEditing ? handleApplyEditActiveTag : handleAddTag}
           disabled={disabled || !tagInput.trim()}
         >
-          {isEditing ? 'Apply' : 'Add tag'}
+          {isEditing ? 'Застосувати' : 'Додати тег'}
         </Button>
       </div>
 
@@ -168,7 +168,7 @@ const CourseTagsSection: React.FC<CourseTagsSectionProps> = ({ tags, disabled, o
             }}
             disabled={disabled}
             className="rounded-full border border-[var(--color-border-default)] bg-white px-3 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-section)] disabled:cursor-not-allowed disabled:opacity-70"
-            aria-label={`Use tag ${s}`}
+            aria-label={`Взяти тег ${s}`}
           >
             {s}
           </button>

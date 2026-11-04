@@ -94,7 +94,7 @@ export const useCourseEditorState = () => {
   );
 
   const activeModuleTitle =
-    modules.find((m) => m.id === activeModuleIdForMaterial)?.title ?? 'No module selected';
+    modules.find((m) => m.id === activeModuleIdForMaterial)?.title ?? 'Модуль не вибрано';
 
   const isFormDisabled = courseId !== null && !isEditingCourse;
   const canCreate = !courseId && !isCreatingCourse && !isUpdatingCourse;

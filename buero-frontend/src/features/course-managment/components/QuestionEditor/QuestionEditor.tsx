@@ -461,7 +461,15 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       ) : null}
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--color-text-secondary)]">Питань у квізі: {shown.length}</p>
+        {/**
+         * Counted for the part on screen, not for the material, because that is the number
+         * the author is about to change. Which material this is is already in the heading
+         * above, so repeating "квіз" here only named the one kind that is no longer made.
+         */}
+        <p className="text-sm text-[var(--color-text-secondary)]">
+          {hasBlocks ? `Питань у частині «${BLOCK_LABELS[block]}»: ` : 'Питань: '}
+          {shown.length}
+        </p>
         <button
           type="button"
           onClick={() => setDraft(blankQuestion(block, blockElements))}

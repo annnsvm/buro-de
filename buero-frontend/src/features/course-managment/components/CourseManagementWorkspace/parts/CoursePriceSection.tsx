@@ -14,14 +14,14 @@ const CoursePriceSection: React.FC<CoursePriceSectionProps> = ({
   return (
     <section
       className="rounded-2xl bg-[var(--color-surface-background)] p-6"
-      aria-label="Course price"
+      aria-label="Ціна курсу"
     >
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-[var(--color-text-primary)]">Course price</p>
+        <p className="text-sm font-semibold text-[var(--color-text-primary)]">Ціна курсу</p>
 
         <div className="mt-4 flex items-stretch overflow-visible">
           <Select
-            ariaLabel="Currency"
+            ariaLabel="Валюта"
             value={currencySymbol}
             options={CURRENCY_OPTIONS}
             onChange={onChangeCurrencySymbol}
@@ -37,7 +37,7 @@ const CoursePriceSection: React.FC<CoursePriceSectionProps> = ({
               placeholder="69.00"
               value={amount}
               onChange={(e) => onChangeAmount(e.target.value)}
-              aria-label="Price amount"
+              aria-label="Сума"
               disabled={disabled}
               className="rounded-l-none border-l-0 focus-visible:shadow-none"
             />
