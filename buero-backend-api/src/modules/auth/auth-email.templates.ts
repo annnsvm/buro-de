@@ -204,6 +204,73 @@ export function buildPasswordResetEmail(opts: {
   };
 }
 
+/**
+ * The receipt a student gets when a course opens for them.
+ *
+ * WayForPay sends its own confirmation that money moved; this one says the thing the
+ * bank cannot - which course, and where it now is. Before it existed the payment went
+ * through and nothing arrived: the course simply appeared in the account of anyone who
+ * thought to go and look, which reads less like a purchase than like a hope.
+ *
+ * The link goes to the course rather than to the catalogue, because the next thing anyone
+ * wants after paying is the first lesson.
+ */
+export function buildPurchaseEmail(opts: {
+  name?: string | null;
+  courseTitle: string;
+  amount: string;
+  currency: string;
+  courseUrl: string;
+  locale: EmailLocale;
+  logoUrl: string;
+  siteUrl: string;
+}): { subject: string; html: string; text: string } {
+  const locale = opts.locale;
+  const name = greetingName(opts.name, locale);
+  const title = locale === "uk" ? "Курс відкрито" : "Your course is open";
+  const subject =
+    locale === "uk"
+      ? `${opts.courseTitle} - курс відкрито`
+      : `${opts.courseTitle} - your course is open`;
+  const intro =
+    locale === "uk"
+      ? `Привіт, ${name}! Оплату отримано, курс «${opts.courseTitle}» уже у вашому навчанні.`
+      : `Hi ${name}! Your payment went through and "${opts.courseTitle}" is now in your learning.`;
+  const paid =
+    locale === "uk"
+      ? `Сплачено: ${opts.amount} ${opts.currency.toUpperCase()}`
+      : `Paid: ${opts.amount} ${opts.currency.toUpperCase()}`;
+  const cta = locale === "uk" ? "Почати навчання" : "Start learning";
+  const keeps =
+    locale === "uk"
+      ? "Доступ безстроковий: курс лишається з вами, і повертатися до нього можна скільки завгодно."
+      : "The course stays with you - there is no time limit, and you can come back to it as often as you like.";
+  const footerNote =
+    locale === "uk"
+      ? "Ти отримав цей лист, бо оплатив курс на Büro.de."
+      : "You received this email because you bought a course on Büro.de.";
+
+  const bodyHtml = `
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.ink};">${escapeHtml(intro)}</p>
+    <p style="margin:16px 0;padding:14px 18px;background:${BRAND.soft};border-radius:12px;font-size:15px;color:${BRAND.ink};">${escapeHtml(paid)}</p>
+    <p style="margin:22px 0;"><a href="${escapeHtml(opts.courseUrl)}" style="display:inline-block;padding:12px 22px;border-radius:999px;background:${BRAND.coral};color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">${escapeHtml(cta)}</a></p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.muted};">${escapeHtml(keeps)}</p>
+  `;
+
+  return {
+    subject,
+    html: layout({
+      logoUrl: opts.logoUrl,
+      title,
+      bodyHtml,
+      siteUrl: opts.siteUrl,
+      footerNote,
+      locale,
+    }),
+    text: [title, "", intro, paid, "", cta + ": " + opts.courseUrl, "", keeps].join("\n"),
+  };
+}
+
 export function buildWelcomeEmail(opts: {
   name?: string | null;
   locale: EmailLocale;
