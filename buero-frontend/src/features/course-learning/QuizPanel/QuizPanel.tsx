@@ -398,6 +398,44 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     setDrafts((prev) => ({ ...prev, [questionId]: answer }));
   }, []);
 
+  /**
+   * Asks the server again for the texts and recordings, when an answer may have earned one.
+   *
+   * The transcript of a recording opens once every question about it has been answered, and
+   * the server is the only thing that knows when that is - it counts answers from every
+   * sitting, not just this one. Nothing here re-derives that rule: mirroring it on the client
+   * would be a second copy of an access decision, and a copy that disagreed would either
+   * print the dialogue early or hide it for good.
+   *
+   * So the question is only ever "might this answer have been the last one?", and the cheapest
+   * honest answer is to ask. It fires only for a question attached to an element that still
+   * owes a transcript, which in practice means the Hören and Lesen blocks and no others. Only
+   * the elements are taken from the response: questions, drafts and marks stay exactly as the
+   * student left them.
+   */
+  const refreshElementsIfTranscriptDue = useCallback(
+    async (question: QuizQuestion) => {
+      const owed = elements.some(
+        (element) =>
+          element.id === question.element_id &&
+          element.has_transcript &&
+          !element.transcript,
+      );
+      if (!owed) return;
+      try {
+        const loaded = await fetchQuizQuestions(courseMaterialId, block);
+        setElements(loaded.elements ?? []);
+      } catch {
+        /**
+         * The answer itself is already saved, so a failed refresh must not read as a failed
+         * answer. The transcript then opens the next time the block is opened, which is what
+         * happened every time before this refresh existed.
+         */
+      }
+    },
+    [block, courseMaterialId, elements],
+  );
+
   const check = useCallback(
     async (question: QuizQuestion) => {
       const answer = drafts[question.id];
@@ -412,6 +450,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           answer,
         });
         setFeedback((prev) => ({ ...prev, [question.id]: data }));
+        await refreshElementsIfTranscriptDue(question);
         if (data.summary) {
           const summary: QuizResultSummary = {
             correct: data.summary.correct,
@@ -430,7 +469,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         setChecking(null);
       }
     },
-    [drafts, ensureAttempt, feedback, onQuizResult, t],
+    [drafts, ensureAttempt, feedback, onQuizResult, refreshElementsIfTranscriptDue, t],
   );
 
   /**

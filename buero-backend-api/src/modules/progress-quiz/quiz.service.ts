@@ -204,8 +204,14 @@ export class QuizService {
          * the student saw a heading over an empty frame and no reason for it.
          */
         awaiting_audio: awaitingAudio.has(element.id),
-        /** So the player can promise a transcript before it is open. */
-        has_transcript: Boolean(element.transcript),
+        /**
+         * So the player can promise a transcript before it is open - but only a promise it
+         * can keep. A recording still awaiting its file has its questions held back, so
+         * "opens once you have answered every question about it" would be a lock with no
+         * key: there is nothing to answer, and the student waits for something that cannot
+         * arrive. Those say only that the task is not ready yet.
+         */
+        has_transcript: Boolean(element.transcript) && !awaitingAudio.has(element.id),
         /** Held back until every question about it has been answered. */
         transcript: transcriptOpen.has(element.id) ? element.transcript : null,
       })),
