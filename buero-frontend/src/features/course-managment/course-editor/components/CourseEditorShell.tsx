@@ -21,11 +21,11 @@ const CourseEditorShell: React.FC<CourseEditorShellProps> = ({
             to={ROUTES.COURSES}
             className="shrink-0 text-[1.25rem] text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
           >
-            All courses
+            Усі курси
           </NavLink>
         }
         renderMobileNav={({ className }) => (
-          <nav className={className} aria-label="Course editor navigation">
+          <nav className={className} aria-label="Навігація редактора курсу">
             <NavLink
               to={ROUTES.COURSES}
               className={({ isActive }) =>
@@ -37,7 +37,7 @@ const CourseEditorShell: React.FC<CourseEditorShellProps> = ({
                 ].join(' ')
               }
             >
-              All courses
+              Усі курси
             </NavLink>
           </nav>
         )}

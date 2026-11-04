@@ -34,9 +34,9 @@ const CourseEditorLoadingScreen: React.FC = () => (
     role="status"
     aria-live="polite"
     aria-busy="true"
-    aria-label="Loading course editor"
+    aria-label="Завантаження редактора курсу"
   >
-    <span className="sr-only">Loading course editor. Please wait.</span>
+    <span className="sr-only">Завантажуємо редактор курсу, трохи зачекайте.</span>
 
     <aside
       className="hidden h-full min-h-0 w-[320px] shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-neutral-white)] lg:flex"

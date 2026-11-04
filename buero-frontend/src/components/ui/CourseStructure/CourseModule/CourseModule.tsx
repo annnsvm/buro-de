@@ -53,7 +53,7 @@ const CourseModule: React.FC<ModulesProps> = ({
           >
             <div>
               <div className="flex flex-col font-bold text-[var(--color-text-primary)]">
-                <span className="text-[var(--color-text-secondary)]">MODULE {moduleNumber}</span>
+                <span className="text-[var(--color-text-secondary)]">МОДУЛЬ {moduleNumber}</span>
                 <span>{title}</span>
               </div>
               <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
@@ -114,19 +114,19 @@ const CourseModule: React.FC<ModulesProps> = ({
               </ul>
             ) : (
               <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-                No materials yet. Add the first material to this module.
+                Матеріалів ще немає - додайте перший.
               </p>
             )}
             <CourseStructureAsideActionButton
-              label="Add material"
-              ariaLabel="Add material"
+              label="Додати матеріал"
+              ariaLabel="Додати матеріал"
               onClick={() => onCreateMaterial(id)}
               className="mt-3"
             />
             {onImportQuestions ? (
               <CourseStructureAsideActionButton
-                label="Import questions from CSV"
-                ariaLabel="Import questions from CSV"
+                label="Імпорт питань з CSV"
+                ariaLabel="Імпорт питань з CSV"
                 onClick={() => onImportQuestions(id, title)}
                 className="mt-2"
               />

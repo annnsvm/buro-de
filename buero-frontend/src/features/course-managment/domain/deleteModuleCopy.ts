@@ -4,14 +4,15 @@ export const deleteModuleCopy = (params: {
   otherMaterials: number;
 }): string => {
   const { videoLessons, quizzes, otherMaterials } = params;
-  const lines: string[] = [
-    `This module contains ${videoLessons} video lesson${videoLessons === 1 ? '' : 's'} and ${quizzes} ${quizzes === 1 ? 'quiz' : 'quizzes'}.`,
-  ];
+  /**
+   * Counted after the colon rather than before the noun, because Ukrainian declines the noun
+   * by the number and «1 відеоурок / 2 відеоуроки / 5 відеоуроків» is three forms to get wrong
+   * in a sentence nobody reads twice.
+   */
+  const lines: string[] = [`У модулі відеоуроків: ${videoLessons}, тестів: ${quizzes}.`];
   if (otherMaterials > 0) {
-    lines.push(
-      `It also includes ${otherMaterials} other material${otherMaterials === 1 ? '' : 's'}.`,
-    );
+    lines.push(`Інших матеріалів: ${otherMaterials}.`);
   }
-  lines.push('Deleting the module will remove all its materials. This action cannot be undone.');
+  lines.push('Разом із модулем зникнуть усі його матеріали. Це не можна скасувати.');
   return lines.join('\n\n');
 };

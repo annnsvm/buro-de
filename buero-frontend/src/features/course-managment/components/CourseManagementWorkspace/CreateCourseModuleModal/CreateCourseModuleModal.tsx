@@ -27,7 +27,7 @@ const CreateCourseModuleModal: React.FC<CreateCourseModuleModalProps> = ({
     setError(null);
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
-      setError('Module title is required');
+      setError('Вкажіть назву модуля');
       return;
     }
 
@@ -42,8 +42,8 @@ const CreateCourseModuleModal: React.FC<CreateCourseModuleModalProps> = ({
           : err instanceof Error
             ? err.message
             : mode === 'edit'
-              ? 'Failed to update module'
-              : 'Failed to create module';
+              ? 'Не вдалося оновити модуль'
+              : 'Не вдалося створити модуль';
       setError(Array.isArray(message) ? message.join(', ') : String(message));
     } finally {
       setIsSubmitting(false);
@@ -63,19 +63,19 @@ const CreateCourseModuleModal: React.FC<CreateCourseModuleModalProps> = ({
       <ModalBody>
         <div className="flex items-center justify-center flex-col gap-2">
           <p className="text-center text-sm text-[1.75rem] font-bold text-[var(--color-text-primary)]">
-            {mode === 'edit' ? 'Edit module' : 'Create module'}
+            {mode === 'edit' ? 'Редагувати модуль' : 'Новий модуль'}
           </p>
           <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {mode === 'edit' ? 'Update module title.' : 'Add a new module to your course.'}
+            {mode === 'edit' ? 'Змініть назву модуля.' : 'Додайте до курсу ще один модуль.'}
           </p>
         </div>
 
-        <FormField label="Module title" name="moduleTitle">
+        <FormField label="Назва модуля" name="moduleTitle">
           <Input
             id="moduleTitle"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. How to study on this course"
+            placeholder="Напр. Як навчатися на цьому курсі"
             disabled={isSubmitting}
           />
         </FormField>
@@ -89,7 +89,7 @@ const CreateCourseModuleModal: React.FC<CreateCourseModuleModalProps> = ({
 
       <ModalFooter className="mt-4 flex-row justify-center gap-2">
         <Button type="button" variant="outlineDark" onClick={handleClose} disabled={isSubmitting}>
-          Cancel
+          Скасувати
         </Button>
         <Button
           type="button"
@@ -100,10 +100,10 @@ const CreateCourseModuleModal: React.FC<CreateCourseModuleModalProps> = ({
           {isSubmitting ? (
             <span className="inline-flex items-center gap-2">
               <Spinner variant="onPrimary" className="size-5" />
-              {mode === 'edit' ? 'Updating' : 'Creating'}
+              {mode === 'edit' ? 'Оновлюємо' : 'Створюємо'}
             </span>
           ) : (
-            mode === 'edit' ? 'Update module' : 'Create module'
+            mode === 'edit' ? 'Зберегти' : 'Створити модуль'
           )}
         </Button>
       </ModalFooter>

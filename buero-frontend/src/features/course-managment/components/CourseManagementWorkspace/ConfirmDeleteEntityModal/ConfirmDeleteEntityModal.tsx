@@ -8,7 +8,7 @@ const ConfirmDeleteEntityModal: React.FC<ConfirmDeleteEntityModalProps> = ({
   handleOpenChange,
   title,
   description,
-  confirmButtonLabel = 'Delete',
+  confirmButtonLabel = 'Видалити',
   isSubmitting,
   onConfirm,
 }) => {
@@ -32,7 +32,7 @@ const ConfirmDeleteEntityModal: React.FC<ConfirmDeleteEntityModalProps> = ({
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : err instanceof Error
             ? err.message
-            : 'Failed to delete';
+            : 'Не вдалося видалити';
       setError(Array.isArray(message) ? message.join(', ') : String(message));
     }
   };
@@ -65,7 +65,7 @@ const ConfirmDeleteEntityModal: React.FC<ConfirmDeleteEntityModalProps> = ({
       </ModalBody>
       <ModalFooter className="mt-6 flex flex-row justify-center gap-2">
         <Button type="button" variant="outlineDark" onClick={handleClose} disabled={isSubmitting}>
-          Cancel
+          Скасувати
         </Button>
         <Button
           type="button"
@@ -77,7 +77,7 @@ const ConfirmDeleteEntityModal: React.FC<ConfirmDeleteEntityModalProps> = ({
           {isSubmitting ? (
             <span className="inline-flex items-center gap-2">
               <Spinner variant="onPrimary" className="size-5" />
-              Deleting
+              Видаляємо
             </span>
           ) : (
             confirmButtonLabel

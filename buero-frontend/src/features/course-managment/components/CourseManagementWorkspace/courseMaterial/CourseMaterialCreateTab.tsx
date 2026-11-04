@@ -76,11 +76,19 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
     if (materialType === 'practice') {
       return { type: 'practice', title: title.trim(), parentMaterialId };
     }
+    /**
+     * A quiz created here is always the module's final test.
+     *
+     * The lesson quiz is gone - the practice does its work, and better - so the choice
+     * between the two has nothing left to choose. An existing lesson quiz keeps whatever
+     * mode it was made with; this is only about what gets made from now on.
+     */
     return {
       type: 'quiz',
       title: title.trim(),
-      quizMode,
-      passingScore: quizMode === 'test' ? passingScore : null,
+      quizMode: createdMaterialId ? quizMode : 'test',
+      passingScore:
+        (createdMaterialId ? quizMode : 'test') === 'test' ? passingScore : null,
     };
   };
 
@@ -95,27 +103,27 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
 
   const syncedButtonLabel = (() => {
     if (!isInSync) return null;
-    if (lastCommitKind === 'create') return 'Created';
-    if (lastCommitKind === 'update') return 'Updated';
-    if (activeMaterialId) return 'Saved';
-    return 'Created';
+    if (lastCommitKind === 'create') return 'Створено';
+    if (lastCommitKind === 'update') return 'Оновлено';
+    if (activeMaterialId) return 'Збережено';
+    return 'Створено';
   })();
 
   const handleCreateOrUpdate = async () => {
     if (!activeModuleId) {
-      setError('Please select module first');
+      setError('Спершу виберіть модуль');
       return;
     }
-    if (!title.trim()) return setError('Material title is required');
+    if (!title.trim()) return setError('Вкажіть назву матеріалу');
     if (materialType === 'video' && !youtubeVideoId.trim())
-      return setError('YouTube video id is required');
+      return setError('Вкажіть посилання на відео');
     if (materialType === 'video' && !extractYouTubeVideoId(youtubeVideoId)) {
       return setError(
-        'Enter a valid YouTube video id or a supported YouTube link (watch, youtu.be, embed)',
+        'Це не схоже на посилання YouTube. Підійде id відео або звичайне посилання (watch, youtu.be, embed).',
       );
     }
     if (materialType === 'video' && !youtubeVideoDuration.trim())
-      return setError('Video duration is required');
+      return setError('Вкажіть тривалість відео');
     if (materialType === 'writing') {
       if (!writing.task.trim()) return setError('Умова письмового завдання обовʼязкова');
       if (writing.criteria.filter((line) => line.trim()).length < 2) {
@@ -156,7 +164,7 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
       setSavedSnapshot(JSON.stringify(payload));
       setLastCommitKind('create');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save material');
+      setError(e instanceof Error ? e.message : 'Не вдалося зберегти матеріал');
     } finally {
       setIsMutating(false);
     }
@@ -164,16 +172,16 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
 
   return (
     <CourseMaterialCreateSection>
-      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Create material</p>
+      <p className="text-sm font-semibold text-[var(--color-text-primary)]">Матеріал модуля</p>
 
       <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-        {activeModule ? `Module: ${activeModule.title}` : 'Select a module from sidebar'}
+        {activeModule ? `Модуль: ${activeModule.title}` : 'Виберіть модуль у списку зліва'}
       </p>
 
       <div className="mt-4 space-y-4">
-        <FormField label="Material type" name="materialTypeTab">
+        <FormField label="Тип матеріалу" name="materialTypeTab">
           <Select
-            ariaLabel="Material type"
+            ariaLabel="Тип матеріалу"
             value={materialType}
             options={MATERIAL_TYPE_OPTIONS}
             onChange={(nextValue) => setMaterialType(nextValue as CourseMaterialType)}
@@ -181,10 +189,10 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
           />
         </FormField>
 
-        <FormField label="Material title" name="materialTitleTab">
+        <FormField label="Назва матеріалу" name="materialTitleTab">
           <Input
             id="materialTitleTab"
-            placeholder="e.g. Lesson 1: Greetings"
+            placeholder="Напр. Урок 1: Привітання"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={isBusy}
@@ -231,6 +239,11 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
           <WritingTaskFields draft={writing} isSubmitting={isBusy} onChange={setWriting} />
         ) : (
           <QuizModeFields
+            /**
+             * Only for a lesson quiz that already exists. A new one is the module's final
+             * test, and offering a choice with one answer is not a choice.
+             */
+            showModeChoice={Boolean(createdMaterialId) && quizMode === 'practice'}
             quizMode={quizMode}
             passingScore={passingScore}
             isSubmitting={isBusy}
@@ -258,7 +271,7 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
           />
         ) : (
           <p className="mt-6 text-xs text-[var(--color-text-secondary)]">
-            Save the lesson first to add attachments.
+            Спершу збережіть урок - тоді з’явиться місце для файлів.
           </p>
         )
       ) : null}
@@ -274,7 +287,7 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
             disabled={isBusy}
             className="!border-[var(--color-error)] !text-[var(--color-error)] hover:!border-[var(--color-error)]"
           >
-            Delete material
+            Видалити матеріал
           </Button>
         </div>
       ) : null}
@@ -289,16 +302,16 @@ const CourseMaterialCreateTab: React.FC<CourseMaterialCreateTabProps> = ({
           {isBusy ? (
             <span className="inline-flex items-center gap-2">
               <Spinner variant="onPrimary" className="size-5" />
-              {createdMaterialId && hasUnsavedChanges ? 'Updating' : 'Creating'}
+              {createdMaterialId && hasUnsavedChanges ? 'Зберігаємо' : 'Створюємо'}
             </span>
           ) : isInSync ? (
             syncedButtonLabel
           ) : createdMaterialId && needsConfirm ? (
-            'Confirm'
+            'Підтвердити'
           ) : hasUnsavedChanges ? (
-            'Save changes'
+            'Зберегти зміни'
           ) : (
-            'Create material'
+            'Створити матеріал'
           )}
         </Button>
       </div>

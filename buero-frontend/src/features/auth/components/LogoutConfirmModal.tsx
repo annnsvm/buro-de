@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/redux/hooks';
@@ -13,6 +14,7 @@ const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
   handleOpenChange,
   onExitAnimationComplete,
 }) => {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
       navigate(ROUTES.COURSES);
     } catch (e) {
       const message =
-        typeof e === 'string' ? e : e instanceof Error ? e.message : 'Logout failed';
+        typeof e === 'string' ? e : e instanceof Error ? e.message : t('auth.logoutFailed');
       setError(message);
       setIsLoggingOut(false);
     }
@@ -51,14 +53,14 @@ const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
     >
       <ModalBody>
         <ModalHeader
-          title="Log out?"
-          description="You will need to sign in again to access your courses and progress."
+          title={t('auth.logoutTitle')}
+          description={t('auth.logoutDescription')}
           className="mb-8 pr-8"
         />
         {error ? <p className="mb-4 text-sm text-[var(--color-error)]">{error}</p> : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outlineDark" className="sm:min-w-[100px]" onClick={handleClose}>
-            Cancel
+            {t('auth.logoutCancel')}
           </Button>
           <Button
             type="button"
@@ -68,7 +70,7 @@ const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
             disabled={isLoggingOut}
             isLoading={isLoggingOut}
           >
-            {isLoggingOut ? <Spinner /> : 'Logout'}
+            {isLoggingOut ? <Spinner /> : t('auth.logoutConfirm')}
           </Button>
         </div>
       </ModalBody>

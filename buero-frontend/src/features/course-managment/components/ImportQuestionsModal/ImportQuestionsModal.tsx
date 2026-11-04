@@ -102,8 +102,8 @@ const ImportQuestionsModal: React.FC<ImportQuestionsModalProps> = ({
         {done ? (
           <div className="mt-6 space-y-3">
             <p className="text-sm font-semibold text-[var(--color-success-text)]">
-              Готово: створено {done.created ?? 0}, оновлено {done.updated ?? 0} квізів, усього{' '}
-              {done.totalQuestions} питань.
+              Готово: створено {done.created ?? 0}, оновлено {done.updated ?? 0} матеріалів,
+              усього питань: {done.totalQuestions}.
             </p>
             <button
               type="button"
@@ -242,7 +242,7 @@ const ImportQuestionsModal: React.FC<ImportQuestionsModalProps> = ({
 const Preview: React.FC<{ preview: ImportPreview }> = ({ preview }) => (
   <div className="mt-6 space-y-4 rounded-xl bg-[var(--color-surface-section)] p-4">
     <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-      Буде імпортовано {preview.totalQuestions} питань у {preview.targets.length} квіз(ів)
+      Буде імпортовано питань: {preview.totalQuestions}, матеріалів: {preview.targets.length}
     </p>
 
     <ul className="space-y-2">

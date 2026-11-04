@@ -68,7 +68,7 @@ export const useCourseEditorEffects = ({
         await syncCourseDurationHours(routeCourseId, data.modules ?? []);
       } catch (err: unknown) {
         if (cancelled) return;
-        setCreateCourseError(parseApiErrorMessage(err, 'Failed to load course'));
+        setCreateCourseError(parseApiErrorMessage(err, 'Не вдалося завантажити курс'));
         setCourseId(null);
         setModules([]);
       } finally {

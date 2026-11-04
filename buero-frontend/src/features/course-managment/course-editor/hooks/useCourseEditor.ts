@@ -126,7 +126,7 @@ export const useCourseEditor = () => {
         setLastCourseCommitKind('update');
         setCreateCourseError(null);
       } catch {
-        setCreateCourseError('Failed to save module and lesson order');
+        setCreateCourseError('Не вдалося зберегти порядок модулів і уроків');
         setIsStructureDirty(false);
       } finally {
         setIsUpdatingCourse(false);

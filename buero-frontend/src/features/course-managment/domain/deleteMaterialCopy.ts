@@ -2,12 +2,12 @@ export const deleteMaterialCopy = (params: {
   title: string;
   kind: 'video' | 'quiz' | 'other';
 }): string => {
-  const safeTitle = params.title.trim() || 'Untitled';
+  const safeTitle = params.title.trim() || 'Без назви';
   if (params.kind === 'video') {
-    return `Delete the video lesson "${safeTitle}"?\nThis cannot be undone.`;
+    return `Видалити відеоурок «${safeTitle}»?\nЦе не можна скасувати.`;
   }
   if (params.kind === 'quiz') {
-    return `Delete the quiz "${safeTitle}"?\nThis cannot be undone.`;
+    return `Видалити тест «${safeTitle}»?\nЦе не можна скасувати.`;
   }
-  return `Delete the material "${safeTitle}"?\nThis cannot be undone.`;
+  return `Видалити матеріал «${safeTitle}»?\nЦе не можна скасувати.`;
 };

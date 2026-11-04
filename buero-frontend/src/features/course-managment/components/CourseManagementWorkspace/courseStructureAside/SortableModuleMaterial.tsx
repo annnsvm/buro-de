@@ -43,7 +43,7 @@ const SortableModuleMaterial = ({
         ref: setActivatorNodeRef,
         ...attributes,
         ...listeners,
-        'aria-label': `Drag lesson ${material.title || 'Untitled material'}`,
+        'aria-label': `Перетягнути ${material.title || 'матеріал без назви'}`,
       }
     : undefined;
 

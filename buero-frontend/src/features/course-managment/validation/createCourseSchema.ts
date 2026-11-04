@@ -1,28 +1,28 @@
 import { z } from 'zod';
 
 const languageSchema = z.enum(['en', 'de'], {
-  message: 'Language must be en or de',
+  message: 'Мова курсу: en або de',
 });
 
 const categorySchema = z.enum(['language', 'sociocultural'], {
-  message: 'Category must be language or sociocultural',
+  message: 'Категорія: language або sociocultural',
 });
 
 const levelSchema = z.enum(['A1', 'A2', 'B1', 'B2', 'C1'], {
-  message: 'Level must be A1, A2, B1 or B2',
+  message: 'Рівень: A1, A2, B1 або B2',
 });
 
 export const createCourseSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(1, { message: 'Course name is required' })
-    .max(500, { message: 'Course name must be 500 characters or less' }),
+    .min(1, { message: 'Вкажіть назву курсу' })
+    .max(500, { message: 'Назва курсу - не довша за 500 символів' }),
 
   description: z
     .string()
     .trim()
-    .max(5000, { message: 'Description is too long' })
+    .max(5000, { message: 'Опис курсу завеликий' })
     .optional()
     .or(z.literal('')),
 
@@ -34,7 +34,7 @@ export const createCourseSchema = z.object({
   durationHours: z.string().trim().optional().or(z.literal('')),
 
   tags: z.array(
-    z.string().trim().min(1, { message: 'Tag cannot be empty' }),
+    z.string().trim().min(1, { message: 'Тег не може бути порожнім' }),
   ),
 
   level: z.union([levelSchema, z.literal('')]),
@@ -48,7 +48,7 @@ export const createCourseSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['price'],
-      message: 'Price is required',
+      message: 'Вкажіть ціну',
     });
     return;
   }
@@ -58,7 +58,7 @@ export const createCourseSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['price'],
-      message: 'Price must be a non‑negative number',
+      message: 'Ціна не може бути відʼємною',
     });
   }
 
@@ -66,7 +66,7 @@ export const createCourseSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['tags'],
-      message: 'At least one tag is required',
+      message: 'Додайте хоча б один тег',
     });
   }
 
@@ -74,7 +74,7 @@ export const createCourseSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['level'],
-      message: 'Level is required',
+      message: 'Виберіть рівень',
     });
   }
 
@@ -84,7 +84,7 @@ export const createCourseSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['durationHours'],
-        message: 'Duration must be a non-negative integer',
+        message: 'Тривалість - ціле невідʼємне число',
       });
     }
   }

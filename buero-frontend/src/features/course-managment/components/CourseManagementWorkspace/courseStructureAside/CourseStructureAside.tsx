@@ -253,7 +253,7 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
           />
           {hasUnsavedStructure ? (
             <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-              New order is not saved yet. Open the course and click Save changes, then Confirm.
+              Новий порядок ще не збережено. Відкрийте курс і натисніть «Зберегти зміни» → «Підтвердити».
             </p>
           ) : null}
         </div>
@@ -272,8 +272,8 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
     return (
       <div className="mt-4 shrink-0 space-y-3">
         <CourseStructureAsideActionButton
-          label="Add module"
-          ariaLabel="Add module"
+          label="Додати модуль"
+          ariaLabel="Додати модуль"
           onClick={onCreateModule}
           onAfterClick={isMobile ? handleClose : undefined}
         />
@@ -284,9 +284,9 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
             className="w-full"
             onClick={handleRequestPublish}
             onKeyDown={handlePublishKeyDown}
-            aria-label="Publish course"
+            aria-label="Опублікувати курс"
           >
-            Publish course
+            Опублікувати курс
           </Button>
         ) : null}
         {showUnpublishCourseButton && onRequestUnpublishCourse ? (
@@ -296,9 +296,9 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
             className="w-full"
             onClick={handleRequestUnpublish}
             onKeyDown={handleUnpublishKeyDown}
-            aria-label="Unpublish course"
+            aria-label="Зняти курс з публікації"
           >
-            Unpublish course
+            Зняти з публікації
           </Button>
         ) : null}
       </div>
@@ -313,12 +313,12 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
             type="button"
             onClick={handleOpen}
             onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleOpen()}
-            aria-label="Open course structure"
+            aria-label="Відкрити структуру курсу"
             className="fixed top-[4rem] left-4 z-40 rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-overlay)] px-3 py-2 shadow-sm"
           >
             <span className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
               <Icon name={ICON_NAMES.BOOK} size={18} ariaHidden />
-              Course Structure
+              Структура курсу
             </span>
           </button>
         </div>
@@ -332,7 +332,7 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
         </div>
         <div className="flex min-h-0 flex-1 flex-col pt-4 pr-0 pb-4 pl-4">
           <h2 className="shrink-0 pr-4 text-base font-bold text-[var(--color-text-primary)]">
-            Course structure
+            Структура курсу
           </h2>
           <WorkspaceScrollArea className="mt-2 flex min-h-0 flex-1 flex-col">
             <div className="pr-2">{renderScrollableBody(false)}</div>
@@ -349,7 +349,7 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
         >
           <button
             type="button"
-            aria-label="Close course structure"
+            aria-label="Закрити структуру курсу"
             onClick={handleClose}
             className={[
               'pointer-events-auto absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out',
@@ -369,14 +369,14 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
               <button
                 type="button"
                 onClick={handleClose}
-                aria-label="Close"
+                aria-label="Закрити"
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-md ring-1 ring-black/10 transition hover:bg-[var(--color-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
               >
                 <Icon name={ICON_NAMES.X} size={22} className="text-white" ariaHidden />
               </button>
             </div>
             <h2 className="shrink-0 px-4 pt-2 text-base font-bold text-[var(--color-text-primary)]">
-              Course structure
+              Структура курсу
             </h2>
             <WorkspaceScrollArea className="flex min-h-0 min-w-0 flex-1 flex-col">
               <div className="pr-2 pb-2 pl-4">{renderScrollableBody(true)}</div>

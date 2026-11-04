@@ -19,34 +19,34 @@ const CourseDetailsSection: React.FC<CourseDetailsSectionProps> = ({
   onChangeLevelTo,
 }) => {
   return (
-    <section aria-label="Course card">
-      <SectionTitle label="course card" className="pb-4 text-[var(--color-accent-primary)]">
-        COURSE CARD
+    <section aria-label="Картка курсу">
+      <SectionTitle label="картка курсу" className="pb-4 text-[var(--color-accent-primary)]">
+        КАРТКА КУРСУ
       </SectionTitle>
       <div className="flex flex-col gap-4">
         <FormField
-          label="Course name"
+          label="Назва курсу"
           name="courseName"
           error={nameError}
           className="space-y-4 rounded-2xl bg-[var(--color-surface-background)] p-6"
         >
           <Input
             id="courseName"
-            placeholder="Put a name of the course, it should appear above"
+            placeholder="Назва, яку студент побачить у каталозі"
             value={courseName}
             onChange={(e) => onChangeName(e.target.value)}
             disabled={disabled}
           />
         </FormField>
         <FormField
-          label="Course description"
+          label="Опис курсу"
           name="courseDescription"
           error={descriptionError}
           className="space-y-4 rounded-2xl bg-[var(--color-surface-background)] p-6"
         >
           <textarea
             id="courseDescription"
-            placeholder="Put a description of the course, it should appear above"
+            placeholder="Для кого цей курс і чого студент на ньому навчиться"
             value={courseDescription}
             onChange={(e) => onChangeDescription(e.target.value)}
             rows={3}
@@ -55,13 +55,13 @@ const CourseDetailsSection: React.FC<CourseDetailsSectionProps> = ({
           />
         </FormField>
         <FormField
-          label="Course level"
+          label="Рівень курсу"
           name="courseLevel"
           error={levelError}
           className="space-y-4 rounded-2xl bg-[var(--color-surface-background)] p-6"
         >
           <Select
-            ariaLabel="Course level"
+            ariaLabel="Рівень курсу"
             value={level}
             options={COURSE_LEVEL_OPTIONS}
             onChange={(nextValue) => onChangeLevel(nextValue)}
@@ -71,12 +71,12 @@ const CourseDetailsSection: React.FC<CourseDetailsSectionProps> = ({
           />
         </FormField>
         <FormField
-          label="Up to level (optional)"
+          label="До рівня (необов’язково)"
           name="courseLevelTo"
           className="space-y-4 rounded-2xl bg-[var(--color-surface-background)] p-6"
         >
           <Select
-            ariaLabel="Up to level"
+            ariaLabel="До рівня"
             value={levelTo}
             options={COURSE_LEVEL_OPTIONS}
             onChange={(nextValue) => onChangeLevelTo(nextValue)}
@@ -87,8 +87,8 @@ const CourseDetailsSection: React.FC<CourseDetailsSectionProps> = ({
           {/* Only set it for a course that really spans a range - leaving it empty is the
               ordinary case, and filling it in with the same level says nothing. */}
           <p className="text-xs text-[var(--color-text-secondary)]">
-            Leave empty unless the course covers several levels. A course from A2 to B1 is
-            listed under both.
+            Залишайте порожнім, якщо курс про один рівень. Курс від A2 до B1 видно в
+            каталозі під обома.
           </p>
         </FormField>
       </div>

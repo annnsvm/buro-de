@@ -8,8 +8,8 @@ const ConfirmPublishCourseModal: React.FC<ConfirmPublishCourseModalProps> = ({
   handleOpenChange,
   title,
   description,
-  confirmButtonLabel = 'Publish',
-  submittingLabel = 'Publishing',
+  confirmButtonLabel = 'Опублікувати',
+  submittingLabel = 'Публікуємо',
   isSubmitting,
   onConfirm,
 }) => {
@@ -33,7 +33,7 @@ const ConfirmPublishCourseModal: React.FC<ConfirmPublishCourseModalProps> = ({
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : err instanceof Error
             ? err.message
-            : 'Request failed';
+            : 'Не вдалося виконати запит';
       setError(Array.isArray(message) ? message.join(', ') : String(message));
     }
   };
@@ -66,7 +66,7 @@ const ConfirmPublishCourseModal: React.FC<ConfirmPublishCourseModalProps> = ({
       </ModalBody>
       <ModalFooter className="mt-6 flex flex-row justify-center gap-2">
         <Button type="button" variant="outlineDark" onClick={handleClose} disabled={isSubmitting}>
-          Cancel
+          Скасувати
         </Button>
         <Button type="button" variant="solid" onClick={handleConfirm} disabled={isSubmitting}>
           {isSubmitting ? (

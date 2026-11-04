@@ -178,7 +178,7 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
             );
           }}
         >
-          <Text label={'Switch to Sign Up'} className="text-[1.125rem]">
+          <Text className="text-[1.125rem]">
             {t('auth.switchToSignUp')}
           </Text>
         </button>
