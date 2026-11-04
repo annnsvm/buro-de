@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { QuizPartResult, QuizQuestion } from '@/api/quizApi';
+import type { QuizPartResult, QuizQuestion, RecentAttempt } from '@/api/quizApi';
 import { BLOCK_ART } from '@/features/course-learning/PracticePanel/illustrations/BlockArt';
 import {
   PRIMARY_BUTTON,
   SECONDARY_BUTTON,
 } from '@/features/course-learning/PracticePanel/ui/buttons';
+import { formatDay } from '@/helpers/formatDate';
 
 /** One question that cost a point, with everything known about why. */
 export type TestMistake = {
@@ -28,6 +29,12 @@ export type TestResultProps = {
   passingScore: number | null;
   passed: boolean | null;
   parts: readonly QuizPartResult[];
+  /**
+   * The last few goes at this test, newest first, this one included. At most three,
+   * because a list is for seeing a direction and a longer column of one's own failures
+   * teaches nothing the last three do not.
+   */
+  recentAttempts?: readonly RecentAttempt[];
   mistakes: readonly TestMistake[];
   onRetry: () => void;
   /** Offered only where there is somewhere to go. */
@@ -58,6 +65,7 @@ const TestResult: React.FC<TestResultProps> = ({
   passed,
   parts,
   mistakes,
+  recentAttempts = [],
   onRetry,
   onMoveOn,
   moveOnLabel,
@@ -66,9 +74,30 @@ const TestResult: React.FC<TestResultProps> = ({
   const [allShown, setAllShown] = useState(false);
 
   const failed = passed === false;
-  /** A failed test shows every mistake at once: that list is the way back. */
-  const visible = failed || allShown ? mistakes : mistakes.slice(0, SHOWN_AT_FIRST);
-  const hidden = mistakes.length - visible.length;
+  /**
+   * The question-by-question account belongs to a pass.
+   *
+   * A failed test used to come back with every mistake spelled out, and the author's own
+   * explanations name the form - "Жіночий рід у Dativ — der" sits under the question. The
+   * retake then stopped being a retake. What a failed student gets instead is the part-by-
+   * part result above and the lessons to go back over, which says where to work without
+   * saying what to type.
+   *
+   * The server withholds it as well; this is not the gate, only the screen agreeing with
+   * it. A list that arrived anyway would still not be drawn here.
+   */
+  /**
+   * Earlier goes, newest first, with the one on screen dropped.
+   *
+   * The big number above is this attempt; repeating it in the list below would read as
+   * having taken the test twice. What is left is the run-up to it, which is the whole
+   * point - 40, then 55, then this one says the work is paying off.
+   */
+  const earlier = recentAttempts.slice(1);
+
+  const reviewable = failed ? [] : mistakes;
+  const visible = allShown ? reviewable : reviewable.slice(0, SHOWN_AT_FIRST);
+  const hidden = reviewable.length - visible.length;
 
   return (
     <section className="flex flex-col gap-8 pt-6" role="status" aria-live="polite">
@@ -154,7 +183,7 @@ const TestResult: React.FC<TestResultProps> = ({
         </section>
       ) : null}
 
-      {mistakes.length > 0 ? (
+      {reviewable.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h4 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
             {t('quiz.whatToWorkOn')}
@@ -175,10 +204,45 @@ const TestResult: React.FC<TestResultProps> = ({
               onClick={() => setAllShown(true)}
               className="self-start text-sm font-semibold text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
             >
-              {t('quiz.showAllMistakes', { count: mistakes.length })}
+              {t('quiz.showAllMistakes', { count: reviewable.length })}
             </button>
           ) : null}
         </section>
+      ) : null}
+
+      {/**
+       * What came before this go. Only the percentage: the answers of an old sitting
+       * belong to that sitting, and the result that counts is always the best one.
+       */}
+      {earlier.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <h4 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+            {t('quiz.earlierAttempts')}
+          </h4>
+          <ul className="flex flex-wrap gap-2">
+            {earlier.map((attempt) => (
+              <li
+                key={attempt.completed_at}
+                className="rounded-[14px] bg-[var(--color-neutral-white)] px-4 py-2.5 text-sm text-[var(--color-text-secondary)]"
+              >
+                <span className="font-semibold text-[var(--color-text-primary)] tabular-nums">
+                  {Math.round(attempt.score)}%
+                </span>{' '}
+                {formatDay(attempt.completed_at)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/**
+       * Said out loud, because a screen that simply stops after the parts reads as the
+       * review having failed to load rather than as a deliberate withholding.
+       */}
+      {failed ? (
+        <p className="rounded-[20px] bg-[var(--color-neutral-white)] px-[22px] py-[18px] text-sm text-[var(--color-text-secondary)]">
+          {t('quiz.reviewWaitsForPass')}
+        </p>
       ) : null}
 
       <div className="flex flex-wrap gap-3 border-t border-[var(--color-dawn-pink-dark)]/35 pt-7">

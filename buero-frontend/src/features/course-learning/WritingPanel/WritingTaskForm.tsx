@@ -14,6 +14,7 @@ import Segments from '../PracticePanel/ui/Segments';
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../PracticePanel/ui/buttons';
 import { readMarks } from './marks';
 import { parseWritingPrompt } from './prompt';
+import { formatDay } from '@/helpers/formatDate';
 
 export type WritingTaskFormProps = {
   task: WritingTaskResponse;
@@ -386,7 +387,8 @@ const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
       {!task.can_submit && task.blocked_reason === 'cooldown' && retry ? (
         <span className="ml-2 text-[var(--color-text-primary)]">
           {t('writing.waitASecond', {
-            time: retry.toLocaleTimeString(undefined, {
+            /** The reader's language, not the machine's: see `formatDate`. */
+            time: retry.toLocaleTimeString('uk-UA', {
               hour: '2-digit',
               minute: '2-digit',
               second: '2-digit',
@@ -397,12 +399,10 @@ const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
       {!task.can_submit && task.blocked_reason === 'daily' && retry ? (
         <span className="ml-2 text-[var(--color-text-primary)]">
           {t('writing.comeBackAt', {
-            time: retry.toLocaleString(undefined, {
+            time: `${formatDay(retry)}, ${retry.toLocaleTimeString('uk-UA', {
               hour: '2-digit',
               minute: '2-digit',
-              day: 'numeric',
-              month: 'long',
-            }),
+            })}`,
           })}
         </span>
       ) : null}

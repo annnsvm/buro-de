@@ -56,6 +56,7 @@ describe("QuizService.submitQuiz", () => {
       count: jest.Mock;
     };
     question: { findMany: jest.Mock };
+    practiceElement: { findMany: jest.Mock };
     questionAttempt: { createMany: jest.Mock };
     courseMaterial: { findUnique: jest.Mock };
     courseProgress: { upsert: jest.Mock };
@@ -101,6 +102,8 @@ describe("QuizService.submitQuiz", () => {
         count: jest.fn().mockResolvedValue(1),
       },
       question: { findMany: jest.fn().mockResolvedValue(questions) },
+      /** No recordings in this test, so nothing is held back from the marking. */
+      practiceElement: { findMany: jest.fn().mockResolvedValue([]) },
       questionAttempt: { createMany: jest.fn() },
       courseMaterial: { findUnique: jest.fn() },
       courseProgress: { upsert: jest.fn() },
@@ -138,6 +141,84 @@ describe("QuizService.submitQuiz", () => {
       ],
     });
 
+  /**
+   * A test is marked out of what it asked, never out of what it holds.
+   *
+   * A recording whose file has not been uploaded takes its questions off the screen - a
+   * student cannot honestly answer about something they could not hear. Marking read every
+   * published question of the material anyway, so those silent questions were counted as
+   * wrong: thirteen points offered, eighteen points marked, and a student who had done
+   * well enough was told 17% and sent back to revise a part they had never been shown.
+   */
+  describe("a test with a recording that has no file yet", () => {
+    beforeEach(() => {
+      setUp(QuizMode.test, 60);
+      prisma.question.findMany.mockResolvedValue([
+        ...questions,
+        {
+          id: "H1",
+          materialId: MATERIAL,
+          type: QuestionType.fill_blank,
+          prompt: "Про що розмовляють?",
+          payload: {},
+          acceptedAnswers: ["про презентацію"],
+          explanation: null,
+          points: 5,
+          partTitle: null,
+          block: "horen",
+          elementId: "silent-audio",
+          reviewLesson: null,
+          orderIndex: 2,
+        },
+      ]);
+      prisma.practiceElement.findMany.mockResolvedValue([
+        { id: "silent-audio", kind: "audio", audioUrl: null },
+      ]);
+    });
+
+    it("scores it out of the points it actually offered", async () => {
+      const out = await passing();
+
+      /** Three of three, not three of eight. */
+      expect(out).toMatchObject({ earned_points: 3, total_points: 3, score: 100 });
+    });
+
+    it("passes a student who answered everything they were shown", async () => {
+      await expect(passing()).resolves.toMatchObject({ passed: true });
+    });
+
+    it("says nothing about the part it never asked", async () => {
+      const out = await passing();
+      const titles = (out.parts ?? []).map((part) => part.title);
+
+      expect(titles).not.toContain("horen");
+    });
+
+    it("records no answer for a question it did not ask", async () => {
+      await passing();
+
+      const written = prisma.questionAttempt.createMany.mock.calls[0][0].data as Array<{
+        questionId: string;
+      }>;
+      expect(written.map((row) => row.questionId)).not.toContain("H1");
+    });
+  });
+
+  describe("a test that was passed", () => {
+    beforeEach(() => setUp(QuizMode.test, 60));
+
+    it("gives back the whole account, explanation and key together", async () => {
+      const result = await passing();
+
+      expect(result.reveal_answers).toBe(true);
+      expect(result.results.map((item) => item.explanation)).toEqual([
+        "після weil дієслово стоїть у самому кінці.",
+        "підмет du → kommst.",
+      ]);
+      expect(result.results.every((item) => item.accepted_answers.length > 0)).toBe(true);
+    });
+  });
+
   describe("a test below its threshold", () => {
     beforeEach(() => setUp(QuizMode.test, 60));
 
@@ -165,13 +246,27 @@ describe("QuizService.submitQuiz", () => {
       expect(result.score).toBeCloseTo(33.33, 1);
     });
 
-    it("explains every question, right or wrong", async () => {
+    /**
+     * The explanation waits for the pass, with the key.
+     *
+     * It used to travel either way, on the reading that it teaches the rule rather than
+     * giving the answer. In the author's own material that line is rarely there: "Жіночий
+     * рід у Dativ — der" is the answer, printed under the question, so keeping the key
+     * back while showing that beside it was a rule that could not hold.
+     *
+     * What a failed student gets instead is the part-by-part result and the lessons to go
+     * back over - enough to know where they went wrong, not enough to copy.
+     */
+    it("keeps the explanation back as well, or the retake is copying", async () => {
       const result = await failing();
 
-      expect(result.results.map((item) => item.explanation)).toEqual([
-        "після weil дієслово стоїть у самому кінці.",
-        "підмет du → kommst.",
-      ]);
+      expect(result.results.map((item) => item.explanation)).toEqual([null, null]);
+    });
+
+    it("still says which parts were weak, so the student knows where to go", async () => {
+      const result = await failing();
+
+      expect(result.parts?.length).toBeGreaterThan(0);
     });
 
     it("still keeps the answer key back, so a retake is not copying", async () => {

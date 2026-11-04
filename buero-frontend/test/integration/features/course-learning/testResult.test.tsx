@@ -116,21 +116,33 @@ describe('a test that fell short', () => {
   });
 
   /**
-   * The rule that must not slip. The server withholds the key after a failure, and the
-   * screen must not invent one from the student's own wrong answer.
+   * The rule that must not slip, and it now covers more than the key.
+   *
+   * The explanation used to come through on a failure, on the reading that it teaches the
+   * rule rather than giving the answer. The author's own explanations do not divide that
+   * way - "Жіночий рід у Dativ — der" is the answer, printed under the question - so the
+   * whole question-by-question account waits for the pass.
    */
-  it('shows no answer key', async () => {
+  it('shows neither the answer key nor the explanations', async () => {
     const { container } = draw(failed);
 
-    /**
-     * The struck-out answer and the one beside it are drawn only when the server released
-     * the key, so their absence is the whole assertion. Searching for the word itself
-     * would find it inside the author's own explanation.
-     */
     expect(container.querySelector('.line-through')).toBeNull();
-    /** The explanation and the lesson still come through: that is the way back. */
-    expect(screen.getByText(/Dativ жіночого роду/)).toBeInTheDocument();
-    expect(screen.getByText('Повторити урок 2.1 →')).toBeInTheDocument();
+    expect(screen.queryByText(/Dativ жіночого роду/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Повторити урок 2.1 →')).not.toBeInTheDocument();
+  });
+
+  /** And says why, so the gap does not read as a screen that failed to load. */
+  it('says the review opens once the test is passed', async () => {
+    draw(failed);
+
+    expect(screen.getByText(/Розбір кожного питання відкриється/)).toBeInTheDocument();
+  });
+
+  /** What is left is the way back: which parts were weak. */
+  it('still breaks the result down by part', async () => {
+    draw(failed);
+
+    expect(screen.getAllByText('Grammatik').length).toBeGreaterThan(0);
   });
 
   it('puts the retake first', async () => {
@@ -167,12 +179,13 @@ describe('the mistakes', () => {
     expect(screen.getByText('Речення номер 4')).toBeInTheDocument();
   });
 
-  /** After a failure the whole list is the way back, so none of it is hidden. */
-  it('shows them all when the test was not passed', async () => {
+  /** After a failure none of it is shown at all, which is the point of the gate. */
+  it('shows none of them when the test was not passed', async () => {
     draw({ mistakes: many, passed: false, percent: 40 });
 
-    expect(screen.getByText('Речення номер 4')).toBeInTheDocument();
+    expect(screen.queryByText('Речення номер 4')).not.toBeInTheDocument();
     expect(screen.queryByText(/Показати всі помилки/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Над чим попрацювати')).not.toBeInTheDocument();
   });
 
   it('numbers a mistake the way the student met it', async () => {
@@ -186,5 +199,55 @@ describe('the mistakes', () => {
     draw({ mistakes: [] });
 
     expect(screen.queryByText('Над чим попрацювати')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The run-up to this result.
+ *
+ * A student who is on their third go wants to know whether the work is paying off, and
+ * three percentages answer that: 40, then 55, then the number above. Only the percentage
+ * is kept - the answers of an old sitting belong to that sitting, and the result that
+ * counts is always the best one.
+ */
+describe('earlier attempts', () => {
+  const attempt = (score: number, day: number) => ({
+    score,
+    completed_at: `2026-11-0${day}T10:00:00.000Z`,
+  });
+
+  it('lists the ones before this, newest first', async () => {
+    draw({ recentAttempts: [attempt(72, 4), attempt(55, 3), attempt(40, 2)] });
+
+    expect(screen.getByText('Попередні спроби')).toBeInTheDocument();
+    expect(screen.getByText('55%')).toBeInTheDocument();
+    expect(screen.getByText('40%')).toBeInTheDocument();
+  });
+
+  /** The first row is the attempt on screen; repeating it would read as two goes. */
+  it('does not repeat the attempt being shown', async () => {
+    draw({ recentAttempts: [attempt(72, 4), attempt(55, 3)] });
+
+    expect(screen.queryByText('72%')).not.toBeInTheDocument();
+  });
+
+  it('says nothing at all on a first attempt', async () => {
+    draw({ recentAttempts: [attempt(72, 4)] });
+
+    expect(screen.queryByText('Попередні спроби')).not.toBeInTheDocument();
+  });
+
+  it('says nothing when the server sent no history', async () => {
+    draw();
+
+    expect(screen.queryByText('Попередні спроби')).not.toBeInTheDocument();
+  });
+
+  /** Shown after a failure too: that is exactly when a direction is worth seeing. */
+  it('is shown even when the test was not passed', async () => {
+    draw({ passed: false, percent: 55, recentAttempts: [attempt(55, 4), attempt(40, 3)] });
+
+    expect(screen.getByText('Попередні спроби')).toBeInTheDocument();
+    expect(screen.getByText('40%')).toBeInTheDocument();
   });
 });

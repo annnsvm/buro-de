@@ -60,6 +60,7 @@ describe("a block the student left half done", () => {
   let prisma: {
     quizAttempt: { findMany: jest.Mock; count: jest.Mock };
     question: { findMany: jest.Mock };
+    practiceElement: { findMany: jest.Mock };
     questionAttempt: { findMany: jest.Mock };
     courseMaterial: { findUnique: jest.Mock };
   };
@@ -79,6 +80,8 @@ describe("a block the student left half done", () => {
         count: jest.fn().mockResolvedValue(0),
       },
       question: { findMany: jest.fn().mockResolvedValue(QUESTIONS) },
+      /** No recordings here, so nothing is held back from the askable set. */
+      practiceElement: { findMany: jest.fn().mockResolvedValue([]) },
       questionAttempt: { findMany: jest.fn().mockResolvedValue([]) },
       courseMaterial: {
         findUnique: jest.fn().mockResolvedValue({

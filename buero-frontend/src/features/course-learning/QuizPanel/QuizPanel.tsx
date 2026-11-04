@@ -14,6 +14,7 @@ import {
   type PracticeElement,
   type QuizPartResult,
   type QuizQuestion,
+  type RecentAttempt,
 } from '@/api/quizApi';
 import BaseDialog from '@/components/modal/BaseDialog/BaseDialog';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
@@ -38,6 +39,7 @@ import {
   isAnswered,
   type ExerciseAnswer,
 } from '@/features/course-learning/exercises/exercise.types';
+import { describeAnswer } from '@/features/course-learning/exercises/describeAnswer';
 
 /** Which part of a module test is open, kept in the address bar. */
 const PART_PARAM = 'part';
@@ -118,6 +120,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   const [outdated, setOutdated] = useState(false);
   const [mode, setMode] = useState<QuizMode>('practice');
   const [passingScore, setPassingScore] = useState<number | null>(null);
+  /** The last few goes, newest first, for the result screen. */
+  const [recentAttempts, setRecentAttempts] = useState<RecentAttempt[]>([]);
   const [passed, setPassed] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
   /**
@@ -236,11 +240,11 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       const given = feedback[question.id];
       if (!given || given.correct) continue;
 
-      const typed = drafts[question.id];
       out.push({
         question,
         position: at,
-        given: Array.isArray(typed) ? typed.join(', ') : (typed ?? ''),
+        /** The option's own words, not the id it is stored under; see `describeAnswer`. */
+        given: describeAnswer(question, drafts[question.id]),
         accepted: given.accepted_answers ?? [],
         explanation: given.explanation,
         reviewLesson: given.review_lesson ?? null,
@@ -320,6 +324,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         setOutdated(true);
       } else if (previous) {
         setPassed(previous.passed);
+        setRecentAttempts(previous.recent_attempts ?? []);
         setEarnedPoints(previous.earned_points);
         setParts(previous.parts ?? []);
         setAttemptId(previous.attempt_id);
@@ -576,6 +581,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         ),
       );
       setPassed(data.passed);
+      setRecentAttempts(data.recent_attempts ?? []);
       setEarnedPoints(data.earned_points);
       setParts(data.parts ?? []);
       const summary: QuizResultSummary = {
@@ -586,6 +592,15 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         justFinished: true,
       };
       setResult(summary);
+      /**
+       * And out of the part the student happened to finish in.
+       *
+       * The result belongs to the test, not to Lesen - but it was drawn at the open part's
+       * address, so a reload or a return landed back inside that part with the result
+       * hanging under it. Clearing the parameter puts the result where it belongs and
+       * makes the back button behave: the test's own screen, whichever part was last.
+       */
+      setOpenPart(null);
       setResultDialogOpen(true);
       onQuizResult?.(summary);
     } catch (err: unknown) {
@@ -593,7 +608,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     } finally {
       setSubmitting(false);
     }
-  }, [drafts, ensureAttempt, onQuizResult, questions, t]);
+  }, [drafts, ensureAttempt, onQuizResult, questions, setOpenPart, t]);
 
   if (loading) {
     return (
@@ -974,6 +989,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           passingScore={passingScore}
           passed={passed}
           parts={parts}
+          recentAttempts={recentAttempts}
           mistakes={mistakes}
           onRetry={handleRetry}
           onMoveOn={onMoveOn}

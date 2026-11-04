@@ -169,6 +169,8 @@ export const answerQuizQuestion = async (
 /** A finished attempt, replayed so a student can revisit what they answered. */
 export type LastQuizAttempt = {
   attempt_id: string;
+  /** The last few goes at this quiz, newest first. At most three. */
+  recent_attempts?: RecentAttempt[];
   completed_at: string | null;
   /**
    * What was typed into a sitting still in progress, unmarked. Empty for a finished one,
@@ -246,7 +248,15 @@ export const isOutdatedAttempt = (
   'outdated' in value &&
   value.outdated === true;
 
+/** One earlier go at a quiz: how it went and when, and nothing else. */
+export type RecentAttempt = {
+  score: number;
+  completed_at: string;
+};
+
 export type SubmitQuizResponse = {
+  /** The last few goes, newest first, this one included. At most three. */
+  recent_attempts?: RecentAttempt[];
   score: number;
   best_score: number;
   total: number;
