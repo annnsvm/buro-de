@@ -4,6 +4,11 @@ import { getCoursePath } from '@/helpers/routes';
 import type { MyProgressCourse, ResumeLesson } from '@/api/progressApi';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  EYEBROW,
+  EYEBROW_ACCENT,
+  LABEL_ROW,
+} from '@/features/course-learning/PracticePanel/ui/headings';
 
 type MyLearningHeroProps = {
   name: string;
@@ -37,7 +42,7 @@ const MyLearningHero: FC<MyLearningHeroProps> = ({ name, resume, progressCourses
     <section className="bg-[var(--color-soapstone-base)] pt-6 pb-8 sm:pt-8 sm:pb-10">
       <Container className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
         <div className="max-w-xl min-w-0">
-          <p className="mb-3 text-xs font-bold tracking-[0.16em] text-[var(--color-accent-primary)] uppercase">
+          <p className={`mb-3 ${EYEBROW_ACCENT}`}>
             {t('myLearning.eyebrow')}
           </p>
           <h1 className="font-[family-name:var(--font-heading)] text-4xl leading-[0.95] font-bold tracking-[-0.04em] text-[var(--color-cod-gray-base)] sm:text-6xl">
@@ -52,11 +57,12 @@ const MyLearningHero: FC<MyLearningHeroProps> = ({ name, resume, progressCourses
 
         {resume ? (
           <article className="w-full shrink-0 rounded-[28px] border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] p-6 sm:p-7 lg:w-[420px]">
-            <p className="flex flex-wrap items-center gap-x-3 text-[11px] font-bold tracking-[0.12em] uppercase">
-              <span className="text-[var(--color-text-primary)]">
+            {/** The course on the left, how far through on the right: one line about this card. */}
+            <p className={LABEL_ROW}>
+              <span className={EYEBROW_ACCENT}>
                 {t('myLearning.continueMetaCourse', { course: resume.course_title })}
               </span>
-              <span className="text-[var(--color-text-secondary)]">
+              <span className={EYEBROW}>
                 {t('myLearning.continueMetaLesson', {
                   current: resume.lesson_number,
                   total: resume.lesson_total,
