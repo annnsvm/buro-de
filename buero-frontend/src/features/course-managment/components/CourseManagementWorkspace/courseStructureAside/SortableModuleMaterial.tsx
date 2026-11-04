@@ -14,6 +14,8 @@ type SortableModuleMaterialProps = {
   dragEnabled: boolean;
   onSelectMaterial: (moduleId: string, materialId: string) => void;
   onRequestDeleteMaterial?: (moduleId: string, materialId: string) => void;
+  onPublishMaterial?: (moduleId: string, materialId: string) => void;
+  isPublishingMaterial?: boolean;
 };
 
 const SortableModuleMaterial = ({
@@ -23,6 +25,8 @@ const SortableModuleMaterial = ({
   dragEnabled,
   onSelectMaterial,
   onRequestDeleteMaterial,
+  onPublishMaterial,
+  isPublishingMaterial,
 }: SortableModuleMaterialProps) => {
   const {
     attributes,
@@ -65,6 +69,12 @@ const SortableModuleMaterial = ({
           ? (materialId) => onRequestDeleteMaterial(moduleId, materialId)
           : undefined
       }
+      onPublishMaterial={
+        onPublishMaterial
+          ? (materialId) => onPublishMaterial(moduleId, materialId)
+          : undefined
+      }
+      isPublishingMaterial={isPublishingMaterial}
     />
   );
 };

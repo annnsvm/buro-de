@@ -155,6 +155,14 @@ export class QuestionImportService {
               title: target.title,
               // The questions live in their own table; the JSON stays empty.
               content: {},
+              /**
+               * A draft, deliberately. The questions and texts an import brings in were
+               * already drafts, but the material around them appeared in the lesson list
+               * at once - so a student saw an empty practice and a course that looked
+               * broken. Nothing from an import reaches a student until the teacher
+               * publishes the module.
+               */
+              publishedAt: null,
               quizMode: mode,
               ...(options.passingScore !== undefined && {
                 passingScore: options.passingScore,

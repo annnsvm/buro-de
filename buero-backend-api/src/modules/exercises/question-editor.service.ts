@@ -73,14 +73,74 @@ export class QuestionEditorService {
 
     const publishedAt = new Date();
     const where = { materialId, publishedAt: null, ...(block ? { block } : {}) };
-    const [questions, elements] = await this.prisma.$transaction([
+    const [questions, elements, material] = await this.prisma.$transaction([
       this.prisma.question.updateMany({ where, data: { publishedAt } }),
       this.prisma.practiceElement.updateMany({ where, data: { publishedAt } }),
+      /**
+       * And the material itself, if it was still a draft.
+       *
+       * Publishing one block of a material nobody can reach would publish nothing a student
+       * could find. The material has to open with the first block that does, and it opens
+       * only once - a second block published later finds it already dated.
+       */
+      this.prisma.courseMaterial.updateMany({
+        where: { id: materialId, publishedAt: null },
+        data: { publishedAt },
+      }),
     ]);
 
     return {
       published_at: publishedAt.toISOString(),
       block: block ?? null,
+      questions: questions.count,
+      elements: elements.count,
+      /** 1 the first time a draft material is published, 0 when it was already visible. */
+      materials: material.count,
+    };
+  }
+
+  /**
+   * Publishing a whole module: every draft in it, in one act.
+   *
+   * This is the act that matches an import. A CSV brings in eight practices at once, each
+   * with its questions and its texts, and publishing them one block at a time would be
+   * twenty-four button presses to undo a single upload. The teacher uploads, looks at what
+   * arrived, and lets the module out as one thing.
+   *
+   * Everything already published keeps the date it actually appeared, so "when did students
+   * get this" stays answerable per material rather than being rewritten by the next import.
+   */
+  async publishModule(courseId: string, moduleId: string) {
+    const module = await this.prisma.courseModule.findFirst({
+      where: { id: moduleId, courseId },
+      select: { id: true },
+    });
+    if (!module) {
+      throw new NotFoundException(
+        `Модуль з id ${moduleId} не знайдено або не належить курсу`,
+      );
+    }
+
+    const publishedAt = new Date();
+    const inModule = { material: { moduleId } };
+    const [questions, elements, materials] = await this.prisma.$transaction([
+      this.prisma.question.updateMany({
+        where: { publishedAt: null, ...inModule },
+        data: { publishedAt },
+      }),
+      this.prisma.practiceElement.updateMany({
+        where: { publishedAt: null, ...inModule },
+        data: { publishedAt },
+      }),
+      this.prisma.courseMaterial.updateMany({
+        where: { moduleId, publishedAt: null },
+        data: { publishedAt },
+      }),
+    ]);
+
+    return {
+      published_at: publishedAt.toISOString(),
+      materials: materials.count,
       questions: questions.count,
       elements: elements.count,
     };

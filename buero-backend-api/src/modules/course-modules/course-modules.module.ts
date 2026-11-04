@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { UserModule } from '../user/user.module';
+import { ExercisesModule } from '../exercises/exercises.module';
 import { CourseModuleService } from './course-module.service';
 import { CourseModulesController } from './course-modules.controller';
 import { CourseStructureController } from './course-structure.controller';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UserModule],
+  imports: [PrismaModule, AuthModule, UserModule, ExercisesModule],
   controllers: [CourseModulesController, CourseStructureController],
   providers: [CourseModuleService],
   exports: [CourseModuleService],

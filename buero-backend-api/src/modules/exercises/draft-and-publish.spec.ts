@@ -23,7 +23,8 @@ describe("publishing a material", () => {
 
   let service: QuestionEditorService;
   let prisma: {
-    courseMaterial: { findFirst: jest.Mock };
+    courseMaterial: { findFirst: jest.Mock; updateMany: jest.Mock };
+    courseModule: { findFirst: jest.Mock };
     question: { updateMany: jest.Mock; update: jest.Mock; create: jest.Mock; findFirst: jest.Mock };
     practiceElement: { updateMany: jest.Mock };
     $transaction: jest.Mock;
@@ -37,7 +38,10 @@ describe("publishing a material", () => {
           type: "practice",
           moduleId: MODULE,
         }),
+        /** The material's own date; 1 the first time a draft is let out, 0 after that. */
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      courseModule: { findFirst: jest.fn().mockResolvedValue({ id: MODULE }) },
       question: {
         updateMany: jest.fn().mockResolvedValue({ count: 12 }),
         update: jest.fn(),
@@ -148,6 +152,46 @@ describe("publishing a material", () => {
         "block",
       );
     });
+  });
+
+  /**
+   * And the practice itself, which is what "this one is ready" has to mean.
+   *
+   * A module gets written unevenly - two practices finished, a third still half a
+   * transcript - so the teacher releases them one at a time. Publishing the questions of
+   * a practice a student cannot reach would publish nothing anyone could find.
+   */
+  it("brings the material itself out of draft", async () => {
+    await service.publish(COURSE, MODULE, MATERIAL);
+
+    expect(prisma.courseMaterial.updateMany).toHaveBeenCalledWith({
+      where: { id: MATERIAL, publishedAt: null },
+      data: { publishedAt: expect.any(Date) },
+    });
+  });
+
+  it("reports whether the material had been waiting", async () => {
+    await expect(service.publish(COURSE, MODULE, MATERIAL)).resolves.toMatchObject({
+      materials: 1,
+    });
+
+    /** Already visible, so nothing of its own changed - only the new questions did. */
+    prisma.courseMaterial.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.publish(COURSE, MODULE, MATERIAL)).resolves.toMatchObject({
+      materials: 0,
+    });
+  });
+
+  it("dates the material with the same moment as its questions", async () => {
+    await service.publish(COURSE, MODULE, MATERIAL);
+
+    const dates = [
+      prisma.question.updateMany,
+      prisma.practiceElement.updateMany,
+      prisma.courseMaterial.updateMany,
+    ].map((call) => (call.mock.calls[0][0].data.publishedAt as Date).getTime());
+
+    expect(new Set(dates).size).toBe(1);
   });
 
   it("refuses a material that is not this course's", async () => {

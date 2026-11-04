@@ -16,6 +16,7 @@ import {
 } from "../../generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
 import { stripQuizAnswers } from "../../common/content/strip-quiz-answers";
+import { PUBLISHED } from "../../common/content/published";
 import { DEFAULT_TRIAL_FREE_MODULES } from "../../common/access/trial-scope";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import {
@@ -216,7 +217,7 @@ export class CourseService {
       const userId = viewer?.id ?? null;
       const [course, access] = await Promise.all([
         includeModules
-          ? this.loadCourseTree(id)
+          ? this.loadCourseTree(id, viewer?.role === Role.teacher)
           : this.prisma.course.findUnique({ where: { id } }),
         userId
           ? this.prisma.userCourseAccess.findUnique({
@@ -737,7 +738,16 @@ export class CourseService {
    * Nested Prisma include walks course → modules → materials → attachments
    * sequentially (4 RTTs to remote Postgres). Fetch all four in parallel.
    */
-  private async loadCourseTree(id: string): Promise<Record<string, unknown> | null> {
+  private async loadCourseTree(
+    id: string,
+    /**
+     * Drafts are the teacher's working copy. She has to see a material she has just
+     * imported in order to publish it; a student must not see it at all - an empty
+     * practice in the lesson list is worse than no practice, because it reads as the
+     * course being broken rather than unfinished.
+     */
+    isTeacher = false,
+  ): Promise<Record<string, unknown> | null> {
     const [course, modules, materials, questionBlocks, attachments] = await Promise.all([
       this.prisma.course.findUnique({ where: { id } }),
       this.prisma.courseModule.findMany({
@@ -745,7 +755,7 @@ export class CourseService {
         orderBy: { orderIndex: "asc" },
       }),
       this.prisma.courseMaterial.findMany({
-        where: { module: { courseId: id } },
+        where: { module: { courseId: id }, ...(isTeacher ? {} : PUBLISHED) },
         orderBy: { orderIndex: "asc" },
         select: {
           id: true,
@@ -764,18 +774,32 @@ export class CourseService {
           /** Which video a practice hangs under, so the lesson list can nest it. */
           parentMaterialId: true,
           orderIndex: true,
+          /**
+           * Null while the material is still a draft. Only a teacher ever receives such a
+           * row at all, and her editor needs the flag to mark it and to offer the publish.
+           */
+          publishedAt: true,
           createdAt: true,
           updatedAt: true,
         },
       }),
       /**
        * Which blocks each practice actually contains, so the lesson list can say
-       * "Grammatik · Lesen" under it. Grouped rather than counted per material: one query
+       * "Grammatik, Lesen" under it. Grouped rather than counted per material: one query
        * for the whole course instead of one per practice.
+       *
+       * Counted over published questions only, for a student. A block whose questions are
+       * all still drafts is a block with nothing in it: naming it in the list promises a
+       * task and then opens an empty screen, which is the same broken look as an empty
+       * practice. The teacher counts every question, drafts included - she has to see the
+       * block in order to publish it.
        */
       this.prisma.question.groupBy({
         by: ["materialId", "block"],
-        where: { material: { module: { courseId: id } } },
+        where: {
+          material: { module: { courseId: id } },
+          ...(isTeacher ? {} : PUBLISHED),
+        },
       }),
       this.prisma.materialAttachment.findMany({
         where: { material: { module: { courseId: id } } },

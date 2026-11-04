@@ -10,6 +10,7 @@ import {
   UserCourseAccessType,
 } from 'src/generated/prisma/enums';
 import { getTrialModuleIds } from '../../common/access/trial-scope';
+import { PUBLISHED } from '../../common/content/published';
 import { stripQuizAnswers } from '../../common/content/strip-quiz-answers';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCourseMaterialDto } from './dto/create-course-material.dto';
@@ -90,7 +91,8 @@ export class CourseMaterialService {
     try {
       await this.ensureModuleBelongsToCourse(moduleId, courseId);
       const items = await this.prisma.courseMaterial.findMany({
-        where: { moduleId },
+        /** A draft belongs to whoever is still writing it; see `PUBLISHED`. */
+        where: { moduleId, ...(viewerRole === Role.teacher ? {} : PUBLISHED) },
         orderBy: { orderIndex: 'asc' },
         include: {
           attachments: { orderBy: { orderIndex: 'asc' } },
@@ -105,6 +107,27 @@ export class CourseMaterialService {
     }
   }
 
+  /**
+   * That this material exists in this module, whether or not anyone can see it yet.
+   *
+   * Separate from `findOne` on purpose. `findOne` answers "what may this viewer read",
+   * and a draft is nothing to a student - but editing and deleting are the teacher's own
+   * acts, already behind the roles guard, and they are about the material rather than
+   * about its audience. Checking them through `findOne` made a draft impossible to delete
+   * or correct: the very rows most likely to need both.
+   */
+  private async ensureMaterialInModule(moduleId: string, id: string): Promise<void> {
+    const material = await this.prisma.courseMaterial.findFirst({
+      where: { id, moduleId },
+      select: { id: true },
+    });
+    if (!material) {
+      throw new NotFoundException(
+        `Матеріал з id ${id} не знайдено або не належить модулю`,
+      );
+    }
+  }
+
   async findOne(
     courseId: string,
     moduleId: string,
@@ -114,7 +137,7 @@ export class CourseMaterialService {
     try {
       await this.ensureModuleBelongsToCourse(moduleId, courseId);
       const material = await this.prisma.courseMaterial.findFirst({
-        where: { id, moduleId },
+        where: { id, moduleId, ...(viewerRole === Role.teacher ? {} : PUBLISHED) },
         include: {
           attachments: { orderBy: { orderIndex: 'asc' } },
         },
@@ -148,6 +171,13 @@ export class CourseMaterialService {
           title: dto.title,
           content: dto.content as object,
           orderIndex: dto.order_index,
+          /**
+           * Made by hand, so it is published by hand - which here means at once. A teacher
+           * who creates a lesson in the editor is looking at it and goes on to fill it; a
+           * draft would simply hide the thing she just made. The import is the opposite
+           * case, and it leaves this null on purpose.
+           */
+          publishedAt: new Date(),
           ...(dto.quiz_mode !== undefined && { quizMode: dto.quiz_mode }),
           /** Null detaches a practice from its lesson; undefined leaves it where it is. */
           ...(dto.parent_material_id !== undefined && {
@@ -172,7 +202,8 @@ export class CourseMaterialService {
     dto: UpdateCourseMaterialDto,
   ) {
     try {
-      await this.findOne(courseId, moduleId, id);
+      await this.ensureModuleBelongsToCourse(moduleId, courseId);
+      await this.ensureMaterialInModule(moduleId, id);
       const updated = await this.prisma.courseMaterial.update({
         where: { id },
         data: {
@@ -199,7 +230,8 @@ export class CourseMaterialService {
 
   async delete(courseId: string, moduleId: string, id: string) {
     try {
-      await this.findOne(courseId, moduleId, id);
+      await this.ensureModuleBelongsToCourse(moduleId, courseId);
+      await this.ensureMaterialInModule(moduleId, id);
       await this.prisma.courseMaterial.delete({
         where: { id },
       });

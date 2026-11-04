@@ -90,8 +90,26 @@ describe("CourseMaterialService", () => {
         },
       ]);
 
+      /** No role given, so this is the student's view: drafts are not theirs to see. */
       const list = await service.findAllByModuleId(courseId, moduleId);
       expect(list).toHaveLength(1);
+      expect(prisma.courseMaterial.findMany).toHaveBeenCalledWith({
+        where: { moduleId, publishedAt: { not: null } },
+        orderBy: { orderIndex: "asc" },
+        include: { attachments: { orderBy: { orderIndex: "asc" } } },
+      });
+    });
+
+    /**
+     * The teacher's working copy. She has to see a material she has just imported in order
+     * to publish it at all, so her list is the unfiltered one.
+     */
+    it("shows the teacher her drafts as well", async () => {
+      prisma.courseModule.findFirst.mockResolvedValue({ id: moduleId });
+      prisma.courseMaterial.findMany.mockResolvedValue([]);
+
+      await service.findAllByModuleId(courseId, moduleId, Role.teacher);
+
       expect(prisma.courseMaterial.findMany).toHaveBeenCalledWith({
         where: { moduleId },
         orderBy: { orderIndex: "asc" },
@@ -143,6 +161,11 @@ describe("CourseMaterialService", () => {
           title: "Intro",
           content: { youtube_video_id: "abc" },
           orderIndex: 0,
+          /**
+           * Visible at once, because a teacher who creates a lesson by hand is looking at
+           * it and goes on to fill it. The import is the opposite case and leaves this null.
+           */
+          publishedAt: expect.any(Date),
         },
       });
       expect(out.title).toBe("Intro");

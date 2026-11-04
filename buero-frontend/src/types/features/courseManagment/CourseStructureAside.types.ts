@@ -9,6 +9,13 @@ export type CourseStructureAsideProps = {
   onEditModule: (moduleId: string, moduleTitle: string) => void;
   onCreateMaterial: (moduleId: string) => void;
   onImportQuestions?: (moduleId: string, moduleTitle: string) => void;
+  /** Lets every draft of one module out at once, after an import. */
+  onPublishModule?: (moduleId: string) => void;
+  /** The module whose publish is in flight, so only that one button says so. */
+  publishingModuleId?: string | null;
+  /** Lets one material out, for a module that is finished unevenly. */
+  onPublishMaterial?: (moduleId: string, materialId: string) => void;
+  publishingMaterialId?: string | null;
   onSelectMaterial: (moduleId: string, materialId: string) => void;
   onRequestDeleteCourse?: () => void;
   onRequestDeleteModule?: (moduleId: string, moduleTitle: string) => void;
