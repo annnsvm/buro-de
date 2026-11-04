@@ -7,6 +7,7 @@ import {
   SECONDARY_BUTTON,
 } from '@/features/course-learning/PracticePanel/ui/buttons';
 import { formatDay } from '@/helpers/formatDate';
+import { CARD_TITLE, EYEBROW, EYEBROW_ACCENT, LABEL_ROW, SCREEN_TITLE, SECTION_TITLE } from '@/features/course-learning/PracticePanel/ui/headings';
 
 /** One question that cost a point, with everything known about why. */
 export type TestMistake = {
@@ -103,13 +104,13 @@ const TestResult: React.FC<TestResultProps> = ({
     <section className="flex flex-col gap-8 pt-6" role="status" aria-live="polite">
       <header className="rounded-3xl bg-[var(--color-surface-section)] p-7">
         <div className="flex flex-col items-center gap-7 sm:flex-row">
-          <span className="flex size-32 shrink-0 -rotate-6 flex-col items-center justify-center rounded-full border-[3px] border-[var(--color-burnt-siena-dark)] bg-[var(--color-neutral-white)]">
-            <span className="font-[family-name:var(--font-heading)] text-[2.3rem] leading-none font-bold tracking-[-0.04em] text-[var(--color-burnt-siena-dark)] tabular-nums">
+          <span className="flex size-32 shrink-0 -rotate-6 flex-col items-center justify-center rounded-full border-[3px] border-[var(--color-lesson-accent)] bg-[var(--color-neutral-white)]">
+            <span className="font-[family-name:var(--font-heading)] text-[2.3rem] leading-none font-bold tracking-[-0.04em] text-[var(--color-lesson-accent)] tabular-nums">
               {percent}%
             </span>
             {/** Said only when it is true; a failed stamp says the number and no more. */}
             {passed ? (
-              <span className="mt-1 text-[0.65rem] font-bold tracking-[0.18em] text-[var(--color-burnt-siena-dark)] uppercase">
+              <span className="mt-1 font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-accent)] sm:text-[13px]">
                 {t('quiz.resultStamp')}
               </span>
             ) : null}
@@ -117,19 +118,19 @@ const TestResult: React.FC<TestResultProps> = ({
 
           <div className="min-w-0 text-center sm:text-left">
             {earnedPoints != null && totalPoints != null ? (
-              <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+              <p className="font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-muted)] sm:text-[13px]">
                 {t('quiz.resultPointsOf', {
                   earned: earnedPoints,
                   total: totalPoints,
                 })}
               </p>
             ) : null}
-            <h3 className="mt-1.5 font-[family-name:var(--font-heading)] text-[1.75rem] leading-tight font-bold tracking-[-0.03em] text-[var(--color-text-primary)]">
+            <h3 className={`mt-1.5 ${SCREEN_TITLE}`}>
               {passed
                 ? t('quiz.resultPassedTitle')
                 : t('quiz.resultAlmostTitle', { passing: passingScore ?? 0 })}
             </h3>
-            <p className="mt-2 leading-relaxed text-[var(--color-text-primary)]">
+            <p className="mt-2 leading-relaxed text-[var(--color-lesson-body)]">
               {passed
                 ? t('quiz.resultPassedNote', { passing: passingScore ?? 0 })
                 : t('quiz.resultAlmostNote')}
@@ -145,7 +146,7 @@ const TestResult: React.FC<TestResultProps> = ({
           <div className="mt-6">
             <div className="relative h-3.5 w-full overflow-hidden rounded-full bg-[var(--color-dawn-pink-dark)]/35">
               <div
-                className="h-full rounded-full bg-[var(--color-accent-primary)]"
+                className="h-full rounded-full bg-[var(--color-lesson-accent)]"
                 style={{ width: `${Math.min(100, percent)}%` }}
               />
             </div>
@@ -155,11 +156,11 @@ const TestResult: React.FC<TestResultProps> = ({
             >
               <span
                 aria-hidden
-                className="absolute top-[-5px] block h-6 w-[3px] -translate-x-1/2 rounded-sm bg-[var(--color-text-primary)]"
+                className="absolute top-[-5px] block h-6 w-[3px] -translate-x-1/2 rounded-sm bg-[var(--color-lesson-body)]"
               />
             </div>
             <p
-              className="mt-1.5 text-[13px] text-[var(--color-text-secondary)]"
+              className="mt-1.5 text-[13px] text-[var(--color-lesson-muted)]"
               style={{ paddingLeft: `${Math.min(92, passingScore)}%` }}
             >
               {t('quiz.resultThreshold', { passing: passingScore })}
@@ -170,7 +171,7 @@ const TestResult: React.FC<TestResultProps> = ({
 
       {parts.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h4 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+          <h4 className={SECTION_TITLE}>
             {t('quiz.byParts')}
           </h4>
           <ul className="flex flex-col gap-2.5">
@@ -185,7 +186,7 @@ const TestResult: React.FC<TestResultProps> = ({
 
       {reviewable.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h4 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+          <h4 className={SECTION_TITLE}>
             {t('quiz.whatToWorkOn')}
           </h4>
 
@@ -202,7 +203,7 @@ const TestResult: React.FC<TestResultProps> = ({
             <button
               type="button"
               onClick={() => setAllShown(true)}
-              className="self-start text-sm font-semibold text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
+              className="self-start text-sm font-semibold text-[var(--color-lesson-muted)] transition hover:text-[var(--color-lesson-body)]"
             >
               {t('quiz.showAllMistakes', { count: reviewable.length })}
             </button>
@@ -216,16 +217,16 @@ const TestResult: React.FC<TestResultProps> = ({
        */}
       {earlier.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h4 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+          <h4 className={SECTION_TITLE}>
             {t('quiz.earlierAttempts')}
           </h4>
           <ul className="flex flex-wrap gap-2">
             {earlier.map((attempt) => (
               <li
                 key={attempt.completed_at}
-                className="rounded-[14px] bg-[var(--color-neutral-white)] px-4 py-2.5 text-sm text-[var(--color-text-secondary)]"
+                className="rounded-[14px] bg-[var(--color-neutral-white)] px-4 py-2.5 text-sm text-[var(--color-lesson-muted)]"
               >
-                <span className="font-semibold text-[var(--color-text-primary)] tabular-nums">
+                <span className="font-semibold text-[var(--color-lesson-body)] tabular-nums">
                   {Math.round(attempt.score)}%
                 </span>{' '}
                 {formatDay(attempt.completed_at)}
@@ -240,7 +241,7 @@ const TestResult: React.FC<TestResultProps> = ({
        * review having failed to load rather than as a deliberate withholding.
        */}
       {failed ? (
-        <p className="rounded-[20px] bg-[var(--color-neutral-white)] px-[22px] py-[18px] text-sm text-[var(--color-text-secondary)]">
+        <p className="rounded-[20px] bg-[var(--color-neutral-white)] px-[22px] py-[18px] text-sm text-[var(--color-lesson-muted)]">
           {t('quiz.reviewWaitsForPass')}
         </p>
       ) : null}
@@ -296,18 +297,18 @@ const PartRow: React.FC<{ part: QuizPartResult }> = ({ part }) => {
       ) : null}
 
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="font-[family-name:var(--font-heading)] text-lg font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+        <span className={CARD_TITLE}>
           {Art ? t(`practice.blocks.${part.title}.title`) : part.title}
         </span>
         <span className="h-2 w-full overflow-hidden rounded-full bg-[var(--color-dawn-pink-dark)]/35">
           <span
-            className="block h-full rounded-full bg-[var(--color-accent-primary)]"
+            className="block h-full rounded-full bg-[var(--color-lesson-accent)]"
             style={{ width: `${share}%` }}
           />
         </span>
       </span>
 
-      <span className="font-[family-name:var(--font-heading)] text-xl font-bold text-[var(--color-accent-primary)] tabular-nums">
+      <span className="font-[family-name:var(--font-heading)] text-xl font-bold text-[var(--color-lesson-accent)] tabular-nums">
         {part.earned_points}/{part.total_points}
       </span>
     </div>
@@ -322,20 +323,23 @@ const MistakeCard: React.FC<{ mistake: TestMistake }> = ({ mistake }) => {
 
   return (
     <article className="rounded-[18px] border-[1.5px] border-[var(--color-dawn-pink-dark)]/45 bg-[var(--color-neutral-white)] px-[22px] py-[18px]">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        {/* Two labels, told apart by a gap rather than by a separator character. */}
-        <p className="flex flex-wrap items-center gap-x-4 text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
-          {block ? <span>{t(`practice.blocks.${block}.title`)}</span> : null}
-          <span>{t('quiz.questionNumber', { number: position })}</span>
-        </p>
-        {reviewLesson ? (
-          <span className="text-sm font-semibold text-[var(--color-burnt-siena-dark)]">
-            {t('quiz.revisitLesson', { lesson: reviewLesson })}
-          </span>
-        ) : null}
+      {/** Which skill on the left, which question on the right: one line about this card. */}
+      <div className={LABEL_ROW}>
+        <span className={EYEBROW_ACCENT}>
+          {block ? t(`practice.blocks.${block}.title`) : null}
+        </span>
+        <span className={EYEBROW}>
+          {t('quiz.questionNumber', { number: position })}
+        </span>
       </div>
+      <p className="mt-2 text-[var(--color-lesson-body)]">{question.prompt}</p>
 
-      <p className="mt-2 text-[var(--color-text-primary)]">{question.prompt}</p>
+      {/** The way back, under the question it belongs to rather than beside its label. */}
+      {reviewLesson ? (
+        <p className="mt-2 text-sm font-semibold text-[var(--color-lesson-accent)]">
+          {t('quiz.revisitLesson', { lesson: reviewLesson })}
+        </p>
+      ) : null}
 
       {/**
        * What was written against what was wanted - but only once the test has been passed.
@@ -344,21 +348,21 @@ const MistakeCard: React.FC<{ mistake: TestMistake }> = ({ mistake }) => {
       {accepted.length > 0 ? (
         <p className="mt-2.5 flex flex-wrap items-center gap-2">
           {given ? (
-            <span className="font-mono text-[var(--color-text-secondary)] line-through decoration-[var(--color-accent-primary)] decoration-2">
+            <span className="font-mono text-[var(--color-lesson-muted)] line-through decoration-[var(--color-lesson-accent)] decoration-2">
               {given}
             </span>
           ) : null}
-          <span aria-hidden className="text-[var(--color-text-secondary)]">
+          <span aria-hidden className="text-[var(--color-lesson-muted)]">
             →
           </span>
-          <span className="rounded-md bg-[var(--color-burnt-siena-lighter)] px-2 py-0.5 font-mono font-medium text-[var(--color-text-primary)]">
+          <span className="rounded-md bg-[var(--color-burnt-siena-lighter)] px-2 py-0.5 font-mono font-medium text-[var(--color-lesson-body)]">
             {accepted[0]}
           </span>
         </p>
       ) : null}
 
       {explanation ? (
-        <p className="mt-2 text-sm text-[var(--color-text-secondary)]">{explanation}</p>
+        <p className="mt-2 text-sm text-[var(--color-lesson-muted)]">{explanation}</p>
       ) : null}
     </article>
   );

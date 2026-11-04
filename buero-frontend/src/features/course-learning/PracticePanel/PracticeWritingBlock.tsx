@@ -61,7 +61,7 @@ const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
 
   if (loading) {
     return (
-      <p className="px-6 py-12 text-center text-[var(--color-text-secondary)]">
+      <p className="px-6 py-12 text-center text-[var(--color-lesson-muted)]">
         {t('writing.loading')}
       </p>
     );
@@ -97,7 +97,7 @@ const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
       />
 
       {tasks.length === 0 && unusable.length === 0 ? (
-        <p className="mt-8 text-sm text-[var(--color-text-secondary)]">
+        <p className="mt-8 text-sm text-[var(--color-lesson-muted)]">
           {t('practice.writing.empty')}
         </p>
       ) : null}
@@ -133,9 +133,9 @@ const PracticeWritingBlock: React.FC<PracticeWritingBlockProps> = ({
           {unusable.map((entry) => (
             <li
               key={entry.element_id}
-              className="rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm text-[var(--color-text-secondary)]"
+              className="rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm text-[var(--color-lesson-muted)]"
             >
-              <span className="font-semibold text-[var(--color-text-primary)]">
+              <span className="font-semibold text-[var(--color-lesson-body)]">
                 {entry.title}
               </span>
               <span className="mt-0.5 block">{t('practice.writing.notReady')}</span>

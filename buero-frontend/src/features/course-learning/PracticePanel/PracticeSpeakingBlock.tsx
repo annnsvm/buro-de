@@ -66,7 +66,7 @@ const PracticeSpeakingBlock: React.FC<PracticeSpeakingBlockProps> = ({
 
   if (loading) {
     return (
-      <p className="px-6 py-12 text-center text-[var(--color-text-secondary)]">
+      <p className="px-6 py-12 text-center text-[var(--color-lesson-muted)]">
         {t('practice.speaking.loading')}
       </p>
     );
@@ -103,7 +103,7 @@ const PracticeSpeakingBlock: React.FC<PracticeSpeakingBlockProps> = ({
       />
 
       {tasks.length === 0 ? (
-        <p className="mt-8 text-sm text-[var(--color-text-secondary)]">
+        <p className="mt-8 text-sm text-[var(--color-lesson-muted)]">
           {t('practice.speaking.empty')}
         </p>
       ) : null}
@@ -157,7 +157,7 @@ const SpeakingTaskCard: React.FC<{
       prompt={<span className="whitespace-pre-line">{task.task}</span>}
     >
       {recorder.state === 'unsupported' ? (
-        <p className="mt-4 text-sm text-[var(--color-text-secondary)]">
+        <p className="mt-4 text-sm text-[var(--color-lesson-muted)]">
           {t('practice.speaking.unsupported')}
         </p>
       ) : (
@@ -174,7 +174,7 @@ const SpeakingTaskCard: React.FC<{
               </button>
               {/* The clock is the only sign anything is being captured. */}
               <span
-                className="text-sm font-semibold text-[var(--color-text-primary)] tabular-nums"
+                className="text-sm font-semibold text-[var(--color-lesson-body)] tabular-nums"
                 role="timer"
                 aria-live="off"
               >
@@ -202,7 +202,7 @@ const SpeakingTaskCard: React.FC<{
        */}
       {recorder.take ? (
         <div className="mt-4">
-          <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+          <p className="font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-muted)] sm:text-[13px]">
             {t('practice.speaking.yourTake', { time: asClock(recorder.take.seconds) })}
           </p>
           {/**
@@ -241,7 +241,7 @@ const SpeakingTaskCard: React.FC<{
       ) : null}
 
       {recorder.state === 'denied' ? (
-        <p className="mt-4 text-sm text-[var(--color-text-primary)]">
+        <p className="mt-4 text-sm text-[var(--color-lesson-body)]">
           {t('practice.speaking.denied')}
         </p>
       ) : null}
@@ -255,7 +255,7 @@ const SpeakingTaskCard: React.FC<{
       {/* What was sent, so coming back a week later still has the attempt in it. */}
       {task.recording && !recorder.take ? (
         <div className="mt-4">
-          <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+          <p className="font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-muted)] sm:text-[13px]">
             {t('practice.speaking.saved')}
           </p>
           <audio
@@ -272,7 +272,7 @@ const SpeakingTaskCard: React.FC<{
        */}
       {task.answer_open && task.sample_answer ? (
         <Folder className="mt-5" tab={t('practice.speaking.modelAnswer')}>
-          <p className="text-[1.05rem] leading-[1.65] whitespace-pre-line text-[var(--color-text-primary)]">
+          <p className="text-[1.05rem] leading-[1.65] whitespace-pre-line text-[var(--color-lesson-body)]">
             {task.sample_answer}
           </p>
           {/**
@@ -287,14 +287,14 @@ const SpeakingTaskCard: React.FC<{
               {task.hints.map((hint) => (
                 <li
                   key={hint}
-                  className="rounded-2xl border-[1.5px] border-[var(--color-surface-section)] px-3 py-1.5 font-mono text-sm text-[var(--color-text-secondary)]"
+                  className="rounded-2xl border-[1.5px] border-[var(--color-surface-section)] px-3 py-1.5 font-mono text-sm text-[var(--color-lesson-muted)]"
                 >
                   {hint}
                 </li>
               ))}
             </ul>
           ) : null}
-          <p className="mt-4 border-t border-dashed border-[var(--color-surface-section)] pt-3 text-sm text-[var(--color-text-secondary)]">
+          <p className="mt-4 border-t border-dashed border-[var(--color-surface-section)] pt-3 text-sm text-[var(--color-lesson-muted)]">
             {t('practice.speaking.compareHint')}
           </p>
         </Folder>

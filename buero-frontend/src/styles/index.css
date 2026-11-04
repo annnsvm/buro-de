@@ -124,6 +124,27 @@
   --color-success-text: #2f7a45;
   --color-error-soft: #fdf2f2;
 
+  /**
+   * The lesson's own palette: warmer than the general one, and the house style.
+   *
+   * These values were written by hand into the video lesson and nowhere else, which is
+   * why that page looked like the product and the practice beside it looked like a
+   * template - grey headings against near-black ones, two oranges a shade apart, a
+   * neutral grey where the lesson used a warm one. Naming them makes the lesson's look
+   * something the other screens can share instead of approximate.
+   *
+   * Separate from `--color-text-primary` and friends on purpose: those are the whole
+   * application's, including the editor and the catalogue, and recolouring everything to
+   * match one surface is a larger decision than this.
+   */
+  --color-lesson-heading: #1b1b1b;
+  --color-lesson-body: #5f5854;
+  --color-lesson-muted: #6f6865;
+  --color-lesson-accent: #e87753;
+  --color-lesson-border: #d7cbc5;
+  --color-lesson-tint: #f8e5df;
+  --color-lesson-track: #eedad2;
+
   --color-primary: var(--color-accent-primary);
   --color-primary-foreground: var(--color-text-on-accent);
   --color-primary-darkest: var(--color-accent-primary-hover);

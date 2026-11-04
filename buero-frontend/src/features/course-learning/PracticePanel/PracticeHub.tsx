@@ -5,6 +5,7 @@ import { encouragementFor, spellBlockCount } from './encouragement';
 import BlockThumb from './ui/BlockThumb';
 import Segments from './ui/Segments';
 import { PRIMARY_BUTTON } from './ui/buttons';
+import { EYEBROW, EYEBROW_ACCENT, LABEL_ROW, SCREEN_TITLE, SECTION_TITLE } from './ui/headings';
 
 export type PracticeHubProps = {
   overview: PracticeOverview;
@@ -59,18 +60,16 @@ const PracticeHub: React.FC<PracticeHubProps> = ({
     <div className="mx-auto flex w-full max-w-[880px] flex-col gap-7 px-4 py-10 sm:px-8">
       <header className="flex flex-col gap-3">
         {trail.length > 0 ? (
-          <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[0.7rem] font-bold tracking-[0.14em] uppercase">
-            <span className="text-[var(--color-burnt-siena-dark)]">{trail[0]}</span>
-            {trail[1] ? (
-              <span className="text-[var(--color-text-secondary)]">{trail[1]}</span>
-            ) : null}
+          <p className={LABEL_ROW}>
+            <span className={EYEBROW_ACCENT}>{trail[0]}</span>
+            {trail[1] ? <span className={EYEBROW}>{trail[1]}</span> : null}
           </p>
         ) : null}
-        <h2 className="font-[family-name:var(--font-heading)] text-[clamp(1.75rem,3.4vw,2.35rem)] leading-[1.05] font-bold tracking-[-0.035em] text-[var(--color-text-primary)]">
+        <h2 className={SCREEN_TITLE}>
           {head}
-          {tail ? <span className="text-[var(--color-text-secondary)]"> {tail}</span> : null}
+          {tail ? <span className="text-[var(--color-lesson-muted)]"> {tail}</span> : null}
         </h2>
-        <p className="text-base text-[var(--color-text-secondary)]">{t('practice.subtitle')}</p>
+        <p className="text-base text-[var(--color-lesson-muted)]">{t('practice.subtitle')}</p>
       </header>
 
       {/**
@@ -80,13 +79,13 @@ const PracticeHub: React.FC<PracticeHubProps> = ({
        */}
       <section className="flex flex-col gap-4 rounded-[22px] bg-[var(--color-surface-section)] px-6 py-5 sm:flex-row sm:items-center sm:gap-7">
         <p className="flex items-baseline gap-3 sm:flex-col sm:items-start sm:gap-0">
-          <span className="font-[family-name:var(--font-heading)] text-[2.75rem] leading-none font-bold tracking-[-0.05em] text-[var(--color-accent-primary)] tabular-nums sm:text-[3.25rem]">
+          <span className="font-[family-name:var(--font-heading)] text-[2.75rem] leading-none font-bold tracking-[-0.05em] text-[var(--color-lesson-accent)] tabular-nums sm:text-[3.25rem]">
             {overview.done_count}
             <span className="text-[var(--color-dawn-pink-dark)]">/{overview.total_count}</span>
           </span>
         </p>
         <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-          <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+          <span className="text-sm font-medium text-[var(--color-lesson-muted)]">
             {t('practice.requiredDone')}
           </span>
           <Segments
@@ -105,7 +104,7 @@ const PracticeHub: React.FC<PracticeHubProps> = ({
        * course's own progress, and a student who wants to read on may. Saying so in a sentence
        * costs one line; leaving a dead button to say it cost the student the wrong idea.
        */}
-      <p className="-mt-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">
+      <p className="-mt-3 text-sm leading-relaxed text-[var(--color-lesson-muted)]">
         {t('practice.requiredPurpose')}
       </p>
 
@@ -131,7 +130,7 @@ const PracticeHub: React.FC<PracticeHubProps> = ({
 
       <div className="flex flex-wrap items-center justify-between gap-6 border-t border-[var(--color-dawn-pink-dark)]/35 pt-7">
         <p
-          className="max-w-[440px] text-base leading-relaxed font-medium text-[var(--color-text-primary)]"
+          className="max-w-[440px] text-base leading-relaxed font-medium text-[var(--color-lesson-body)]"
           aria-live="polite"
         >
           {encouragement
@@ -173,11 +172,11 @@ const BlockGroup: React.FC<{
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+        <h3 className={SECTION_TITLE}>
           {heading}
         </h3>
         {note ? (
-          <span className="text-sm text-[var(--color-text-secondary)]">{note}</span>
+          <span className="text-sm text-[var(--color-lesson-muted)]">{note}</span>
         ) : null}
       </div>
 
@@ -209,18 +208,18 @@ const BlockRow: React.FC<{
 
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <span className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+          <span className={SECTION_TITLE}>
             {t(`practice.blocks.${block.block}.title`)}
           </span>
           {/** A block whose recordings have not been uploaded yet. */}
           {!block.ready ? (
-            <span className="rounded-full bg-[var(--color-surface-section)] px-2.5 py-0.5 text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-secondary)] uppercase">
+            <span className="rounded-full bg-[var(--color-surface-section)] px-2.5 py-0.5 font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-muted)] sm:text-[13px]">
               {t('practice.awaitingBlock')}
             </span>
           ) : null}
         </span>
         {/* Described by what is actually in it, so the line stays true as the author adds. */}
-        <span className="text-sm text-[var(--color-text-secondary)]">
+        <span className="text-sm text-[var(--color-lesson-muted)]">
           {block.ready
             ? t(`practice.blocks.${block.block}.summary`, {
                 count: block.total || block.task_count,
@@ -253,7 +252,7 @@ const BlockState: React.FC<{ block: PracticeBlockSummary }> = ({ block }) => {
 
   if (!block.points && block.total === 0) {
     return (
-      <span className="ml-auto text-sm font-semibold whitespace-nowrap text-[var(--color-burnt-siena-dark)] sm:ml-0">
+      <span className="ml-auto text-sm font-semibold whitespace-nowrap text-[var(--color-lesson-accent)] sm:ml-0">
         {t('practice.recorded')}
       </span>
     );
@@ -265,10 +264,10 @@ const BlockState: React.FC<{ block: PracticeBlockSummary }> = ({ block }) => {
 
   return (
     <span className="ml-auto flex flex-col items-end whitespace-nowrap sm:ml-0">
-      <span className="font-[family-name:var(--font-heading)] text-2xl leading-none font-bold tracking-[-0.03em] text-[var(--color-accent-primary)] tabular-nums">
+      <span className="font-[family-name:var(--font-heading)] text-2xl leading-none font-bold tracking-[-0.03em] text-[var(--color-lesson-accent)] tabular-nums">
         {score}
       </span>
-      <span className="mt-1 text-xs text-[var(--color-text-secondary)]">
+      <span className="mt-1 text-xs text-[var(--color-lesson-muted)]">
         {block.points ? t('practice.pointsLabel') : t('practice.blockDone')}
       </span>
     </span>

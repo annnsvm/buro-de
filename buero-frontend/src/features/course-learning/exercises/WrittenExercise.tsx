@@ -20,7 +20,7 @@ const WrittenExercise: React.FC<ExerciseRendererProps> = ({
   const isSentence = question.type === 'text_input';
   const inputId = `${question.id}-answer`;
   const FIELD =
-    'w-full rounded-[14px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] px-4 py-3 font-mono text-[1.05rem] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] disabled:opacity-70';
+    'w-full rounded-[14px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] px-4 py-3 font-mono text-[1.05rem] text-[var(--color-lesson-body)] outline-none focus:border-[var(--color-lesson-accent)] disabled:opacity-70';
 
   return (
     <div className="space-y-3">
@@ -52,7 +52,7 @@ const WrittenExercise: React.FC<ExerciseRendererProps> = ({
           className={`${FIELD} min-h-13`}
         />
       )}
-      <p className="text-[0.8rem] text-[var(--color-text-secondary)]">
+      <p className="text-[0.8rem] text-[var(--color-lesson-muted)]">
         {t('quiz.umlautHint')}
       </p>
     </div>

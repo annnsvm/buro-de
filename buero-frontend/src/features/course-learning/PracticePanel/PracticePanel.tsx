@@ -147,7 +147,7 @@ const PracticePanel: React.FC<PracticePanelProps> = ({
 
   if (loading) {
     return (
-      <p className="px-6 py-12 text-center text-[var(--color-text-secondary)]">
+      <p className="px-6 py-12 text-center text-[var(--color-lesson-muted)]">
         {t('practice.loading')}
       </p>
     );

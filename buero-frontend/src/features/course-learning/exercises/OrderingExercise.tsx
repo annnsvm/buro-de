@@ -52,7 +52,7 @@ const OrderingExercise: React.FC<ExerciseRendererProps> = ({
         aria-label={t('quiz.yourSentence')}
       >
         {chosen.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-secondary)]">
+          <p className="text-sm text-[var(--color-lesson-muted)]">
             {t('quiz.tapWordsInOrder')}
           </p>
         ) : (
@@ -80,7 +80,7 @@ const OrderingExercise: React.FC<ExerciseRendererProps> = ({
             type="button"
             onClick={() => append(token)}
             disabled={disabled}
-            className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)] disabled:opacity-70"
+            className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-3 py-1.5 text-sm text-[var(--color-lesson-body)] transition hover:border-[var(--color-primary)] disabled:opacity-70"
           >
             {token}
           </button>

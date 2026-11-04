@@ -38,7 +38,7 @@ const ChoiceExercise: React.FC<ExerciseRendererProps> = ({
     <fieldset className="space-y-2" disabled={disabled}>
       <legend className="sr-only">{question.prompt}</legend>
       {multi ? (
-        <p className="text-sm text-[var(--color-text-secondary)]">
+        <p className="text-sm text-[var(--color-lesson-muted)]">
           {t('quiz.chooseSeveral')}
         </p>
       ) : null}
@@ -53,11 +53,11 @@ const ChoiceExercise: React.FC<ExerciseRendererProps> = ({
             className={[
               'flex min-h-13 cursor-pointer items-center gap-3.5 rounded-[14px] border-[1.5px] bg-[var(--color-neutral-white)] px-4 py-2.5 transition',
               checked
-                ? 'border-[var(--color-accent-primary)] bg-[var(--color-burnt-siena-lightest)]'
+                ? 'border-[var(--color-lesson-accent)] bg-[var(--color-burnt-siena-lightest)]'
                 : 'border-transparent hover:border-[var(--color-burnt-siena-lighter)]',
               disabled ? 'cursor-not-allowed opacity-70' : '',
               /** The focus ring belongs to the row, since the control itself is not drawn. */
-              'focus-within:ring-2 focus-within:ring-[var(--color-accent-primary)]',
+              'focus-within:ring-2 focus-within:ring-[var(--color-lesson-accent)]',
             ].join(' ')}
           >
             <input
@@ -82,15 +82,15 @@ const ChoiceExercise: React.FC<ExerciseRendererProps> = ({
               className={[
                 'flex size-7 shrink-0 items-center justify-center rounded-lg font-[family-name:var(--font-heading)] text-sm font-bold uppercase transition',
                 checked
-                  ? 'bg-[var(--color-accent-primary)] text-[var(--color-text-on-accent)]'
-                  : 'bg-[var(--color-burnt-siena-lightest)] text-[var(--color-text-secondary)]',
+                  ? 'bg-[var(--color-lesson-accent)] text-[var(--color-text-on-accent)]'
+                  : 'bg-[var(--color-burnt-siena-lightest)] text-[var(--color-lesson-muted)]',
               ].join(' ')}
             >
               {letterLabel(index)}
             </span>
             <span
               className={[
-                'text-[var(--color-text-primary)]',
+                'text-[var(--color-lesson-body)]',
                 checked ? 'font-semibold' : '',
               ].join(' ')}
             >

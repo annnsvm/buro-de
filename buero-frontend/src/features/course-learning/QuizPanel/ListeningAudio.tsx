@@ -95,7 +95,7 @@ const ListeningAudio: React.FC<ListeningAudioProps> = ({ element }) => {
               type="button"
               onClick={toggle}
               aria-label={playing ? t('practice.pause') : t('practice.play')}
-              className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-primary)] text-[var(--color-text-on-accent)] transition hover:bg-[var(--color-accent-primary-hover)]"
+              className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[var(--color-lesson-accent)] text-[var(--color-text-on-accent)] transition hover:opacity-90"
             >
               {playing ? (
                 <svg viewBox="0 0 24 24" aria-hidden className="size-6" fill="currentColor">
@@ -118,16 +118,16 @@ const ListeningAudio: React.FC<ListeningAudioProps> = ({ element }) => {
               onChange={(event) => seek(Number(event.target.value))}
               aria-label={t('practice.seek')}
               aria-valuetext={`${clock(at)} / ${clock(length)}`}
-              className="h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-[var(--color-surface-section)] accent-[var(--color-accent-primary)]"
+              className="h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-[var(--color-surface-section)] accent-[var(--color-lesson-accent)]"
               style={{
                 /** Played is coral, the rest is the surface the track sits on. */
-                background: `linear-gradient(to right, var(--color-accent-primary) ${
+                background: `linear-gradient(to right, var(--color-lesson-accent) ${
                   length ? (at / length) * 100 : 0
                 }%, var(--color-surface-section) 0%)`,
               }}
             />
 
-            <span className="shrink-0 font-mono text-sm whitespace-nowrap text-[var(--color-text-secondary)]">
+            <span className="shrink-0 font-mono text-sm whitespace-nowrap text-[var(--color-lesson-muted)]">
               {clock(at)} / {clock(length)}
             </span>
           </div>
@@ -136,7 +136,7 @@ const ListeningAudio: React.FC<ListeningAudioProps> = ({ element }) => {
             <button
               type="button"
               onClick={replay}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] px-4 text-sm font-medium text-[var(--color-text-primary)] transition hover:bg-[var(--color-dawn-pink-light)]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] px-4 text-sm font-medium text-[var(--color-lesson-body)] transition hover:bg-[var(--color-dawn-pink-light)]"
             >
               <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 12a9 9 0 1 0 3-6.7" />
@@ -158,8 +158,8 @@ const ListeningAudio: React.FC<ListeningAudioProps> = ({ element }) => {
                   className={[
                     'min-h-9 rounded-full px-3.5 text-sm font-medium transition',
                     speed === value
-                      ? 'bg-[var(--color-accent-primary)] text-[var(--color-text-on-accent)]'
-                      : 'text-[var(--color-text-secondary)]',
+                      ? 'bg-[var(--color-lesson-accent)] text-[var(--color-text-on-accent)]'
+                      : 'text-[var(--color-lesson-muted)]',
                   ].join(' ')}
                 >
                   {value}×
@@ -177,7 +177,7 @@ const ListeningAudio: React.FC<ListeningAudioProps> = ({ element }) => {
          * like something had gone wrong on their side; this says the task is being prepared,
          * and that its questions are coming with it - which is why there are none below.
          */
-        <p role="status" className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
+        <p role="status" className="text-sm leading-relaxed text-[var(--color-lesson-muted)]">
           {t('practice.audioMissing')}
         </p>
       )}
@@ -194,18 +194,18 @@ const ListeningAudio: React.FC<ListeningAudioProps> = ({ element }) => {
               type="button"
               onClick={() => setTranscriptOpen((open) => !open)}
               aria-expanded={transcriptOpen}
-              className="text-sm font-semibold text-[var(--color-burnt-siena-dark)]"
+              className="text-sm font-semibold text-[var(--color-lesson-accent)]"
             >
               {transcriptOpen ? t('practice.hideTranscript') : t('practice.showTranscript')}
             </button>
             {transcriptOpen ? (
-              <p className="mt-2 leading-relaxed whitespace-pre-line text-[var(--color-text-primary)]">
+              <p className="mt-2 leading-relaxed whitespace-pre-line text-[var(--color-lesson-body)]">
                 {element.transcript}
               </p>
             ) : null}
           </div>
         ) : (
-          <p className="mt-4 flex items-center gap-2 border-t border-dashed border-[var(--color-surface-section)] pt-3 text-sm text-[var(--color-text-secondary)]">
+          <p className="mt-4 flex items-center gap-2 border-t border-dashed border-[var(--color-surface-section)] pt-3 text-sm text-[var(--color-lesson-muted)]">
             <svg viewBox="0 0 24 24" aria-hidden className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="4" y="10" width="16" height="10" rx="2.5" />
               <path d="M8 10V7a4 4 0 0 1 8 0v3" />

@@ -30,7 +30,7 @@ const TONES = {
 } as const;
 
 const NUMBER_TONES = {
-  neutral: 'text-[var(--color-accent-primary)]',
+  neutral: 'text-[var(--color-lesson-accent)]',
   correct: 'text-[var(--color-success-text)]',
   wrong: 'text-[var(--color-error)]',
 } as const;
@@ -62,7 +62,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
     <div className="min-w-0">
       {aside ? <div className="mb-2">{aside}</div> : null}
-      <div className="text-[1.05rem] leading-[1.4] font-semibold text-[var(--color-text-primary)]">
+      <div className="text-[1.05rem] leading-[1.4] font-semibold text-[var(--color-lesson-body)]">
         {prompt}
       </div>
       {children ? <div className="mt-4">{children}</div> : null}

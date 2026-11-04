@@ -11,6 +11,7 @@ import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
 import LessonAttachments from '@/features/course-learning/MaterialWindow/LessonAttachments';
 import type { MaterialAttachment } from '@/types/features/courseManagment/MaterialAttachment.types';
 import WritingTaskForm from './WritingTaskForm';
+import { SECTION_TITLE } from '@/features/course-learning/PracticePanel/ui/headings';
 
 export type WritingPanelProps = {
   courseMaterialId: string;
@@ -64,7 +65,7 @@ const WritingPanel: React.FC<WritingPanelProps> = ({
 
   if (loading) {
     return (
-      <p className="px-6 py-12 text-center text-[var(--color-text-secondary)]">
+      <p className="px-6 py-12 text-center text-[var(--color-lesson-muted)]">
         {t('writing.loading')}
       </p>
     );
@@ -87,7 +88,7 @@ const WritingPanel: React.FC<WritingPanelProps> = ({
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pb-6 sm:px-6">
-      <h2 className="pt-6 text-xl font-bold text-[var(--color-text-primary)] sm:text-2xl">
+      <h2 className={`pt-6 ${SECTION_TITLE}`}>
         {materialTitle || t('writing.title')}
       </h2>
 

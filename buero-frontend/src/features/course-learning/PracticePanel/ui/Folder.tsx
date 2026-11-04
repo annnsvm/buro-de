@@ -21,7 +21,7 @@ type FolderProps = {
 const Folder: React.FC<FolderProps> = ({ tab, aside, children, className }) => (
   <section className={className}>
     <div className="flex flex-wrap items-end justify-between gap-2">
-      <div className="flex h-11 items-center rounded-t-2xl bg-[var(--color-surface-section)] px-[18px] text-sm font-semibold text-[var(--color-text-primary)]">
+      <div className="flex h-11 items-center rounded-t-2xl bg-[var(--color-surface-section)] px-[18px] text-sm font-semibold text-[var(--color-lesson-body)]">
         {tab}
       </div>
       {aside ? <div className="pb-2">{aside}</div> : null}
