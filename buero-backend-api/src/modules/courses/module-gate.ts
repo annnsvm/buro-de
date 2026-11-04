@@ -1,14 +1,15 @@
 /**
- * Which modules a student has earned the right to open.
+ * How far through a course a student has actually got, measured by its tests.
  *
- * A module is closed until the one before it has been passed - and "passed" means its final
- * test was scored at or above the mark its author set. A module with no test closes nothing:
- * the course is a sequence of lessons, not an obstacle course, and only a test the author
- * actually wrote is allowed to stop anyone.
+ * This was written as a gate - a module stayed shut until the one before it had been
+ * passed - and the author took that out. Her students are adults who buy the level they
+ * believe they are at, and plenty of them are already halfway through it; telling someone
+ * who bought the course to revise module 6 that they must first sit five tests is how you
+ * lose them. A module they paid for opens, full stop.
  *
- * This is a different question from whether the student has paid, and the two are answered
- * separately so the screen can say which one applies. "Buy the course" and "pass the test"
- * are not the same message, and a student told the wrong one has no way to get on.
+ * What the walk is still good for is advice. The first unpassed test is the one a student
+ * reading further ahead might want to take, and naming it costs them a line they can
+ * ignore. Nothing here closes anything any more.
  */
 
 export type GateModule = {
@@ -40,9 +41,9 @@ export const passedTest = (
   );
 
 export type ModuleGate = {
-  /** The modules whose lessons the student has reached, in the course's own order. */
+  /** The modules the student has worked up to, in the course's own order. */
   open: ReadonlySet<string>;
-  /** For a closed module, the test standing in front of it. */
+  /** For a module further ahead, the test it builds on and has not been passed. */
   blockedBy: ReadonlyMap<string, string>;
 };
 

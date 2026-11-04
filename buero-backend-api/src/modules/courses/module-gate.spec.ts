@@ -1,11 +1,12 @@
 import { openModules, passedTest, type GateAttempt, type GateModule } from "./module-gate";
 
 /**
- * Which modules a student has reached.
+ * How far through a course a student has worked, measured by its tests.
  *
- * The rule the author set: a module's final test has to be passed before the next module
- * opens, and a module with no test stops nobody. The cases that matter are the ones where
- * being wrong locks a paying student out of a course they bought.
+ * This once decided what was open, and no longer does: a module the student paid for is
+ * open whatever their tests say. What it decides now is advice - which test a reader who
+ * has jumped ahead might want to take first - so being wrong costs a misplaced sentence
+ * rather than a course someone cannot get into.
  */
 describe("the gate between modules", () => {
   const test = (id: string, passingScore: number | null = 70) => ({

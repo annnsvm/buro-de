@@ -35,10 +35,16 @@ export type QuestionEditorProps = {
    */
   scoredByPoints: boolean;
   /**
-   * True for a practice, whose questions belong to one of five blocks. A quiz and a test
-   * have no blocks, so nothing about them is shown there.
+   * The parts this material is divided into, in the order they are offered.
+   *
+   * A practice has all five. A module test has three: no letter and no recording of one's
+   * own voice, by the author's decision. An older quiz has none, and is one plain list.
+   *
+   * It used to be a yes-or-no, answered by "is this a practice" - so a test showed no parts
+   * at all, its texts and recordings were never even fetched, and there was nowhere to
+   * upload an mp3 to.
    */
-  hasBlocks?: boolean;
+  blocks?: readonly PracticeBlockName[];
 };
 
 const BLOCK_LABELS: Record<PracticeBlockName, string> = {
@@ -117,15 +123,16 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   moduleId,
   materialId,
   scoredByPoints,
-  hasBlocks = false,
+  blocks = [],
 }) => {
+  const hasBlocks = blocks.length > 0;
   const [questions, setQuestions] = useState<EditorQuestion[]>([]);
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Which block is being worked on. A quiz has none, and everything stays in grammatik. */
-  const [block, setBlock] = useState<PracticeBlockName>('grammatik');
+  const [block, setBlock] = useState<PracticeBlockName>(blocks[0] ?? 'grammatik');
   /**
    * A question being written survives this editor being closed and reopened.
    *
@@ -305,7 +312,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     <div className="space-y-4">
       {hasBlocks ? (
         <div className="flex flex-wrap gap-2">
-          {(Object.keys(BLOCK_LABELS) as PracticeBlockName[]).map((name) => {
+          {blocks.map((name) => {
             /**
              * How much is in the block: its questions where it asks them, its tasks where it
              * does not. Counting questions alone badged Schreiben and Sprechen 0 while the

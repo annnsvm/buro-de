@@ -252,11 +252,16 @@ export class CourseService {
         .filter((moduleId): moduleId is string => moduleId !== null);
 
       /**
-       * Two different locks, answered separately.
+       * Which test a module builds on - as advice, not as a lock.
        *
-       * One asks whether the student has paid for this module; the other whether they have
-       * passed the test standing in front of it. A screen that cannot tell them apart shows
-       * "buy the course" to someone who owns it, and that student has no way on.
+       * A module used to be closed until the one before it had been passed. The author
+       * took that out, and she was right to: her students are adults who buy the level
+       * they think they are at, and a good share of them are halfway through it. Someone
+       * who bought the course to revise module 6 was being told to sit five tests first,
+       * and the honest answer to that is "no thanks".
+       *
+       * What is left is the knowledge itself. A module whose predecessor's test has not
+       * been passed says so in one line the student can ignore, and nothing is shut.
        */
       const gate = isTeacher
         ? null
@@ -383,21 +388,21 @@ export class CourseService {
         const materials = mod.materials;
         if (!Array.isArray(materials)) return mod;
         const moduleId = typeof mod.id === "string" ? mod.id : "";
-        const paidFor = readable === "all" || readable.has(moduleId);
-        const reached = gate === null || gate.open.has(moduleId);
-        const unlocked = paidFor && reached;
+        /** Paying for the course is the only thing that opens a module. */
+        const unlocked = readable === "all" || readable.has(moduleId);
         return {
           ...mod,
           locked: !unlocked,
+          /** One word, so the screen can offer the right way out. */
+          lock_reason: unlocked ? null : "access",
           /**
-           * Why, in one word, so the screen can offer the right way out. Access first: a
-           * student who has not bought the course is not going to be helped by being told
-           * to pass a test in it.
+           * The test this module builds on, when the student has not passed it. Advice for
+           * a line they can ignore - it closes nothing, and a module they paid for stays
+           * open whatever it says.
            */
-          lock_reason: unlocked ? null : !paidFor ? "access" : "test",
-          /** The test to pass, when that is what is in the way. */
-          locked_by_test_id:
-            unlocked || !paidFor ? null : (gate?.blockedBy.get(moduleId) ?? null),
+          suggested_test_id: unlocked
+            ? (gate?.blockedBy.get(moduleId) ?? null)
+            : null,
           materials: materials.map((mat: Record<string, unknown>) =>
             this.applyMaterialAccess(mat, unlocked, isTeacher),
           ),
