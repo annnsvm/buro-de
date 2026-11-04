@@ -17,6 +17,7 @@ export const mapCourseToForm = (data: ApiCourseTreeResponse): CreateCourseFormVa
   const levelToRaw = data.levelTo != null ? String(data.levelTo) : '';
 
   const durationRaw = data.durationHours ?? data.duration_hours;
+  const trialRaw = data.trialModuleCount ?? data.trial_module_count;
   const priceNum = data.price;
 
   return {
@@ -35,5 +36,11 @@ export const mapCourseToForm = (data: ApiCourseTreeResponse): CreateCourseFormVa
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     level: isLevel(levelRaw) ? levelRaw : '',
     levelTo: isLevel(levelToRaw) ? levelToRaw : '',
+    /**
+     * Two when the server said nothing, which is the column's own default - so an older
+     * response cannot make the form read as "no free modules".
+     */
+    trialModuleCount:
+      trialRaw != null && Number.isFinite(Number(trialRaw)) ? String(trialRaw) : '2',
   };
 };

@@ -19,12 +19,16 @@ const ModuleMaterial: React.FC<ModuleMaterialProps> = ({
   material,
   onSelectMaterial,
   onRequestDeleteMaterial,
+  onPublishMaterial,
+  isPublishingMaterial = false,
   dragHandleProps,
   isDragging = false,
   sortableRef,
   sortableStyle,
 }) => {
-  const { type, id, title, content } = material;
+  const { type, id, title, content, publishedAt } = material;
+  /** Undefined on a student's tree, where a draft never arrives; null means a draft. */
+  const isDraft = publishedAt === null;
   const durationLabel =
     type === 'video' && typeof content?.duration === 'string'
       ? content.duration
@@ -73,11 +77,58 @@ const ModuleMaterial: React.FC<ModuleMaterialProps> = ({
           <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
             {title || 'Матеріал без назви'}
           </span>
-          <span className="text-xs capitalize text-[var(--color-text-secondary)]">{durationLabel}</span>
+          {/**
+           * Said on the row rather than only on the module, because after an import the
+           * list is a mix: eight new practices waiting and the lessons that were always
+           * there. Without it the teacher cannot tell which is which.
+           */}
+          <span className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+            <span className="capitalize">{durationLabel}</span>
+            {isDraft ? (
+              <span className="rounded-full bg-[var(--color-dawn-pink-light)] px-2 py-0.5 text-[0.7rem] font-semibold text-[var(--color-burnt-siena-dark)]">
+                чернетка
+              </span>
+            ) : null}
+          </span>
         </div>
       </div>
     </button>
   );
+
+  /**
+   * Shown only on a draft, and only to someone who can act on it.
+   *
+   * It sits beside the bin rather than under the row because the list is read down the
+   * left edge: a button that moved the titles apart would make the module harder to scan
+   * for the sake of a state most rows are not in.
+   */
+  const renderPublishButton = () =>
+    isDraft && onPublishMaterial ? (
+      <button
+        type="button"
+        aria-label={`Опублікувати ${title || 'матеріал без назви'}`}
+        title="Опублікувати - студенти побачать цей матеріал"
+        tabIndex={0}
+        disabled={isPublishingMaterial}
+        className="flex shrink-0 items-center justify-center rounded-lg px-2 hover:bg-[var(--color-surface-section)] disabled:opacity-50"
+        onClick={(e) => {
+          e.stopPropagation();
+          onPublishMaterial(id);
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          e.stopPropagation();
+          onPublishMaterial(id);
+        }}
+      >
+        <Icon
+          name={ICON_NAMES.EYE_PSW_SHOW}
+          size={18}
+          className="text-[var(--color-burnt-siena-dark)]"
+        />
+      </button>
+    ) : null;
 
   const renderDeleteButton = () =>
     onRequestDeleteMaterial ? (
@@ -107,6 +158,7 @@ const ModuleMaterial: React.FC<ModuleMaterialProps> = ({
           <div className={rowClassName}>
             {renderDragHandle()}
             {renderMainButton(ICON_NAMES.PLAY_ARROW, 'bg-[var(--color-primary)]', 'var(--color-white)')}
+            {renderPublishButton()}
             {renderDeleteButton()}
           </div>
         </li>
@@ -122,6 +174,7 @@ const ModuleMaterial: React.FC<ModuleMaterialProps> = ({
               'bg-[var(--color-surface-section)]',
               'var(--color-text-primary)',
             )}
+            {renderPublishButton()}
             {renderDeleteButton()}
           </div>
         </li>

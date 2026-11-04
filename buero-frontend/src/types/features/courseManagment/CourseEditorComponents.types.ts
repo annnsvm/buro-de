@@ -80,6 +80,9 @@ export type CourseEditorCourseFormTabProps = {
   setValue: UseFormSetValue<CreateCourseFormValues>;
   computedDurationMinutes: number;
   watchedVideoLessonsCount: number;
+  watchedTrialModuleCount: string;
+  /** Judged against the figure above, so the teacher can see when it is the whole course. */
+  moduleCount: number;
   coverFile: File | null;
 };
 

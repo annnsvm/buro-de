@@ -476,6 +476,47 @@ describe("CourseService", () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
+    /**
+     * The field the editor sends when the teacher changes how much of the course is free.
+     *
+     * Pinned here because the pipe is configured with `forbidNonWhitelisted`, so a property
+     * the DTO does not declare is a 400 rather than a silently ignored key - and a 400 on
+     * this request loses every other edit on the form with it.
+     */
+    it("saves how many modules a trial opens, zero included", async () => {
+      prisma.course.findUnique.mockResolvedValue({
+        id: "c1",
+        title: "Old",
+        price: { toString: () => "10" },
+        isPublished: true,
+      });
+      prisma.course.update.mockResolvedValue(courseRow({ title: "Old" }));
+
+      await service.update("c1", { trial_module_count: 0 });
+
+      expect(prisma.course.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "c1" },
+          data: expect.objectContaining({ trialModuleCount: 0 }),
+        }),
+      );
+    });
+
+    it("leaves the trial count alone when the request does not mention it", async () => {
+      prisma.course.findUnique.mockResolvedValue({
+        id: "c1",
+        title: "Old",
+        price: { toString: () => "10" },
+        isPublished: true,
+      });
+      prisma.course.update.mockResolvedValue(courseRow({ title: "Renamed" }));
+
+      await service.update("c1", { title: "Renamed" });
+
+      const data = prisma.course.update.mock.calls[0][0].data as Record<string, unknown>;
+      expect(data).not.toHaveProperty("trialModuleCount");
+    });
+
     it("updates fields of an already published course", async () => {
       prisma.course.findUnique.mockResolvedValue({
         id: "c1",

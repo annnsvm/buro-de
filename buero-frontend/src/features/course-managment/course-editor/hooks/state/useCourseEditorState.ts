@@ -43,6 +43,7 @@ export const useCourseEditorState = () => {
       tags: [],
       level: '',
       levelTo: '',
+      trialModuleCount: '2',
     },
   });
 
@@ -52,6 +53,7 @@ export const useCourseEditorState = () => {
   const watchedPrice = watch('price') ?? '';
   const watchedLevel = watch('level') ?? '';
   const watchedLevelTo = watch('levelTo') ?? '';
+  const watchedTrialModuleCount = watch('trialModuleCount') ?? '2';
   const watchedVideoLessonsCount = videoMaterialCount(modules);
   const computedDurationMinutes = videoMinutesSum(modules);
 
@@ -135,6 +137,7 @@ export const useCourseEditorState = () => {
       tags: [],
       level: '',
       levelTo: '',
+      trialModuleCount: '2',
     });
   }, [reset]);
 
@@ -158,6 +161,7 @@ export const useCourseEditorState = () => {
     watchedPrice,
     watchedLevel,
     watchedLevelTo,
+    watchedTrialModuleCount,
     watchedVideoLessonsCount,
     computedDurationMinutes,
     coverFile,

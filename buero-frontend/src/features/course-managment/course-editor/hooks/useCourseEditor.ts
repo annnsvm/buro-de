@@ -56,6 +56,7 @@ export const useCourseEditor = () => {
     watchedDescription,
     watchedLevel,
     watchedLevelTo,
+    watchedTrialModuleCount,
     watchedTags,
     watchedPrice,
     priceCurrencySymbol,
@@ -245,6 +246,8 @@ export const useCourseEditor = () => {
       setValue,
       computedDurationMinutes,
       watchedVideoLessonsCount,
+      watchedTrialModuleCount,
+      moduleCount: modules.length,
       coverFile,
     },
     materialPanelProps: {

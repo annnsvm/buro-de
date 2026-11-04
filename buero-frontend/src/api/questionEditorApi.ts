@@ -254,3 +254,27 @@ export const publishMaterial = async (
   );
   return data;
 };
+
+export type ModulePublishResult = {
+  /** Materials that were drafts and are now in the lesson list. */
+  materials: number;
+  questions: number;
+  elements: number;
+};
+
+/**
+ * Lets a whole module out: every draft in it, in one act.
+ *
+ * This is the one that goes with an import. A CSV brings in several practices at once, each
+ * with its questions and its texts, and releasing them one block at a time would be dozens
+ * of presses to undo a single upload. Anything already published keeps its own date.
+ */
+export const publishModule = async (
+  courseId: string,
+  moduleId: string,
+): Promise<ModulePublishResult> => {
+  const { data } = await apiInstance.post<ModulePublishResult>(
+    API_ENDPOINTS.courseModules.publish(courseId, moduleId),
+  );
+  return data;
+};

@@ -11,7 +11,8 @@ import React from 'react';
  * Everything else - the yellow, the blue, the green, the paper - is artwork and stays as drawn.
  */
 
-const CORAL = 'var(--color-accent-primary)';
+/** The lesson's orange, so a drawing and the button under it are the same colour. */
+const CORAL = 'var(--color-lesson-accent)';
 const INK = '#1F1A17';
 const HEADING = 'var(--font-heading)';
 

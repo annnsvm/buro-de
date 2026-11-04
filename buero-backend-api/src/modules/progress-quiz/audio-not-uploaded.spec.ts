@@ -128,10 +128,17 @@ describe("a listening task whose recording has not been uploaded", () => {
    * exist yet, which is the one thing a listening task must never do.
    */
   it("does not hand over the transcript", async () => {
-    expect((await load()).elements[0]).toMatchObject({
-      transcript: null,
-      has_transcript: true,
-    });
+    expect((await load()).elements[0].transcript).toBeNull();
+  });
+
+  /**
+   * Nor does it mention one. `has_transcript` is what makes the player say "opens once you
+   * have answered every question about it", and with the questions held back that is a lock
+   * with no key: there is nothing to answer, so the student is told to wait for something
+   * that cannot arrive. A recording with no file says only that the task is not ready.
+   */
+  it("does not promise a transcript it can never open", async () => {
+    expect((await load()).elements[0].has_transcript).toBe(false);
   });
 
   it("counts nothing towards a test's total", async () => {

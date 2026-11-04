@@ -1,0 +1,11 @@
+-- The retry pause, removed the same day it arrived.
+--
+-- It was meant to keep unlimited attempts from becoming guesswork. The author's objection
+-- settles it: a student who mistyped one answer is told to wait ten minutes, which punishes
+-- a slip rather than teaching anything, and the people taking these tests are adults who
+-- paid for the course. Attempts stay unlimited and immediate; what keeps a retake honest is
+-- that the answer key and the explanations wait for a pass.
+--
+-- The column never held anything but its default: the feature was added and taken out
+-- before any course was given a value of its own.
+ALTER TABLE "courses" DROP COLUMN "test_retry_minutes";

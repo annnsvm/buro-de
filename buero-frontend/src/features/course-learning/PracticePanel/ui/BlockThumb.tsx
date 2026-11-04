@@ -25,7 +25,7 @@ const BlockThumb: React.FC<BlockThumbProps> = ({ block, done }) => {
     >
       <Art size={72} />
       {done ? (
-        <span className="absolute -top-1.5 -right-1.5 flex size-[26px] items-center justify-center rounded-full border-2 border-[var(--color-neutral-white)] bg-[var(--color-accent-primary)]">
+        <span className="absolute -top-1.5 -right-1.5 flex size-[26px] items-center justify-center rounded-full border-2 border-[var(--color-neutral-white)] bg-[var(--color-lesson-accent)]">
           <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="#FFFFFF" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 13l4.5 4.5L19 7" />
           </svg>

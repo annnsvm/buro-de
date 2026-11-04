@@ -243,6 +243,13 @@ model Course {
   /// describe a range, which is what the catalogue draws and filters on.
   levelTo          Level?         @map("level_to")
   durationHours    Int?           @map("duration_hours")
+  /// How many modules from the start of the course a trial opens.
+  ///
+  /// On the course rather than in the code because the right number depends on how long the
+  /// course is: two modules out of nine is a sample, two out of two is the whole thing given
+  /// away. The rule stays positional - the first N modules in display order - so reordering
+  /// modules moves the boundary, and 0 means a trial opens nothing at all.
+  trialModuleCount Int        @default(2) @map("trial_module_count")
   /// How many times a student may send one writing task to be checked, for the whole time they
   /// have access. Three is the first attempt and two rewrites.
   ///
@@ -302,6 +309,13 @@ model CourseMaterial {
   /// without practice is just a video with no children.
   parentMaterialId String?      @map("parent_material_id")
   orderIndex Int                @map("order_index")
+  /// When this material became visible to students, or null while it is still a draft.
+  ///
+  /// A CSV import creates the material and its contents together, and the contents were
+  /// already drafts - but the material itself appeared in the lesson list at once, so a
+  /// student saw an empty practice with nothing in it. The material now waits with them,
+  /// and the whole module is published in one act.
+  publishedAt DateTime?         @map("published_at")
   createdAt  DateTime           @default(now()) @map("created_at")
   updatedAt  DateTime           @updatedAt @map("updated_at")
 
@@ -319,6 +333,7 @@ model CourseMaterial {
   practiceElements PracticeElement[]
 
   @@index([moduleId])
+  @@index([moduleId, publishedAt])
   @@index([parentMaterialId])
   @@map("course_materials")
 }

@@ -26,7 +26,12 @@ const audio = (overrides: Partial<PracticeElement> = {}): PracticeElement => ({
   body: null,
   audio_url: null,
   awaiting_audio: true,
-  has_transcript: true,
+  /**
+   * False even though the author has written a transcript, because that is what the server
+   * sends for a recording with no file: its questions are held back, so there is nothing to
+   * answer and nothing that could ever open the transcript.
+   */
+  has_transcript: false,
   transcript: null,
   ...overrides,
 });
@@ -62,6 +67,17 @@ describe('a listening task with no recording yet', () => {
     expect(
       screen.queryByText('Показати текст запису'),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * Nor does it say one is coming. "Opens once you have answered every question about it" is
+   * a lock with no key here: the questions are not asked, so the student was told to wait for
+   * something that could never arrive. A recording with no file says only that much.
+   */
+  it('does not promise a transcript either', async () => {
+    renderWithProviders(<ListeningAudio element={audio()} />);
+
+    expect(screen.queryByText(/Текст запису відкриється/)).not.toBeInTheDocument();
   });
 
   it('plays normally once the recording is there', async () => {

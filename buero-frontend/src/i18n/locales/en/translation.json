@@ -588,7 +588,9 @@
     "partFilled": "This part is filled in. Your answers are kept.",
     "partLeft": "Questions left in this part: {{count}}",
     "answersOf": "{{answered}} / {{total}}",
-    "answersLabel": "answers"
+    "answersLabel": "answers",
+    "reviewWaitsForPass": "The question-by-question review opens once you pass. Until then, go by the parts above and revisit the lessons they name.",
+    "earlierAttempts": "Earlier attempts"
   },
   "myLearning": {
     "continueAfter": "{{done}} is done. Pick {{course}} up at the next lesson.",

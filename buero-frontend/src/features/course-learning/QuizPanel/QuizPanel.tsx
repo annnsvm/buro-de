@@ -14,6 +14,7 @@ import {
   type PracticeElement,
   type QuizPartResult,
   type QuizQuestion,
+  type RecentAttempt,
 } from '@/api/quizApi';
 import BaseDialog from '@/components/modal/BaseDialog/BaseDialog';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
@@ -38,6 +39,8 @@ import {
   isAnswered,
   type ExerciseAnswer,
 } from '@/features/course-learning/exercises/exercise.types';
+import { describeAnswer } from '@/features/course-learning/exercises/describeAnswer';
+import { EYEBROW, EYEBROW_ACCENT, LABEL_ROW, SCREEN_TITLE } from '@/features/course-learning/PracticePanel/ui/headings';
 
 /** Which part of a module test is open, kept in the address bar. */
 const PART_PARAM = 'part';
@@ -118,6 +121,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
   const [outdated, setOutdated] = useState(false);
   const [mode, setMode] = useState<QuizMode>('practice');
   const [passingScore, setPassingScore] = useState<number | null>(null);
+  /** The last few goes, newest first, for the result screen. */
+  const [recentAttempts, setRecentAttempts] = useState<RecentAttempt[]>([]);
   const [passed, setPassed] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
   /**
@@ -236,11 +241,11 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
       const given = feedback[question.id];
       if (!given || given.correct) continue;
 
-      const typed = drafts[question.id];
       out.push({
         question,
         position: at,
-        given: Array.isArray(typed) ? typed.join(', ') : (typed ?? ''),
+        /** The option's own words, not the id it is stored under; see `describeAnswer`. */
+        given: describeAnswer(question, drafts[question.id]),
         accepted: given.accepted_answers ?? [],
         explanation: given.explanation,
         reviewLesson: given.review_lesson ?? null,
@@ -320,6 +325,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         setOutdated(true);
       } else if (previous) {
         setPassed(previous.passed);
+        setRecentAttempts(previous.recent_attempts ?? []);
         setEarnedPoints(previous.earned_points);
         setParts(previous.parts ?? []);
         setAttemptId(previous.attempt_id);
@@ -398,6 +404,44 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     setDrafts((prev) => ({ ...prev, [questionId]: answer }));
   }, []);
 
+  /**
+   * Asks the server again for the texts and recordings, when an answer may have earned one.
+   *
+   * The transcript of a recording opens once every question about it has been answered, and
+   * the server is the only thing that knows when that is - it counts answers from every
+   * sitting, not just this one. Nothing here re-derives that rule: mirroring it on the client
+   * would be a second copy of an access decision, and a copy that disagreed would either
+   * print the dialogue early or hide it for good.
+   *
+   * So the question is only ever "might this answer have been the last one?", and the cheapest
+   * honest answer is to ask. It fires only for a question attached to an element that still
+   * owes a transcript, which in practice means the Hören and Lesen blocks and no others. Only
+   * the elements are taken from the response: questions, drafts and marks stay exactly as the
+   * student left them.
+   */
+  const refreshElementsIfTranscriptDue = useCallback(
+    async (question: QuizQuestion) => {
+      const owed = elements.some(
+        (element) =>
+          element.id === question.element_id &&
+          element.has_transcript &&
+          !element.transcript,
+      );
+      if (!owed) return;
+      try {
+        const loaded = await fetchQuizQuestions(courseMaterialId, block);
+        setElements(loaded.elements ?? []);
+      } catch {
+        /**
+         * The answer itself is already saved, so a failed refresh must not read as a failed
+         * answer. The transcript then opens the next time the block is opened, which is what
+         * happened every time before this refresh existed.
+         */
+      }
+    },
+    [block, courseMaterialId, elements],
+  );
+
   const check = useCallback(
     async (question: QuizQuestion) => {
       const answer = drafts[question.id];
@@ -412,6 +456,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           answer,
         });
         setFeedback((prev) => ({ ...prev, [question.id]: data }));
+        await refreshElementsIfTranscriptDue(question);
         if (data.summary) {
           const summary: QuizResultSummary = {
             correct: data.summary.correct,
@@ -430,7 +475,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         setChecking(null);
       }
     },
-    [drafts, ensureAttempt, feedback, onQuizResult, t],
+    [drafts, ensureAttempt, feedback, onQuizResult, refreshElementsIfTranscriptDue, t],
   );
 
   /**
@@ -537,6 +582,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         ),
       );
       setPassed(data.passed);
+      setRecentAttempts(data.recent_attempts ?? []);
       setEarnedPoints(data.earned_points);
       setParts(data.parts ?? []);
       const summary: QuizResultSummary = {
@@ -547,6 +593,15 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         justFinished: true,
       };
       setResult(summary);
+      /**
+       * And out of the part the student happened to finish in.
+       *
+       * The result belongs to the test, not to Lesen - but it was drawn at the open part's
+       * address, so a reload or a return landed back inside that part with the result
+       * hanging under it. Clearing the parameter puts the result where it belongs and
+       * makes the back button behave: the test's own screen, whichever part was last.
+       */
+      setOpenPart(null);
       setResultDialogOpen(true);
       onQuizResult?.(summary);
     } catch (err: unknown) {
@@ -554,11 +609,11 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
     } finally {
       setSubmitting(false);
     }
-  }, [drafts, ensureAttempt, onQuizResult, questions, t]);
+  }, [drafts, ensureAttempt, onQuizResult, questions, setOpenPart, t]);
 
   if (loading) {
     return (
-      <p className="px-6 py-12 text-center text-[var(--color-text-secondary)]">
+      <p className="px-6 py-12 text-center text-[var(--color-lesson-muted)]">
         {t('quiz.preparing')}
       </p>
     );
@@ -601,7 +656,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
          */
         null
       ) : (
-        <h2 className="pt-6 text-xl font-bold text-[var(--color-text-primary)] sm:text-2xl">
+        <h2 className="pt-6 text-xl font-bold text-[var(--color-lesson-body)] sm:text-2xl">
           {quizMaterialTitle || t('quiz.title')}
         </h2>
       )}
@@ -631,36 +686,36 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           <button
             type="button"
             onClick={() => setOpenPart(null)}
-            className="text-sm font-medium text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
+            className="text-sm font-medium text-[var(--color-lesson-muted)] transition hover:text-[var(--color-lesson-body)]"
           >
             {t('quiz.backToTest')}
           </button>
 
-          <div className="mt-4 flex flex-wrap items-baseline gap-x-4">
-            <span className="text-[13px] font-semibold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+          <div className={`mt-4 ${LABEL_ROW}`}>
+            <span className={EYEBROW_ACCENT}>
               {t('quiz.partNumber', {
                 number: testParts.findIndex((part) => part.block === openPart) + 1,
               })}
             </span>
-            <span className="text-[13px] text-[var(--color-text-secondary)]">
+            <span className={EYEBROW}>
               {t('quiz.partQuestions', { count: shown.length })}
             </span>
           </div>
-          <h3 className="mt-1 font-[family-name:var(--font-heading)] text-[1.6rem] font-bold tracking-[-0.03em] text-[var(--color-text-primary)]">
+          <h3 className={`mt-1 ${SCREEN_TITLE}`}>
             {t(`practice.blocks.${openPart}.title`)}
           </h3>
         </div>
       ) : null}
 
       {outdated ? (
-        <p className="mt-3 rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
+        <p className="mt-3 rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm text-[var(--color-lesson-body)]">
           {t('quiz.outdatedResult')}
         </p>
       ) : null}
 
       <p
         className={[
-          'mt-2 text-sm text-[var(--color-text-secondary)]',
+          'mt-2 text-sm text-[var(--color-lesson-muted)]',
           /** Said once: the block's header already carries the count above. */
           isPracticeBlock && mode !== 'test' ? 'sr-only' : '',
         ].join(' ')}
@@ -692,7 +747,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
             ))}
           </div>
         ) : (
-          <p className="py-12 text-center text-[var(--color-text-secondary)]">
+          <p className="py-12 text-center text-[var(--color-lesson-muted)]">
             {t('quiz.noQuestions')}
           </p>
         )
@@ -748,7 +803,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                          */
                         aside={
                           showPoints && question.points > 1 ? (
-                            <span className="inline-block rounded-full bg-[var(--color-dawn-pink-light)] px-2.5 py-0.5 text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-burnt-siena-dark)] uppercase">
+                            <span className="inline-block rounded-full bg-[var(--color-dawn-pink-light)] px-2.5 py-0.5 font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-accent)] sm:text-[13px]">
                               {t('quiz.questionPoints', { count: question.points })}
                             </span>
                           ) : null
@@ -812,7 +867,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
        */}
       {openPart && !result ? (
         <div className="mt-10 flex flex-col gap-4 rounded-[22px] bg-[var(--color-neutral-white)] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-[var(--color-text-secondary)]">
+          <p className="text-sm text-[var(--color-lesson-muted)]">
             {partLeft === 0
               ? t('quiz.partFilled')
               : t('quiz.partLeft', { count: partLeft })}
@@ -874,7 +929,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
         <div className="sticky bottom-0 z-20 -mx-4 mt-8 bg-[var(--color-surface-background)] px-4 pt-2 pb-3 sm:-mx-6 sm:px-6">
           <div className="flex flex-col gap-4 rounded-[22px] bg-[var(--color-neutral-white)] py-4 pr-4 pl-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+              <p className="text-sm font-semibold text-[var(--color-lesson-body)]">
                 {t('quiz.totalAnswered', {
                   answered: answeredDraftCount,
                   total: questions.length,
@@ -887,7 +942,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
               {!allAnswered ? (
                 <p
                   id="finish-test-hint"
-                  className="mt-0.5 text-[13px] text-[var(--color-text-secondary)]"
+                  className="mt-0.5 text-[13px] text-[var(--color-lesson-muted)]"
                 >
                   {t('quiz.finishWhenFull')}
                 </p>
@@ -935,6 +990,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           passingScore={passingScore}
           passed={passed}
           parts={parts}
+          recentAttempts={recentAttempts}
           mistakes={mistakes}
           onRetry={handleRetry}
           onMoveOn={onMoveOn}
@@ -948,13 +1004,13 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           role="status"
           aria-live="polite"
         >
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+          <p className="text-sm font-semibold text-[var(--color-lesson-body)]">
             {t('quiz.yourBestResult')}
           </p>
           <p className="mt-2 text-3xl font-bold text-[var(--color-primary)] tabular-nums">
             {result.bestPercent}%
           </p>
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-sm text-[var(--color-lesson-muted)]">
             {showPoints && earnedPoints != null
               ? t('quiz.pointsSummary', {
                   earned: earnedPoints,
@@ -970,12 +1026,12 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
            * same number twice. It is what explains a score that went down on a retry.
            */}
           {result.justFinished && result.percent !== result.bestPercent ? (
-            <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+            <p className="mt-2 text-xs text-[var(--color-lesson-muted)]">
               {t('quiz.thisAttempt', { percent: result.percent })}
             </p>
           ) : null}
           {passed === false ? (
-            <p className="mt-3 text-sm text-[var(--color-text-primary)]">
+            <p className="mt-3 text-sm text-[var(--color-lesson-body)]">
               {showPoints && passingPoints != null
                 ? t('quiz.testFailedHintPoints', {
                     passing: passingPoints,
@@ -996,7 +1052,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
             <button
               type="button"
               onClick={handleRetry}
-              className="inline-flex w-full items-center justify-center rounded-full border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-8 py-3 text-sm font-medium text-[var(--color-text-primary)] transition hover:bg-[var(--color-surface-section)] sm:w-auto sm:min-w-[200px]"
+              className="inline-flex w-full items-center justify-center rounded-full border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] px-8 py-3 text-sm font-medium text-[var(--color-lesson-body)] transition hover:bg-[var(--color-surface-section)] sm:w-auto sm:min-w-[200px]"
             >
               {t('quiz.oneMoreTime')}
             </button>
@@ -1013,7 +1069,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                 className={[
                   'inline-flex w-full items-center justify-center rounded-full px-8 py-3 text-sm font-medium transition sm:w-auto sm:min-w-[200px]',
                   passed === false
-                    ? 'border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-section)]'
+                    ? 'border border-[var(--color-border-default)] bg-[var(--color-neutral-white)] text-[var(--color-lesson-body)] hover:bg-[var(--color-surface-section)]'
                     : 'bg-[var(--color-primary)] text-white hover:opacity-90',
                 ].join(' ')}
               >
@@ -1036,13 +1092,13 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
           openCloseAnimation
           contentClassName="relative z-[1] w-[min(92vw,420px)] rounded-2xl bg-[var(--color-neutral-white)] px-6 py-8 text-center shadow-xl focus:outline-none"
         >
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+          <p className="text-sm font-semibold text-[var(--color-lesson-body)]">
             {t('quiz.yourResult')}
           </p>
           <p className="mt-3 text-4xl font-bold text-[var(--color-primary)] tabular-nums">
             {result.percent}%
           </p>
-          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+          <p className="mt-2 text-sm text-[var(--color-lesson-muted)]">
             {showPoints && earnedPoints != null
               ? t('quiz.pointsSummary', {
                   earned: earnedPoints,
@@ -1054,7 +1110,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
                 })}
           </p>
           {result.percent !== result.bestPercent ? (
-            <p className="mt-3 text-sm text-[var(--color-text-primary)]">
+            <p className="mt-3 text-sm text-[var(--color-lesson-body)]">
               {t('quiz.bestStays', { percent: result.bestPercent })}
             </p>
           ) : null}
@@ -1075,7 +1131,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({
               <button
                 type="button"
                 onClick={onMoveOn}
-                className="inline-flex w-full items-center justify-center rounded-full px-8 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
+                className="inline-flex w-full items-center justify-center rounded-full px-8 py-2 text-sm font-medium text-[var(--color-lesson-muted)] transition hover:text-[var(--color-lesson-body)]"
               >
                 {moveOnLabel}
               </button>
@@ -1100,7 +1156,7 @@ const PartBreakdown: React.FC<{ parts: QuizPartResult[] }> = ({ parts }) => {
 
   return (
     <div className="mt-6 text-left">
-      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+      <p className="text-sm font-semibold text-[var(--color-lesson-body)]">
         {weak.length > 0 ? t('quiz.partsToRevisit') : t('quiz.partsBreakdown')}
       </p>
       <ul className="mt-3 space-y-2">
@@ -1110,8 +1166,8 @@ const PartBreakdown: React.FC<{ parts: QuizPartResult[] }> = ({ parts }) => {
             className={[
               'rounded-xl px-3 py-2 text-sm',
               part.weak
-                ? 'bg-[var(--color-error-soft)] text-[var(--color-text-primary)]'
-                : 'text-[var(--color-text-secondary)]',
+                ? 'bg-[var(--color-error-soft)] text-[var(--color-lesson-body)]'
+                : 'text-[var(--color-lesson-muted)]',
             ].join(' ')}
           >
             <span className="flex flex-wrap items-baseline justify-between gap-x-3">
@@ -1157,17 +1213,17 @@ const QuestionFeedback: React.FC<{ given: AnswerQuestionResponse }> = ({ given }
         {given.correct ? t('quiz.answerCorrect') : t('quiz.answerWrong')}
       </p>
 
-      {nearMiss ? <p className="mt-1 text-[var(--color-text-secondary)]">{nearMiss}</p> : null}
+      {nearMiss ? <p className="mt-1 text-[var(--color-lesson-muted)]">{nearMiss}</p> : null}
 
       {!given.correct && given.accepted_answers.length > 0 ? (
-        <p className="mt-2 text-[var(--color-text-primary)]">
+        <p className="mt-2 text-[var(--color-lesson-body)]">
           {t('quiz.correctAnswerIs')}{' '}
           <span className="font-semibold">{given.accepted_answers[0]}</span>
         </p>
       ) : null}
 
       {given.explanation ? (
-        <p className="mt-2 text-[var(--color-text-primary)]">{given.explanation}</p>
+        <p className="mt-2 text-[var(--color-lesson-body)]">{given.explanation}</p>
       ) : null}
     </div>
   );

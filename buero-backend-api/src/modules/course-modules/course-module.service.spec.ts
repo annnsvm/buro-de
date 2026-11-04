@@ -126,6 +126,55 @@ describe("CourseModuleService", () => {
         orderBy: { orderIndex: "asc" },
       });
     });
+
+    /**
+     * The course that sells from its first module. Before the trial count belonged to the
+     * course this could not happen, and the code read an empty scope as "nothing to
+     * restrict" - which would list the whole course to anyone who had merely registered.
+     */
+    it("trial student sees nothing when the course opens no modules", async () => {
+      prisma.course.findUnique.mockResolvedValue({
+        id: courseId,
+        trialModuleCount: 0,
+      });
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        accessType: "trial",
+        trialEndsAt: new Date("2099-01-01"),
+      });
+      prisma.courseModule.findMany.mockResolvedValue([]);
+
+      const list = await service.findAllByCourseId(courseId, "stu", Role.student);
+
+      expect(list).toEqual([]);
+      expect(prisma.courseModule.findMany).toHaveBeenLastCalledWith({
+        where: { courseId, id: { in: [] } },
+        orderBy: { orderIndex: "asc" },
+      });
+    });
+
+    it("trial student sees only the one module a short course opens", async () => {
+      prisma.course.findUnique.mockResolvedValue({
+        id: courseId,
+        trialModuleCount: 1,
+      });
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        accessType: "trial",
+        trialEndsAt: new Date("2099-01-01"),
+      });
+      prisma.courseModule.findMany
+        .mockResolvedValueOnce([{ id: moduleId }])
+        .mockResolvedValueOnce([
+          { id: moduleId, courseId, title: "Instructions", orderIndex: 0 },
+        ]);
+
+      const list = await service.findAllByCourseId(courseId, "stu", Role.student);
+
+      expect(list).toHaveLength(1);
+      expect(prisma.courseModule.findMany).toHaveBeenLastCalledWith({
+        where: { courseId, id: { in: [moduleId] } },
+        orderBy: { orderIndex: "asc" },
+      });
+    });
   });
 
   describe("findOne", () => {

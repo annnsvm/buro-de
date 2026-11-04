@@ -17,4 +17,9 @@ export const courseFormFields = (
   ...(values.durationHours?.trim()
     ? { duration_hours: Number(values.durationHours.trim()) }
     : {}),
+  /**
+   * Always sent, including zero. Leaving it out would let the server keep whatever it had,
+   * and "I set the free preview to none" is exactly the change that must not be dropped.
+   */
+  trial_module_count: Number(values.trialModuleCount.trim()),
 });

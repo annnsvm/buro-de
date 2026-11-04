@@ -27,6 +27,11 @@ type ModuleMaterialType = {
   parentMaterialId?: string | null;
   /** Which blocks a practice contains. */
   blocks?: string[];
+  /**
+   * Null while the material is a draft, which only a teacher ever receives. A student's
+   * course tree has no draft rows in it at all, so the field says nothing to them.
+   */
+  publishedAt?: string | null;
   orderIndex?: number;
 };
 
@@ -34,6 +39,9 @@ type ModuleMaterialProps = {
   material: ModuleMaterialType;
   onSelectMaterial: (materialId: string) => void;
   onRequestDeleteMaterial?: (materialId: string) => void;
+  /** Lets this one material out, with every block inside it. */
+  onPublishMaterial?: (materialId: string) => void;
+  isPublishingMaterial?: boolean;
   dragHandleProps?: DragHandleProps;
   isDragging?: boolean;
   sortableRef?: (element: HTMLElement | null) => void;
@@ -50,6 +58,22 @@ type Modules = {
 type ModulesProps = {
   module: Modules;
   onCreateMaterial: (moduleId: string) => void;
+  /**
+   * Lets every draft of this module out at once. Absent when nothing is waiting, which is
+   * also how the button knows not to draw itself.
+   */
+  onPublishModule?: (moduleId: string) => void;
+  /** True while that request is in flight, so the button can say so. */
+  isPublishingModule?: boolean;
+  /**
+   * Lets one material out, with every block inside it.
+   *
+   * A module is written unevenly - two practices finished and a third still half a
+   * transcript - so "the whole module" is the wrong unit as often as it is the right one.
+   */
+  onPublishMaterial?: (moduleId: string, materialId: string) => void;
+  /** The material whose publish is in flight, so only its own row says so. */
+  publishingMaterialId?: string | null;
   /** Opens the CSV import for this module; absent when importing is not offered. */
   onImportQuestions?: (moduleId: string, moduleTitle: string) => void;
   onSelectMaterial: (moduleId: string, materialId: string) => void;

@@ -38,7 +38,7 @@ const Segments: React.FC<SegmentsProps> = ({ filled, total, size = 'md', label }
         className={[
           SIZES[size],
           index < filled
-            ? 'bg-[var(--color-accent-primary)]'
+            ? 'bg-[var(--color-lesson-accent)]'
             : 'bg-[var(--color-dawn-pink-dark)]/45',
         ].join(' ')}
       />

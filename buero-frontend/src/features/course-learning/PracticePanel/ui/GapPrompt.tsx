@@ -31,7 +31,7 @@ const GapPrompt: React.FC<{ text: string }> = ({ text }) => {
                * A non-breaking space inside gives the span the height of the line, so the
                * border lands where an underscore would.
                */
-              className="mx-1 inline-block min-w-16 border-b-2 border-[var(--color-accent-primary)]"
+              className="mx-1 inline-block min-w-16 border-b-2 border-[var(--color-lesson-accent)]"
             >
               &nbsp;
             </span>

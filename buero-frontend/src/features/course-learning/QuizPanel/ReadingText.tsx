@@ -37,7 +37,7 @@ const ReadingText: React.FC<ReadingTextProps> = ({ element }) => {
             type="button"
             onClick={() => setCollapsed((open) => !open)}
             aria-expanded={!collapsed}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-lesson-muted)] transition hover:text-[var(--color-lesson-body)]"
           >
             {collapsed ? t('practice.showText') : t('practice.hideText')}
             <svg
@@ -61,23 +61,23 @@ const ReadingText: React.FC<ReadingTextProps> = ({ element }) => {
         {collapsed ? null : (
           <div className="max-h-[42vh] overflow-y-auto">
             {body ? (
-              <p className="leading-[1.7] whitespace-pre-line text-[var(--color-text-primary)]">
+              <p className="leading-[1.7] whitespace-pre-line text-[var(--color-lesson-body)]">
                 {body}
               </p>
             ) : null}
 
             {glossary.length > 0 ? (
               <div className="mt-5 border-t border-dashed border-[var(--color-surface-section)] pt-4">
-                <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+                <p className="font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-muted)] sm:text-[13px]">
                   {t('practice.glossary')}
                 </p>
                 <ul className="mt-2.5 flex flex-wrap gap-2">
                   {glossary.map((entry) => (
                     <li
                       key={entry.term}
-                      className="rounded-2xl bg-[var(--color-burnt-siena-lightest)] px-3 py-1.5 text-sm text-[var(--color-text-secondary)]"
+                      className="rounded-2xl bg-[var(--color-burnt-siena-lightest)] px-3 py-1.5 text-sm text-[var(--color-lesson-muted)]"
                     >
-                      <span className="font-semibold text-[var(--color-text-primary)]">
+                      <span className="font-semibold text-[var(--color-lesson-body)]">
                         {entry.term}
                       </span>
                       {entry.meaning ? ` - ${entry.meaning}` : ''}

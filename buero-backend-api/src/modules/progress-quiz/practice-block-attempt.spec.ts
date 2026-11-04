@@ -54,6 +54,7 @@ describe("a sitting of one practice block", () => {
       count: jest.Mock;
     };
     question: { findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock };
+    practiceElement: { findMany: jest.Mock };
     questionAttempt: { findFirst: jest.Mock; findMany: jest.Mock; create: jest.Mock };
     courseMaterial: { findUnique: jest.Mock };
     courseProgress: { upsert: jest.Mock };
@@ -83,6 +84,8 @@ describe("a sitting of one practice block", () => {
         update: jest.fn(),
         count: jest.fn().mockResolvedValue(1),
       },
+      /** No recordings here, so nothing is held back from the askable set. */
+      practiceElement: { findMany: jest.fn().mockResolvedValue([]) },
       question: {
         findFirst: jest.fn((args: { where: { id: string } }) =>
           Promise.resolve(ALL.find((q) => q.id === args.where.id) ?? null),

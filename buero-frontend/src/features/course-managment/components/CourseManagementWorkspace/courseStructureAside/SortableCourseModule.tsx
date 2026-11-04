@@ -17,6 +17,10 @@ type SortableCourseModuleProps = {
   module: Modules;
   displayPosition: number;
   onImportQuestions?: (moduleId: string, moduleTitle: string) => void;
+  onPublishModule?: (moduleId: string) => void;
+  isPublishingModule?: boolean;
+  onPublishMaterial?: (moduleId: string, materialId: string) => void;
+  publishingMaterialId?: string | null;
   dragEnabled: boolean;
   forceExpanded: boolean;
   onCreateMaterial: (moduleId: string) => void;
@@ -30,6 +34,10 @@ const SortableCourseModule = ({
   module,
   displayPosition,
   onImportQuestions,
+  onPublishModule,
+  isPublishingModule,
+  onPublishMaterial,
+  publishingMaterialId,
   dragEnabled,
   forceExpanded,
   onCreateMaterial,
@@ -72,6 +80,10 @@ const SortableCourseModule = ({
       module={module}
       displayPosition={displayPosition}
       onImportQuestions={onImportQuestions}
+      onPublishModule={onPublishModule}
+      isPublishingModule={isPublishingModule}
+      onPublishMaterial={onPublishMaterial}
+      publishingMaterialId={publishingMaterialId}
       sortableRef={setNodeRef}
       sortableStyle={{
         transform: CSS.Transform.toString(transform),
@@ -104,6 +116,8 @@ const SortableCourseModule = ({
                 dragEnabled={dragEnabled}
                 onSelectMaterial={onSelectMaterial}
                 onRequestDeleteMaterial={onRequestDeleteMaterial}
+                onPublishMaterial={onPublishMaterial}
+                isPublishingMaterial={publishingMaterialId === material.id}
               />
             ))}
           </SortableContext>

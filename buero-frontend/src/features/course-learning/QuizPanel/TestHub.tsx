@@ -7,6 +7,7 @@ import {
   PRIMARY_BUTTON,
   SECONDARY_BUTTON,
 } from '@/features/course-learning/PracticePanel/ui/buttons';
+import { SCREEN_TITLE, SECTION_TITLE } from '@/features/course-learning/PracticePanel/ui/headings';
 
 export type TestHubPart = {
   block: PracticeBlockId;
@@ -71,7 +72,7 @@ const TestHub: React.FC<TestHubProps> = ({
          * one that shows; where she has not given one, the heading names the module itself,
          * so one module's test can be told from another's.
          */}
-        <h2 className="font-[family-name:var(--font-heading)] text-[clamp(1.75rem,3.4vw,2.35rem)] leading-[1.05] font-bold tracking-[-0.035em] text-[var(--color-text-primary)]">
+        <h2 className={SCREEN_TITLE}>
           {title?.trim()
             ? title
             : moduleTitle
@@ -79,7 +80,7 @@ const TestHub: React.FC<TestHubProps> = ({
               : t('quiz.testEyebrowFinal')}
         </h2>
 
-        <p className="max-w-prose text-base text-[var(--color-text-secondary)]">
+        <p className="max-w-prose text-base text-[var(--color-lesson-muted)]">
           {t('quiz.testIntroOrder')}
           {passingScore != null ? ` ${t('quiz.testIntroPass', { passing: passingScore })}` : ''}
         </p>
@@ -96,14 +97,14 @@ const TestHub: React.FC<TestHubProps> = ({
        */}
       <section className="rounded-[22px] bg-[var(--color-surface-section)] px-6 py-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+          <span className="text-sm font-medium text-[var(--color-lesson-muted)]">
             {t('quiz.testFilledNow')}
           </span>
           <span className="flex items-baseline gap-2">
-            <span className="font-[family-name:var(--font-heading)] text-[1.9rem] leading-none font-bold tracking-[-0.04em] text-[var(--color-accent-primary)] tabular-nums">
+            <span className="font-[family-name:var(--font-heading)] text-[1.9rem] leading-none font-bold tracking-[-0.04em] text-[var(--color-lesson-accent)] tabular-nums">
               {t('quiz.answersOf', { answered, total })}
             </span>
-            <span className="text-sm text-[var(--color-text-secondary)]">
+            <span className="text-sm text-[var(--color-lesson-muted)]">
               {t('quiz.answersLabel')}
             </span>
           </span>
@@ -111,12 +112,12 @@ const TestHub: React.FC<TestHubProps> = ({
 
         <div className="relative mt-3 h-2.5 w-full overflow-hidden rounded-full bg-[var(--color-dawn-pink-dark)]/35">
           <div
-            className="h-full rounded-full bg-[var(--color-accent-primary)] transition-[width]"
+            className="h-full rounded-full bg-[var(--color-lesson-accent)] transition-[width]"
             style={{ width: `${share}%` }}
           />
         </div>
 
-        <p className="mt-2.5 text-[13px] text-[var(--color-text-secondary)]">
+        <p className="mt-2.5 text-[13px] text-[var(--color-lesson-muted)]">
           {t('quiz.testPartsDone', { done: filledParts, total: parts.length })}
         </p>
       </section>
@@ -132,7 +133,7 @@ const TestHub: React.FC<TestHubProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--color-dawn-pink-dark)]/35 pt-7">
         <p
           id="finish-test-hint"
-          className="max-w-[420px] text-sm text-[var(--color-text-secondary)]"
+          className="max-w-[420px] text-sm text-[var(--color-lesson-muted)]"
         >
           {ready ? '' : t('quiz.finishWhenAllParts', { total: parts.length })}
         </p>
@@ -183,7 +184,7 @@ const PartCard: React.FC<{ part: TestHubPart; onOpen: () => void }> = ({
         {full ? (
           <span
             aria-hidden
-            className="absolute top-2.5 right-2.5 flex size-7 items-center justify-center rounded-full bg-[var(--color-accent-primary)]"
+            className="absolute top-2.5 right-2.5 flex size-7 items-center justify-center rounded-full bg-[var(--color-lesson-accent)]"
           >
             <svg
               viewBox="0 0 24 24"
@@ -201,18 +202,18 @@ const PartCard: React.FC<{ part: TestHubPart; onOpen: () => void }> = ({
       </div>
 
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <span className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+        <span className={SECTION_TITLE}>
           {t(`practice.blocks.${part.block}.title`)}
         </span>
         {full ? (
-          <span className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--color-accent-primary)] tabular-nums">
+          <span className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--color-lesson-accent)] tabular-nums">
             {part.answered}/{part.total}
           </span>
         ) : null}
       </div>
 
       {/* Two units joined by a comma, not by a separator character. */}
-      <span className="text-sm text-[var(--color-text-secondary)]">
+      <span className="text-sm text-[var(--color-lesson-muted)]">
         {made.join(', ')}
       </span>
 
@@ -221,11 +222,11 @@ const PartCard: React.FC<{ part: TestHubPart; onOpen: () => void }> = ({
         <span className="flex items-center gap-3">
           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--color-dawn-pink-dark)]/35">
             <span
-              className="block h-full rounded-full bg-[var(--color-accent-primary)]"
+              className="block h-full rounded-full bg-[var(--color-lesson-accent)]"
               style={{ width: `${(part.answered / part.total) * 100}%` }}
             />
           </span>
-          <span className="text-sm text-[var(--color-text-secondary)] tabular-nums">
+          <span className="text-sm text-[var(--color-lesson-muted)] tabular-nums">
             {part.answered}/{part.total}
           </span>
         </span>

@@ -14,6 +14,10 @@ const CourseModule: React.FC<ModulesProps> = ({
   onEditModule,
   onRequestDeleteModule,
   onRequestDeleteMaterial,
+  onPublishModule,
+  isPublishingModule = false,
+  onPublishMaterial,
+  publishingMaterialId,
   displayPosition,
   dragHandleProps,
   isDragging = false,
@@ -25,6 +29,12 @@ const CourseModule: React.FC<ModulesProps> = ({
 }) => {
   const { id, title, orderIndex, materials } = module;
   const [isExpanded, setIsExpanded] = useState(false);
+  /**
+   * How many materials of this module no student can see yet. Counted here rather than
+   * asked of the server: the editor already holds the whole tree, and a count that lagged
+   * behind the list beside it would be worse than none.
+   */
+  const drafts = materials.filter((item) => item.publishedAt === null).length;
 
   const expanded = isExpanded || forceExpanded;
   /**
@@ -101,6 +111,12 @@ const CourseModule: React.FC<ModulesProps> = ({
                   ? renderMaterialsList()
                   : materials.map((material: ModuleMaterialType) => (
                       <ModuleMaterial
+                        onPublishMaterial={
+                          onPublishMaterial
+                            ? (materialId) => onPublishMaterial(id, materialId)
+                            : undefined
+                        }
+                        isPublishingMaterial={publishingMaterialId === material.id}
                         key={material.id}
                         material={material}
                         onSelectMaterial={(materialId) => onSelectMaterial(id, materialId)}
@@ -117,6 +133,41 @@ const CourseModule: React.FC<ModulesProps> = ({
                 Матеріалів ще немає - додайте перший.
               </p>
             )}
+            {/**
+              * The act that matches an import: everything that arrived, released together.
+              *
+              * Drawn only while something is waiting, so a finished module carries no button
+              * asking to be pressed. Editing something already published needs none of this -
+              * a correction reaches the student at once; this is about what has never been
+              * shown to anyone.
+              */}
+            {drafts > 0 && onPublishModule ? (
+              <div className="mt-3 rounded-xl bg-[var(--color-surface-section)] px-3 py-3">
+                <p className="text-xs text-[var(--color-text-primary)]">
+                  <span className="font-semibold">Чернеток: {drafts}</span> - студенти цього
+                  ще не бачать.
+                </p>
+                {/**
+                 * Said here because the per-row button is an icon, and an icon nobody looks
+                 * for is a feature nobody has. This is the one place a teacher is already
+                 * reading when she wonders how to let something out.
+                 */}
+                {onPublishMaterial ? (
+                  <p className="mt-1 text-[0.7rem] text-[var(--color-text-secondary)]">
+                    Готове можна випускати окремо - кнопкою в рядку матеріалу.
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => onPublishModule(id)}
+                  disabled={isPublishingModule}
+                  className="mt-2 w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
+                >
+                  {isPublishingModule ? 'Публікуємо…' : 'Опублікувати модуль'}
+                </button>
+              </div>
+            ) : null}
+
             <CourseStructureAsideActionButton
               label="Додати матеріал"
               ariaLabel="Додати матеріал"

@@ -24,6 +24,7 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Role } from "src/generated/prisma/enums";
 import type { UserWithoutPassword } from "../user/types/user-response.type";
+import { QuestionEditorService } from "../exercises/question-editor.service";
 import { CourseModuleService } from "./course-module.service";
 import { CreateCourseModuleDto } from "./dto/create-course-module.dto";
 import { UpdateCourseModuleDto } from "./dto/update-course-module.dto";
@@ -31,7 +32,36 @@ import { UpdateCourseModuleDto } from "./dto/update-course-module.dto";
 @ApiTags("course-modules")
 @Controller("courses/:courseId/modules")
 export class CourseModulesController {
-  constructor(private readonly courseModuleService: CourseModuleService) {}
+  constructor(
+    private readonly courseModuleService: CourseModuleService,
+    private readonly questionEditor: QuestionEditorService,
+  ) {}
+
+  @Post(":moduleId/publish")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.teacher)
+  @ApiBearerAuth("access_token")
+  @ApiOperation({
+    summary: "Опублікувати весь модуль",
+    description:
+      "Робить видимими всі чернетки модуля разом: самі матеріали, їхні питання, тексти й " +
+      "записи. Це дія під імпорт - CSV приносить одразу кілька практик, і публікувати їх " +
+      "поблочно означало б десятки натискань, щоб випустити одне завантаження. " +
+      "Те, що вже опубліковане, зберігає свою дату. Тільки для вчителів.",
+  })
+  @ApiParam({ name: "courseId", description: "UUID курсу" })
+  @ApiParam({ name: "moduleId", description: "UUID модуля" })
+  @ApiResponse({
+    status: 200,
+    description: "Скільки матеріалів, питань і текстів стало видимими",
+  })
+  @ApiResponse({ status: 404, description: "Модуль не знайдено" })
+  publishModule(
+    @Param("courseId") courseId: string,
+    @Param("moduleId") moduleId: string,
+  ) {
+    return this.questionEditor.publishModule(courseId, moduleId);
+  }
 
   @Get()
   @UseGuards(JwtAuthGuard)

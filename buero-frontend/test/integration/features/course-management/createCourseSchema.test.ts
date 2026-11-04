@@ -12,6 +12,7 @@ const base = {
   tags: ['Language'],
   level: 'A1' as const,
   levelTo: '' as const,
+  trialModuleCount: '2',
 };
 
 describe('createCourseSchema', () => {
@@ -47,5 +48,29 @@ describe('createCourseSchema', () => {
   it('rejects invalid durationHours', () => {
     const r = createCourseSchema.safeParse({ ...base, durationHours: '1.5' });
     expect(r.success).toBe(false);
+  });
+
+  /**
+   * How much of the course is given away free. Zero is a real answer - the course sells from
+   * its first module - so it has to pass, where an empty field must not: a cleared box would
+   * read as "nothing is free" while leaving the stored number untouched.
+   */
+  it('accepts no free modules at all', () => {
+    const r = createCourseSchema.safeParse({ ...base, trialModuleCount: '0' });
+    expect(r.success).toBe(true);
+  });
+
+  it('rejects an empty trialModuleCount', () => {
+    const r = createCourseSchema.safeParse({ ...base, trialModuleCount: '' });
+    expect(r.success).toBe(false);
+  });
+
+  it('rejects a fractional or negative trialModuleCount', () => {
+    expect(
+      createCourseSchema.safeParse({ ...base, trialModuleCount: '1.5' }).success,
+    ).toBe(false);
+    expect(
+      createCourseSchema.safeParse({ ...base, trialModuleCount: '-1' }).success,
+    ).toBe(false);
   });
 });

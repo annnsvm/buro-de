@@ -71,6 +71,9 @@ export const API_ENDPOINTS = {
     create: (courseId: string) => `/courses/${courseId}/modules`,
     update: (courseId: string, moduleId: string) => `/courses/${courseId}/modules/${moduleId}`,
     delete: (courseId: string, moduleId: string) => `/courses/${courseId}/modules/${moduleId}`,
+    /** Lets every draft in one module out at once - the act that matches a CSV import. */
+    publish: (courseId: string, moduleId: string) =>
+      `/courses/${courseId}/modules/${moduleId}/publish`,
   },
   subscriptions: {
     checkout: '/subscriptions/checkout',

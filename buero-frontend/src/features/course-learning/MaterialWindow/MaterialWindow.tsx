@@ -198,7 +198,7 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
     <button
       type="button"
       onClick={handlePlayClick}
-      className={`group relative flex h-full w-full items-center justify-center overflow-hidden bg-[#2a2a2a] outline-none focus-visible:ring-2 focus-visible:ring-[#e87753] focus-visible:ring-offset-2 ${videoFrameRadiusClass}`}
+      className={`group relative flex h-full w-full items-center justify-center overflow-hidden bg-[#2a2a2a] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-lesson-accent)] focus-visible:ring-offset-2 ${videoFrameRadiusClass}`}
       aria-label={`Play video: ${title}`}
     >
       {posterSrc ? (
@@ -214,7 +214,7 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
         className="absolute inset-0 bg-black/35 transition group-hover:bg-black/45"
         aria-hidden
       />
-      <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[#e87753] text-white shadow-lg transition group-hover:scale-105 group-hover:opacity-95 sm:h-20 sm:w-20">
+      <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-lesson-accent)] text-white shadow-lg transition group-hover:scale-105 group-hover:opacity-95 sm:h-20 sm:w-20">
         <Play className="ml-1 h-8 w-8 fill-current sm:h-10 sm:w-10" strokeWidth={0} aria-hidden />
       </span>
     </button>
@@ -273,15 +273,15 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
         <section className="rounded-[20px] bg-[var(--color-neutral-white)] p-4 shadow-sm sm:rounded-[22px] sm:p-5 md:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
             <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f8e5df] text-[#e87753] sm:h-11 sm:w-11">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-lesson-tint)] text-[var(--color-lesson-accent)] sm:h-11 sm:w-11">
                 <Trophy className="h-5 w-5" />
               </div>
 
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[#1b1b1b] sm:text-base lg:text-lg">
+                <p className="truncate text-sm font-semibold text-[var(--color-lesson-heading)] sm:text-base lg:text-lg">
                   {lesson.courseTitle}
                 </p>
-                <p className="text-xs text-[#6f6865] sm:text-sm lg:text-[15px]">
+                <p className="text-xs text-[var(--color-lesson-muted)] sm:text-sm lg:text-[15px]">
                   {lesson.progressText}
                 </p>
               </div>
@@ -289,13 +289,13 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
 
             <div className="flex flex-row gap-3 sm:gap-4 lg:min-w-[320px] lg:items-end">
               <div className="flex w-full items-center gap-2 sm:gap-3 lg:max-w-[260px]">
-                <div className="h-1.5 flex-1 rounded-full bg-[#eedad2]">
+                <div className="h-1.5 flex-1 rounded-full bg-[var(--color-lesson-track)]">
                   <div
-                    className="h-1.5 rounded-full bg-[#e87753]"
+                    className="h-1.5 rounded-full bg-[var(--color-lesson-accent)]"
                     style={{ width: `${lesson.progress}%` }}
                   />
                 </div>
-                <span className="shrink-0 text-xs text-[#6f6865] sm:text-sm lg:text-[15px]">
+                <span className="shrink-0 text-xs text-[var(--color-lesson-muted)] sm:text-sm lg:text-[15px]">
                   {lesson.progress}%
                 </span>
               </div>
@@ -321,10 +321,10 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
 
         <section className="mt-6 sm:mt-8 md:mt-10">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-[#e87753] px-3 py-1 text-[11px] font-semibold text-white sm:text-xs">
+            <span className="inline-flex items-center rounded-full bg-[var(--color-lesson-accent)] px-3 py-1 text-[11px] font-semibold text-white sm:text-xs">
               {lesson.type}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-[#d7cbc5] px-3 py-1 text-[11px] font-medium text-[#5f5854] sm:text-xs">
+            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-lesson-border)] px-3 py-1 text-[11px] font-medium text-[var(--color-lesson-body)] sm:text-xs">
               <FileText className="h-3.5 w-3.5" />
               {lessonStatusLabel}
             </span>
@@ -364,14 +364,14 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
                     ? t(`coursePage.nextStep.${nextStepKind}`)
                     : t('coursePage.noMoreLessons')
                 }
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d7cbc5] bg-transparent px-5 py-3 text-sm font-medium text-[#5f5854] transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--color-lesson-border)] bg-transparent px-5 py-3 text-sm font-medium text-[var(--color-lesson-body)] transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
               >
                 {t(`coursePage.nextStep.${nextStepKind}`)}
                 <SkipForward className="h-4 w-4" aria-hidden />
               </button>
             </div>
             {isVideoLesson && onMarkVideoComplete && !isVideoLessonCompleted && markButtonDisabled && !isVideoCompletionSaving ? (
-              <p className="text-xs text-[#6f6865]">
+              <p className="text-xs text-[var(--color-lesson-muted)]">
                 {t('coursePage.markAsCompleteHint')}
               </p>
             ) : null}
@@ -397,19 +397,19 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
           <button
             type="button"
             onClick={onAddWord}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d7cbc5] bg-transparent px-5 py-3 text-sm font-medium text-[#5f5854] transition hover:bg-white/40 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--color-lesson-border)] bg-transparent px-5 py-3 text-sm font-medium text-[var(--color-lesson-body)] transition hover:bg-white/40 sm:w-auto"
           >
             <BookOpen className="h-4 w-4" />
             {t('coursePage.addUnknownWord')}
           </button>
         </div>
 
-        <section className="mt-6 rounded-[20px] border border-dashed border-[#e87753] p-5 sm:mt-8 sm:rounded-[22px] sm:p-7 md:mt-10 md:p-10">
+        <section className="mt-6 rounded-[20px] border border-dashed border-[var(--color-lesson-accent)] p-5 sm:mt-8 sm:rounded-[22px] sm:p-7 md:mt-10 md:p-10">
           <Title className="text-[1.75rem] sm:text-[2rem] lg:text-[2.5rem]">
             {t('coursePage.needClarification')}
           </Title>
 
-          <Text label={t('coursePage.needClarification')} className="mt-3 max-w-3xl text-[#5f5854] sm:mt-4">
+          <Text label={t('coursePage.needClarification')} className="mt-3 max-w-3xl text-[var(--color-lesson-body)] sm:mt-4">
             {t('coursePage.clarificationDescription')}
           </Text>
 
@@ -421,7 +421,7 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
                 subject: t('courses.contact.bookSessionSubject'),
               })
             }
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#e87753] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 sm:mt-6 sm:w-auto"
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-lesson-accent)] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 sm:mt-6 sm:w-auto"
           >
             <CircleHelp className="h-4 w-4" />
             {t('coursePage.bookSession')}

@@ -12,6 +12,15 @@ import {
 } from "src/generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
 import { PUBLISHED } from "../../common/content/published";
+
+/**
+ * How many past goes at a quiz are shown back to the student.
+ *
+ * Three is enough to see a direction and few enough to stay encouraging; a longer column
+ * of one's own failures teaches nothing the last three do not.
+ */
+const RECENT_ATTEMPTS_SHOWN = 3;
+import { askableQuestions, awaitingAudioIds } from "../../common/content/askable";
 import { shuffle } from "./shuffle";
 import { CourseMaterialService } from "../course-materials/course-material.service";
 import {
@@ -145,19 +154,9 @@ export class QuizService {
      * So they are held back rather than shown. The element itself is still sent, because the
      * student is told the task is not ready instead of being shown an empty frame.
      */
-    const awaitingAudio = new Set(
-      elements
-        .filter(
-          (element) =>
-            element.kind === PracticeElementKind.audio && !element.audioUrl,
-        )
-        .map((element) => element.id),
-    );
-    /** Everything that can actually be answered right now. */
-    const askable = questions.filter(
-      (question) =>
-        !question.elementId || !awaitingAudio.has(question.elementId),
-    );
+    const awaitingAudio = awaitingAudioIds(elements);
+    /** Everything that can actually be answered right now; see `askable.ts`. */
+    const askable = askableQuestions(questions, awaitingAudio);
 
     /**
      * Which recordings the student has earned the transcript to.
@@ -204,8 +203,14 @@ export class QuizService {
          * the student saw a heading over an empty frame and no reason for it.
          */
         awaiting_audio: awaitingAudio.has(element.id),
-        /** So the player can promise a transcript before it is open. */
-        has_transcript: Boolean(element.transcript),
+        /**
+         * So the player can promise a transcript before it is open - but only a promise it
+         * can keep. A recording still awaiting its file has its questions held back, so
+         * "opens once you have answered every question about it" would be a lock with no
+         * key: there is nothing to answer, and the student waits for something that cannot
+         * arrive. Those say only that the task is not ready yet.
+         */
+        has_transcript: Boolean(element.transcript) && !awaitingAudio.has(element.id),
         /** Held back until every question about it has been answered. */
         transcript: transcriptOpen.has(element.id) ? element.transcript : null,
       })),
@@ -294,7 +299,7 @@ export class QuizService {
      * what they see when they come back is the best they have managed. A later, worse
      * attempt must not replace it.
      */
-    const { best: attempt, hasOutdated } = await this.bestCurrentAttempt(
+    const { best: attempt, hasOutdated, history } = await this.bestCurrentAttempt(
       materialId,
       userId,
       block,
@@ -312,9 +317,8 @@ export class QuizService {
       this.prisma.questionAttempt.findMany({
         where: { quizAttemptId: attempt.id },
       }),
-      this.prisma.question.findMany({
-        where: { materialId, ...PUBLISHED, ...(block ? { block } : {}) },
-      }),
+      /** The set the student was shown, not everything published; see `askableOf`. */
+      this.askableOf(materialId, block),
     ]);
     const questionsById = new Map(questions.map((q) => [q.id, q]));
 
@@ -376,6 +380,8 @@ export class QuizService {
       passing_points: passingPoints(material.passingScore, scored.totalPoints),
       passed: material.passingScore == null ? null : score >= material.passingScore,
       reveal_answers: reveal,
+      /** The last few goes, newest first, so the student can see a direction. */
+      recent_attempts: history,
       parts: toPartsResponse(summariseParts(mode, gradedQuestions)),
       answers: answers.flatMap((answer) => {
         const question = questionsById.get(answer.questionId);
@@ -393,8 +399,8 @@ export class QuizService {
             question_id: answer.questionId,
             correct: answer.isCorrect,
             quality: graded.quality,
-            /** Shown whatever the result; only the answer key waits for a pass. */
-            explanation: question.explanation,
+            /** Waits for the pass, with the key: in practice it names the answer. */
+            explanation: reveal ? question.explanation : null,
             /**
              * Which lesson this one question came from.
              *
@@ -421,15 +427,48 @@ export class QuizService {
    * student has actually done. Such attempts are passed over, and the next attempt
    * sets the result again.
    */
+  /**
+   * The questions of this material that a student can actually be asked right now.
+   *
+   * The published set and the askable set are not the same thing, and the difference is
+   * what kept going wrong. A recording still waiting for its file takes its questions off
+   * the screen; every place that compares, counts or marks a set of questions has to use
+   * the same set the student was shown, or it decides about work that never happened - a
+   * test marked out of eighteen points when thirteen were offered, a finished sitting
+   * declared stale because it held thirteen answers to eighteen questions, and a practice
+   * that could never be completed.
+   *
+   * One method, so the next place to ask this question gets the same answer.
+   */
+  private async askableOf(materialId: string, block?: PracticeBlock) {
+    const [questions, elements] = await Promise.all([
+      this.prisma.question.findMany({
+        where: { materialId, ...PUBLISHED, ...(block ? { block } : {}) },
+        orderBy: { orderIndex: "asc" },
+      }),
+      this.prisma.practiceElement.findMany({
+        where: { materialId, ...PUBLISHED },
+        select: { id: true, kind: true, audioUrl: true },
+      }),
+    ]);
+    return askableQuestions(questions, awaitingAudioIds(elements));
+  }
+
   private async bestCurrentAttempt(
     materialId: string,
     userId: string,
     block?: PracticeBlock,
   ) {
-    const questions = await this.prisma.question.findMany({
-      where: { materialId, ...PUBLISHED, ...(block ? { block } : {}) },
-      select: { id: true },
-    });
+    /**
+     * Compared against what could be asked, not against what exists.
+     *
+     * A sitting is this quiz's if it answered exactly this quiz's questions. Measured
+     * against every published question, a test with a recording still missing its file
+     * could never match - thirteen answers against eighteen questions - so a student who
+     * had just passed was told the quiz had changed and sent to take it again, and the
+     * result they had earned disappeared.
+     */
+    const questions = await this.askableOf(materialId, block);
     const currentIds = new Set(questions.map((question) => question.id));
 
     /**
@@ -527,8 +566,36 @@ export class QuizService {
               [...answeredIds(sitting)].every((id) => currentIds.has(id)),
           ) ?? null);
 
+    /**
+     * The last three goes at this quiz, newest first.
+     *
+     * Three because a list is for seeing a direction - 40, 55, 72 says the work is paying
+     * off, and that is the whole value of it. Ten rows say nothing three do not, and a
+     * student on their tenth attempt is the last person who needs a column of their own
+     * failures. Only the percentage is kept: the answers of an old sitting belong to that
+     * sitting, and the result on screen is always the best one.
+     *
+     * Ordered by when they were finished, which is not how `sittings` is sorted - that is
+     * best-first, because the result shown is the best. A history in score order would
+     * read as progress that never happened.
+     */
+    const history = current
+      .flatMap((attempt) =>
+        /** Narrowed rather than asserted: a row with no date simply has no history to show. */
+        attempt.completedAt
+          ? [{ at: attempt.completedAt, score: Number(attempt.score ?? 0) }]
+          : [],
+      )
+      .sort((a, b) => b.at.getTime() - a.at.getTime())
+      .slice(0, RECENT_ATTEMPTS_SHOWN)
+      .map((entry) => ({
+        score: entry.score,
+        completed_at: entry.at.toISOString(),
+      }));
+
     return {
       best: current[0] ?? resumable ?? null,
+      history,
       questionCount: currentIds.size,
       /**
        * True when the student has a finished attempt at this block, but at an older set.
@@ -805,11 +872,16 @@ export class QuizService {
    * passed: its questions are a fixed set rather than drawn from a pool, so handing
    * over the key after a failure would turn the retake into copying it out.
    *
-   * This gates the key alone. The explanation is shown either way, because it teaches
-   * the rule rather than giving the answer - "після weil дієслово стоїть у самому
-   * кінці" is the lesson, not the solution. Withholding it left a student who failed
-   * with nothing at all but red marks, which is the one moment they most need telling
-   * where to go back to.
+   * It gates the explanation with it, and that is a correction of an earlier reading.
+   * The explanation was meant to teach the rule rather than give the answer - "після weil
+   * дієслово стоїть у самому кінці" is the lesson, not the solution. In the author's own
+   * material it rarely divides that cleanly: "Жіночий рід у Dativ — der" is the answer,
+   * printed under the question. Keeping the key back while printing that beside it was a
+   * rule that could not hold.
+   *
+   * A student who failed is not left with nothing. They are told which parts were weak
+   * and which lessons to go back over - that is what the result screen is for. What waits
+   * for the pass is the question-by-question account.
    */
   private mayRevealAnswers(
     material: { quizMode: QuizMode | null; passingScore: number | null },
@@ -843,10 +915,8 @@ export class QuizService {
     courseMaterialId: string,
     userId: string,
   ): Promise<boolean> {
-    const questions = await this.prisma.question.findMany({
-      where: { materialId: courseMaterialId, ...PUBLISHED },
-      select: { id: true },
-    });
+    /** Only what could be asked: a silent recording must not make a practice unfinishable. */
+    const questions = await this.askableOf(courseMaterialId);
     if (questions.length === 0) return false;
 
     const answered = await this.prisma.questionAttempt.findMany({
@@ -944,10 +1014,25 @@ export class QuizService {
      * number of questions in the quiz rather than the number of answers the browser
      * happened to send - previously one correct answer out of ten scored 100%.
      */
-    const questions = await this.prisma.question.findMany({
-      where: { materialId: attempt.courseMaterialId, ...PUBLISHED },
-      orderBy: { orderIndex: "asc" },
-    });
+    const [allQuestions, elements] = await Promise.all([
+      this.prisma.question.findMany({
+        where: { materialId: attempt.courseMaterialId, ...PUBLISHED },
+        orderBy: { orderIndex: "asc" },
+      }),
+      this.prisma.practiceElement.findMany({
+        where: { materialId: attempt.courseMaterialId, ...PUBLISHED },
+        select: { id: true, kind: true, audioUrl: true },
+      }),
+    ]);
+    /**
+     * Marked against what was asked, not against what exists.
+     *
+     * A recording still waiting for its file takes its questions off the screen, and they
+     * have to come off the mark sheet with them - otherwise the test is scored out of
+     * points the student was never offered, and five silent questions turn a pass into a
+     * fail. The same rule decides both; see `askable.ts`.
+     */
+    const questions = askableQuestions(allQuestions, awaitingAudioIds(elements));
     if (questions.length === 0) {
       throw new BadRequestException(
         "Квіз не містить питань",
@@ -1073,8 +1158,24 @@ export class QuizService {
     const { passingScore } = attempt.courseMaterial;
     const reveal = this.mayRevealAnswers(attempt.courseMaterial, score);
 
+    /**
+     * Read back after the write, so the sitting just handed in is in it.
+     *
+     * The student's own attempt has to be the first row of its own history, and the one
+     * before it the second - that is the whole point of showing three. Reusing the lookup
+     * also means the history is filtered the same way the result is: sittings of this
+     * quiz, not of an older set of questions.
+     */
+    const { history } = await this.bestCurrentAttempt(
+      attempt.courseMaterialId,
+      userId,
+      attempt.block ?? undefined,
+    );
+
     return {
       attempt: this.toAttemptResponse(updated),
+      /** The last few goes, newest first, this one included. */
+      recent_attempts: history,
       score,
       best_score: bestScore,
       total,
@@ -1091,9 +1192,14 @@ export class QuizService {
       passed: passingScore == null ? null : score >= passingScore,
       reveal_answers: reveal,
       parts: toPartsResponse(parts),
-      /** The explanation travels either way; only the answer key waits for a pass. */
+      /**
+       * The question-by-question account waits for the pass, explanation included. A
+       * failed test comes back as parts and lessons, which is what tells the student
+       * where to go without telling them what to type.
+       */
       results: results.map((result) => ({
         ...result,
+        explanation: reveal ? result.explanation : null,
         accepted_answers: reveal
           ? describeAcceptedAnswers(questionsById.get(result.question_id)!)
           : [],

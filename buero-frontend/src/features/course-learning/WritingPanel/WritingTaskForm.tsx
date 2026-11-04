@@ -14,6 +14,8 @@ import Segments from '../PracticePanel/ui/Segments';
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../PracticePanel/ui/buttons';
 import { readMarks } from './marks';
 import { parseWritingPrompt } from './prompt';
+import { formatDay } from '@/helpers/formatDate';
+import { SCREEN_TITLE } from '@/features/course-learning/PracticePanel/ui/headings';
 
 export type WritingTaskFormProps = {
   task: WritingTaskResponse;
@@ -139,7 +141,7 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
           {task.criteria.map((criterion) => (
             <li
               key={criterion}
-              className="flex min-h-10 items-start gap-3 py-1 text-[0.95rem] text-[var(--color-text-primary)]"
+              className="flex min-h-10 items-start gap-3 py-1 text-[0.95rem] text-[var(--color-lesson-body)]"
             >
               {/** A mark not yet earned: the same bar the result fills in. */}
               <span
@@ -161,13 +163,13 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
         */}
       {usedUp ? (
         <section className="mt-6 rounded-2xl bg-[var(--color-surface-section)] p-5">
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+          <p className="text-sm font-semibold text-[var(--color-lesson-body)]">
             {t('writing.allChecksUsed')}
           </p>
         </section>
       ) : (
         <label className="mt-6 block">
-          <span className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+          <span className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-lesson-body)]">
             {t('writing.yourLetter')}
           </span>
           <textarea
@@ -197,7 +199,7 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
               backgroundImage:
                 'repeating-linear-gradient(transparent 0 27px, var(--color-surface-section) 27px 28px)',
             }}
-            className="mt-3 block w-full resize-y rounded-[18px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] py-3.5 pr-5 pl-8 font-mono text-[0.95rem] leading-7 text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-primary)] disabled:opacity-60"
+            className="mt-3 block w-full resize-y rounded-[18px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] py-3.5 pr-5 pl-8 font-mono text-[0.95rem] leading-7 text-[var(--color-lesson-body)] outline-none focus:border-[var(--color-lesson-accent)] disabled:opacity-60"
           />
         </label>
       )}
@@ -207,7 +209,7 @@ const WritingTaskForm: React.FC<WritingTaskFormProps> = ({
         * text reappears is indistinguishable from luck.
         */}
       {draftRestored ? (
-        <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+        <p className="mt-2 text-xs text-[var(--color-lesson-muted)]">
           {t('writing.draftRestored')}
         </p>
       ) : null}
@@ -278,7 +280,7 @@ const Prompt: React.FC<{ task: string }> = ({ task }) => {
 
   if (sections.length === 0 && props.length === 0) {
     return (
-      <p className="mt-3 leading-relaxed whitespace-pre-line text-[var(--color-text-primary)]">
+      <p className="mt-3 leading-relaxed whitespace-pre-line text-[var(--color-lesson-body)]">
         {task}
       </p>
     );
@@ -287,14 +289,14 @@ const Prompt: React.FC<{ task: string }> = ({ task }) => {
   return (
     <div className="mt-4 flex flex-col gap-4">
       {plain ? (
-        <p className="leading-relaxed font-normal whitespace-pre-line text-[var(--color-text-primary)]">
+        <p className="leading-relaxed font-normal whitespace-pre-line text-[var(--color-lesson-body)]">
           {plain}
         </p>
       ) : null}
 
       {sections.map((section, index) => (
         <div key={section.label}>
-          <h4 className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+          <h4 className="font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-muted)] sm:text-[13px]">
             {section.label}
           </h4>
           <p
@@ -308,8 +310,8 @@ const Prompt: React.FC<{ task: string }> = ({ task }) => {
                * four-part task would inherit it and read as four headings.
                */
               index === 0
-                ? 'font-semibold text-[var(--color-text-primary)]'
-                : 'font-normal text-[var(--color-text-primary)]',
+                ? 'font-semibold text-[var(--color-lesson-body)]'
+                : 'font-normal text-[var(--color-lesson-body)]',
             ].join(' ')}
           >
             {section.text}
@@ -326,7 +328,7 @@ const Prompt: React.FC<{ task: string }> = ({ task }) => {
           {props.map((word) => (
             <li
               key={word}
-              className="rounded-2xl bg-[var(--color-burnt-siena-lightest)] px-3 py-1.5 font-mono text-sm font-normal text-[var(--color-text-primary)]"
+              className="rounded-2xl bg-[var(--color-burnt-siena-lightest)] px-3 py-1.5 font-mono text-sm font-normal text-[var(--color-lesson-body)]"
             >
               {word}
             </li>
@@ -349,7 +351,7 @@ const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
 
   if (task.blocked_reason === 'budget') {
     return (
-      <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+      <p className="mt-2 text-xs text-[var(--color-lesson-muted)]">
         {t('writing.selfCheckHint')}
       </p>
     );
@@ -361,7 +363,7 @@ const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
   const retry = task.retry_at ? new Date(task.retry_at) : null;
 
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--color-text-secondary)]">
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--color-lesson-muted)]">
       {/**
        * The allowance as dots, spent ones filled.
        *
@@ -384,9 +386,10 @@ const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
        * later" sounded like.
        */}
       {!task.can_submit && task.blocked_reason === 'cooldown' && retry ? (
-        <span className="ml-2 text-[var(--color-text-primary)]">
+        <span className="ml-2 text-[var(--color-lesson-body)]">
           {t('writing.waitASecond', {
-            time: retry.toLocaleTimeString(undefined, {
+            /** The reader's language, not the machine's: see `formatDate`. */
+            time: retry.toLocaleTimeString('uk-UA', {
               hour: '2-digit',
               minute: '2-digit',
               second: '2-digit',
@@ -395,14 +398,12 @@ const AttemptLine: React.FC<{ task: WritingTaskResponse }> = ({ task }) => {
         </span>
       ) : null}
       {!task.can_submit && task.blocked_reason === 'daily' && retry ? (
-        <span className="ml-2 text-[var(--color-text-primary)]">
+        <span className="ml-2 text-[var(--color-lesson-body)]">
           {t('writing.comeBackAt', {
-            time: retry.toLocaleString(undefined, {
+            time: `${formatDay(retry)}, ${retry.toLocaleTimeString('uk-UA', {
               hour: '2-digit',
               minute: '2-digit',
-              day: 'numeric',
-              month: 'long',
-            }),
+            })}`,
           })}
         </span>
       ) : null}
@@ -431,7 +432,7 @@ const Refusal: React.FC<{
   if (result.status === 'unavailable') {
     return (
       <div className="mt-4 rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm">
-        <p className="font-semibold text-[var(--color-text-primary)]">
+        <p className="font-semibold text-[var(--color-lesson-body)]">
           {t('writing.unavailable')}
         </p>
         {/**
@@ -439,7 +440,7 @@ const Refusal: React.FC<{
           * text that was too short and false of one that was copied, was in the wrong language,
           * or was never looked at. Each refusal above already says what to do.
           */}
-        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+        <p className="mt-1 text-xs text-[var(--color-lesson-muted)]">
           {t('writing.checkNotSpent')}
         </p>
       </div>
@@ -449,14 +450,14 @@ const Refusal: React.FC<{
   if (result.status === 'needs_more') {
     return (
       <div className="mt-4 rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm">
-        <p className="font-semibold text-[var(--color-text-primary)]">
+        <p className="font-semibold text-[var(--color-lesson-body)]">
           {t(`writing.needsMore.${result.reason}`, {
             min: result.min_sentences,
             max: result.max_sentences,
             count: result.body_sentences,
           })}
         </p>
-        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+        <p className="mt-1 text-xs text-[var(--color-lesson-muted)]">
           {t('writing.checkNotSpent')}
         </p>
       </div>
@@ -465,15 +466,15 @@ const Refusal: React.FC<{
 
   return (
     <div className="mt-4 rounded-xl bg-[var(--color-surface-section)] px-4 py-3 text-sm">
-      <p className="font-semibold text-[var(--color-text-primary)]">
+      <p className="font-semibold text-[var(--color-lesson-body)]">
         {result.self_check ? t('writing.selfCheckTitle') : t('writing.blocked')}
       </p>
       {result.model_answer ? (
         <>
-          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-xs text-[var(--color-lesson-muted)]">
             {t('writing.selfCheckHint')}
           </p>
-          <pre className="mt-3 overflow-x-auto rounded-lg bg-[var(--color-neutral-white)] p-3 text-xs whitespace-pre-wrap text-[var(--color-text-primary)]">
+          <pre className="mt-3 overflow-x-auto rounded-lg bg-[var(--color-neutral-white)] p-3 text-xs whitespace-pre-wrap text-[var(--color-lesson-body)]">
             {result.model_answer}
           </pre>
         </>
@@ -527,30 +528,30 @@ const Result: React.FC<{
        * thing it found worth saying - rather than a label the screen made up.
        */}
       <header className="flex flex-col items-center gap-6 rounded-3xl bg-[var(--color-surface-section)] p-7 sm:flex-row sm:items-center">
-        <span className="flex size-32 shrink-0 -rotate-6 flex-col items-center justify-center rounded-full border-[3px] border-[var(--color-burnt-siena-dark)] bg-[var(--color-neutral-white)]">
-          <span className="font-[family-name:var(--font-heading)] text-[2.6rem] leading-none font-bold tracking-[-0.04em] text-[var(--color-burnt-siena-dark)] tabular-nums">
+        <span className="flex size-32 shrink-0 -rotate-6 flex-col items-center justify-center rounded-full border-[3px] border-[var(--color-lesson-accent)] bg-[var(--color-neutral-white)]">
+          <span className="font-[family-name:var(--font-heading)] text-[2.6rem] leading-none font-bold tracking-[-0.04em] text-[var(--color-lesson-accent)] tabular-nums">
             {score}/{maxScore}
           </span>
-          <span className="mt-1 text-[0.65rem] font-bold tracking-[0.18em] text-[var(--color-burnt-siena-dark)] uppercase">
+          <span className="mt-1 font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-accent)] sm:text-[13px]">
             {t('writing.pointsStamp')}
           </span>
         </span>
 
         <div className="min-w-0 text-center sm:text-left">
-          <p className="text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+          <p className="font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-muted)] sm:text-[13px]">
             {justGraded ? t('writing.yourResult') : t('writing.bestResult')}
           </p>
-          <h4 className="mt-1.5 font-[family-name:var(--font-heading)] text-[1.75rem] leading-tight font-bold tracking-[-0.03em] text-[var(--color-text-primary)]">
+          <h4 className={`mt-1.5 ${SCREEN_TITLE}`}>
             {full ? t('writing.allPoints') : t('writing.checked')}
           </h4>
           {assessment.praise ? (
-            <p className="mt-2 leading-relaxed text-[var(--color-text-primary)]">
+            <p className="mt-2 leading-relaxed text-[var(--color-lesson-body)]">
               {assessment.praise}
             </p>
           ) : null}
           {/* Sending the same text again is answered from the record, not paid for twice. */}
           {repeated ? (
-            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+            <p className="mt-2 text-sm text-[var(--color-lesson-muted)]">
               {t('writing.repeated')}
             </p>
           ) : null}
@@ -579,25 +580,25 @@ const Result: React.FC<{
        */}
       {corrections.length > 0 ? (
         <section className="mt-7">
-          <h5 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+          <h5 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-lesson-body)]">
             {t('writing.whatToFix')}
           </h5>
           <ul className="mt-3 flex flex-col gap-4 rounded-[18px] border-[1.5px] border-[var(--color-surface-section)] bg-[var(--color-neutral-white)] px-[22px] py-5">
             {corrections.map((fix) => (
               <li key={`${fix.wrong}-${fix.right}`}>
                 <p className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-[var(--color-text-secondary)] line-through decoration-[var(--color-accent-primary)] decoration-2">
+                  <span className="font-mono text-[var(--color-lesson-muted)] line-through decoration-[var(--color-lesson-accent)] decoration-2">
                     {fix.wrong}
                   </span>
-                  <span className="text-[var(--color-text-secondary)]" aria-hidden>
+                  <span className="text-[var(--color-lesson-muted)]" aria-hidden>
                     →
                   </span>
-                  <span className="rounded-md bg-[var(--color-burnt-siena-lighter)] px-2 py-0.5 font-mono font-medium text-[var(--color-text-primary)]">
+                  <span className="rounded-md bg-[var(--color-burnt-siena-lighter)] px-2 py-0.5 font-mono font-medium text-[var(--color-lesson-body)]">
                     {fix.right}
                   </span>
                 </p>
                 {fix.why ? (
-                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{fix.why}</p>
+                  <p className="mt-1 text-sm text-[var(--color-lesson-muted)]">{fix.why}</p>
                 ) : null}
               </li>
             ))}
@@ -617,15 +618,15 @@ const Result: React.FC<{
         <section className="mt-7 flex gap-3.5">
           <span
             aria-hidden
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-primary)] font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--color-text-on-accent)]"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-lesson-accent)] font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--color-text-on-accent)]"
           >
             b
           </span>
           <div className="min-w-0">
-            <p className="text-[0.8rem] font-semibold text-[var(--color-text-secondary)]">
+            <p className="text-[0.8rem] font-semibold text-[var(--color-lesson-muted)]">
               {t('writing.checkComment')}
             </p>
-            <p className="mt-0.5 leading-relaxed text-[var(--color-text-primary)]">
+            <p className="mt-0.5 leading-relaxed text-[var(--color-lesson-body)]">
               {assessment.summary}
             </p>
           </div>
@@ -672,13 +673,13 @@ const MarkList: React.FC<{
   return (
     <section className="mt-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h5 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+        <h5 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-lesson-body)]">
           {title}
         </h5>
         {earned && score != null && maxScore != null ? (
           <span className="flex items-center gap-3">
             <Segments filled={score} total={maxScore} />
-            <span className="text-sm text-[var(--color-text-secondary)]">
+            <span className="text-sm text-[var(--color-lesson-muted)]">
               {t('writing.pointsOf', { score, total: maxScore })}
             </span>
           </span>
@@ -694,7 +695,7 @@ const MarkList: React.FC<{
                 viewBox="0 0 24 24"
                 className="mt-1 size-[18px] shrink-0"
                 fill="none"
-                stroke="var(--color-accent-primary)"
+                stroke="var(--color-lesson-accent)"
                 strokeWidth="2.4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -707,7 +708,7 @@ const MarkList: React.FC<{
                 viewBox="0 0 24 24"
                 className="mt-1 size-[18px] shrink-0"
                 fill="none"
-                stroke="var(--color-text-secondary)"
+                stroke="var(--color-lesson-muted)"
                 strokeWidth="2.4"
                 strokeLinecap="round"
               >
@@ -715,12 +716,12 @@ const MarkList: React.FC<{
               </svg>
             )}
             <span className="min-w-0 text-[0.95rem]">
-              <span className="text-[var(--color-text-primary)]">
+              <span className="text-[var(--color-lesson-body)]">
                 {criteriaText[mark.n - 1] ?? ''}
               </span>
               {/* Only when the point was lost. A tick needs no sentence beneath it. */}
               {mark.comment ? (
-                <span className="mt-0.5 block text-sm text-[var(--color-text-secondary)]">
+                <span className="mt-0.5 block text-sm text-[var(--color-lesson-muted)]">
                   {mark.comment}
                 </span>
               ) : null}
@@ -754,7 +755,7 @@ const History: React.FC<{
       open={open}
       className="mt-9 border-t border-[var(--color-dawn-pink-dark)]/35 pt-7"
     >
-      <summary className="cursor-pointer font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-text-primary)]">
+      <summary className="cursor-pointer font-[family-name:var(--font-heading)] text-xl font-bold tracking-[-0.02em] text-[var(--color-lesson-body)]">
         {t('writing.earlierAttempts', { count: attempts.length })}
       </summary>
 
@@ -775,7 +776,7 @@ const History: React.FC<{
                       total={attempt.max_score}
                       size="sm"
                     />
-                    <span className="font-[family-name:var(--font-heading)] text-[0.95rem] font-bold text-[var(--color-burnt-siena-dark)] tabular-nums">
+                    <span className="font-[family-name:var(--font-heading)] text-[0.95rem] font-bold text-[var(--color-lesson-accent)] tabular-nums">
                       {attempt.score}/{attempt.max_score}
                     </span>
                   </span>
@@ -790,20 +791,20 @@ const History: React.FC<{
                     backgroundImage:
                       'repeating-linear-gradient(transparent 0 27px, var(--color-surface-section) 27px 28px)',
                   }}
-                  className="overflow-x-auto border-l-[1.5px] border-[var(--color-burnt-siena-light)] py-0.5 pl-4 font-mono text-[0.9rem] leading-7 whitespace-pre-wrap text-[var(--color-text-primary)]"
+                  className="overflow-x-auto border-l-[1.5px] border-[var(--color-burnt-siena-light)] py-0.5 pl-4 font-mono text-[0.9rem] leading-7 whitespace-pre-wrap text-[var(--color-lesson-body)]"
                 >
                   {attempt.text}
                 </pre>
 
                 {attempt.assessment.summary ? (
-                  <p className="mt-4 leading-relaxed text-[var(--color-text-primary)]">
+                  <p className="mt-4 leading-relaxed text-[var(--color-lesson-body)]">
                     {attempt.assessment.summary}
                   </p>
                 ) : null}
 
                 {lost.length > 0 ? (
                   <>
-                    <p className="mt-5 text-xs font-bold tracking-[0.12em] text-[var(--color-text-secondary)] uppercase">
+                    <p className="mt-5 font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-muted)] sm:text-[13px]">
                       {t('writing.notEarned')}
                     </p>
                     <ul className="mt-2 flex flex-col gap-1.5">
@@ -814,18 +815,18 @@ const History: React.FC<{
                             viewBox="0 0 24 24"
                             className="mt-1 size-4 shrink-0"
                             fill="none"
-                            stroke="var(--color-text-secondary)"
+                            stroke="var(--color-lesson-muted)"
                             strokeWidth="2.4"
                             strokeLinecap="round"
                           >
                             <path d="M6 6l12 12M18 6L6 18" />
                           </svg>
                           <span className="min-w-0">
-                            <span className="font-semibold text-[var(--color-text-primary)]">
+                            <span className="font-semibold text-[var(--color-lesson-body)]">
                               {criteriaText[mark.n - 1] ?? ''}
                             </span>
                             {mark.comment ? (
-                              <span className="text-[var(--color-text-secondary)]">
+                              <span className="text-[var(--color-lesson-muted)]">
                                 {` - ${mark.comment}`}
                               </span>
                             ) : null}

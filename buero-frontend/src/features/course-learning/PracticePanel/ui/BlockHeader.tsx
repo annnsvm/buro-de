@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { PracticeBlockId } from '@/api/practiceApi';
 import { BLOCK_ART } from '../illustrations/BlockArt';
 import Segments from './Segments';
+import { SCREEN_TITLE } from './headings';
 
 /**
  * The top of every block screen: where you came from, what this is, and how far through it.
@@ -45,7 +46,7 @@ const BlockHeader: React.FC<BlockHeaderProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="text-sm font-medium text-[var(--color-text-secondary)] transition hover:text-[var(--color-text-primary)]"
+          className="text-sm font-medium text-[var(--color-lesson-muted)] transition hover:text-[var(--color-lesson-body)]"
         >
           {t('practice.backToHub')}
         </button>
@@ -58,7 +59,7 @@ const BlockHeader: React.FC<BlockHeaderProps> = ({
               {badges.map((badge) => (
                 <span
                   key={badge}
-                  className="rounded-xl bg-[var(--color-surface-section)] px-2.5 py-1 text-xs font-semibold tracking-[0.12em] text-[var(--color-burnt-siena-dark)] uppercase"
+                  className="rounded-xl bg-[var(--color-surface-section)] px-2.5 py-1 font-[family-name:var(--font-heading)] text-xs font-semibold text-[var(--color-lesson-accent)] sm:text-[13px]"
                 >
                   {badge}
                 </span>
@@ -66,7 +67,7 @@ const BlockHeader: React.FC<BlockHeaderProps> = ({
             </div>
           ) : null}
 
-          <h1 className="font-[family-name:var(--font-heading)] text-[2.1rem] leading-tight font-bold tracking-[-0.04em] text-[var(--color-text-primary)] sm:text-[2.5rem]">
+          <h1 className={SCREEN_TITLE}>
             {title}
           </h1>
 
@@ -80,7 +81,7 @@ const BlockHeader: React.FC<BlockHeaderProps> = ({
                   total: progress.total,
                 })}
               />
-              <span className="text-sm text-[var(--color-text-secondary)]">
+              <span className="text-sm text-[var(--color-lesson-muted)]">
                 {t('quiz.answeredCount', {
                   answered: progress.answered,
                   total: progress.total,
@@ -90,7 +91,7 @@ const BlockHeader: React.FC<BlockHeaderProps> = ({
           ) : null}
 
           {intro ? (
-            <p className="mt-3 max-w-prose text-[var(--color-text-primary)]">{intro}</p>
+            <p className="mt-3 max-w-prose text-[var(--color-lesson-body)]">{intro}</p>
           ) : null}
         </div>
 

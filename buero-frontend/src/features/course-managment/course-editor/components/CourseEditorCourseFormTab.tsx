@@ -4,6 +4,7 @@ import CourseCoverSection from '@/features/course-managment/components/CourseMan
 import CourseDetailsSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseDetailsSection';
 import CourseTagsSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseTagsSection';
 import CoursePriceSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CoursePriceSection';
+import CourseTrialSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseTrialSection';
 import CourseDurationSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseDurationSection';
 import CourseCreateActions from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseCreateActions';
 import type { CourseLevel } from '@/types/features/courseManagment/CourseLevel.types';
@@ -37,6 +38,8 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
   setValue,
   computedDurationMinutes,
   watchedVideoLessonsCount,
+  watchedTrialModuleCount,
+  moduleCount,
   coverFile,
 }) => {
   const fieldsLocked = isFormDisabled || isUpdatingCourse;
@@ -99,6 +102,19 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
             setValue('price', value, { shouldDirty: true, shouldValidate: true })
           }
           onChangeCurrencySymbol={setPriceCurrencySymbol}
+        />
+
+        <CourseTrialSection
+          trialModuleCount={watchedTrialModuleCount}
+          moduleCount={moduleCount}
+          error={errors.trialModuleCount?.message}
+          disabled={fieldsLocked}
+          onChangeTrialModuleCount={(value) =>
+            setValue('trialModuleCount', value, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
         />
 
         <CourseDurationSection
