@@ -52,8 +52,9 @@ export class CourseMaterialService {
       throw new ForbiddenException('Немає доступу до цього курсу');
     }
     if (access.accessType === UserCourseAccessType.trial) {
+      /** Empty means nothing is free, not that nothing is checked - see trial-scope. */
       const trialModuleIds = await getTrialModuleIds(this.prisma, courseId);
-      if (trialModuleIds.length > 0 && !trialModuleIds.includes(moduleId)) {
+      if (!trialModuleIds.includes(moduleId)) {
         throw new ForbiddenException(
           'На пробному періоді доступні лише матеріали вступних модулів',
         );

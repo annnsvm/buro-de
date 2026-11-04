@@ -230,6 +230,25 @@ describe("CourseMaterialService", () => {
         service.assertCanAccessModule("stu", Role.student, courseId, "mod-0"),
       ).resolves.toBeUndefined();
     });
+
+    /**
+     * A course that sells from its very first module. The check used to be skipped when the
+     * trial scope came back empty, which would have served every material in the course.
+     */
+    it("forbids even the first module when the course opens none", async () => {
+      prisma.course.findUnique.mockResolvedValue({
+        id: courseId,
+        trialModuleCount: 0,
+      });
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        accessType: "trial",
+        trialEndsAt: anyDate,
+      });
+
+      await expect(
+        service.assertCanAccessModule("stu", Role.student, courseId, "mod-0"),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
   });
 
   describe("assertCanAccessCourse", () => {

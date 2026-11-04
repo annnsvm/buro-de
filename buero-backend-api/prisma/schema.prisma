@@ -243,6 +243,13 @@ model Course {
   /// describe a range, which is what the catalogue draws and filters on.
   levelTo          Level?         @map("level_to")
   durationHours    Int?           @map("duration_hours")
+  /// How many modules from the start of the course a trial opens.
+  ///
+  /// On the course rather than in the code because the right number depends on how long the
+  /// course is: two modules out of nine is a sample, two out of two is the whole thing given
+  /// away. The rule stays positional - the first N modules in display order - so reordering
+  /// modules moves the boundary, and 0 means a trial opens nothing at all.
+  trialModuleCount Int        @default(2) @map("trial_module_count")
   /// How many times a student may send one writing task to be checked, for the whole time they
   /// have access. Three is the first attempt and two rewrites.
   ///

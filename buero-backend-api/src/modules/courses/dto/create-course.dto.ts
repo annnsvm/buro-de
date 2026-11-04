@@ -64,4 +64,18 @@ export class CreateCourseDto {
   @Min(0)
   @Max(9999)
   duration_hours?: number;
+
+  @ApiPropertyOptional({
+    example: 2,
+    default: 2,
+    description:
+      'Скільки модулів з початку курсу відкриває пробний доступ. 0 - курс продається з ' +
+      'першого модуля. Правило позиційне: це перші N модулів у порядку відображення, ' +
+      'тому зміна порядку модулів переносить межу.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(99)
+  trial_module_count?: number;
 }

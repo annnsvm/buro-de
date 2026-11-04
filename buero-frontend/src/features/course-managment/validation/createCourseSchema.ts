@@ -43,6 +43,12 @@ export const createCourseSchema = z.object({
    * the ordinary case and reads as empty rather than as missing.
    */
   levelTo: z.union([levelSchema, z.literal('')]),
+
+  /**
+   * How many modules a trial opens. Required, unlike the duration: a cleared field would
+   * look like "nothing is free" while silently leaving the old number in place.
+   */
+  trialModuleCount: z.string().trim(),
 }).superRefine((values, ctx) => {
   if (!values.price.trim()) {
     ctx.addIssue({
@@ -87,6 +93,20 @@ export const createCourseSchema = z.object({
         message: 'Тривалість - ціле невідʼємне число',
       });
     }
+  }
+
+  const trial = Number(values.trialModuleCount.trim());
+  if (
+    !values.trialModuleCount.trim() ||
+    !Number.isInteger(trial) ||
+    trial < 0 ||
+    trial > 99
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['trialModuleCount'],
+      message: 'Ціле число від 0 до 99',
+    });
   }
 });
 

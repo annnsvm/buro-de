@@ -16,7 +16,7 @@ import {
 } from "../../generated/prisma/enums";
 import { PrismaService } from "../../prisma/prisma.service";
 import { stripQuizAnswers } from "../../common/content/strip-quiz-answers";
-import { TRIAL_FREE_MODULE_COUNT } from "../../common/access/trial-scope";
+import { DEFAULT_TRIAL_FREE_MODULES } from "../../common/access/trial-scope";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import {
   openModules,
@@ -240,14 +240,20 @@ export class CourseService {
 
       /**
        * The tree is already ordered by order_index, so the trial scope can be read
-       * off it without a second query.
+       * off it without a second query - but the count comes from the course, because
+       * how much of a course can be given away depends on how long it is.
        */
       const orderedModules =
         "modules" in course && Array.isArray(course.modules)
           ? (course.modules as Array<{ id?: unknown }>)
           : [];
-      const trialModuleIds = orderedModules
-        .slice(0, TRIAL_FREE_MODULE_COUNT)
+      const trialModuleCount =
+        typeof course.trialModuleCount === "number"
+          ? course.trialModuleCount
+          : DEFAULT_TRIAL_FREE_MODULES;
+      const trialModuleIds = (
+        trialModuleCount > 0 ? orderedModules.slice(0, trialModuleCount) : []
+      )
         .map((mod) => (typeof mod.id === "string" ? mod.id : null))
         .filter((moduleId): moduleId is string => moduleId !== null);
 
@@ -468,6 +474,9 @@ export class CourseService {
           ...(dto.duration_hours !== undefined && {
             durationHours: dto.duration_hours,
           }),
+          ...(dto.trial_module_count !== undefined && {
+            trialModuleCount: dto.trial_module_count,
+          }),
         },
       });
       this.clearCourseCaches();
@@ -534,6 +543,9 @@ export class CourseService {
           ...(dto.level_to !== undefined && { levelTo: dto.level_to }),
         ...(dto.duration_hours !== undefined && {
           durationHours: dto.duration_hours,
+        }),
+        ...(dto.trial_module_count !== undefined && {
+          trialModuleCount: dto.trial_module_count,
         }),
       };
 

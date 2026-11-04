@@ -46,8 +46,15 @@ export class CourseModuleService {
       throw new ForbiddenException("Немає доступу до цього курсу");
     }
     if (access.accessType === UserCourseAccessType.trial) {
+      /**
+       * An empty list means the trial opens nothing, not that nothing is restricted.
+       * The check used to be skipped on an empty list, which was harmless while the
+       * count was a constant 2 - the list was only ever empty for a course with no
+       * modules. Now that a teacher can set the count to 0, skipping would hand the
+       * whole course to anyone who registered.
+       */
       const trialModuleIds = await getTrialModuleIds(this.prisma, courseId);
-      if (trialModuleIds.length > 0 && !trialModuleIds.includes(moduleId)) {
+      if (!trialModuleIds.includes(moduleId)) {
         throw new ForbiddenException(
           "На пробному періоді доступні лише вступні модулі курсу"
         );
@@ -86,13 +93,15 @@ export class CourseModuleService {
           where: { userId_courseId: { userId, courseId } },
         });
         if (access?.accessType === UserCourseAccessType.trial) {
+          /**
+           * Listed unconditionally, including when the list is empty: a course whose
+           * trial opens nothing shows no modules to a trial, rather than all of them.
+           */
           const trialModuleIds = await getTrialModuleIds(this.prisma, courseId);
-          if (trialModuleIds.length > 0) {
-            return this.prisma.courseModule.findMany({
-              where: { courseId, id: { in: trialModuleIds } },
-              orderBy: { orderIndex: "asc" },
-            });
-          }
+          return this.prisma.courseModule.findMany({
+            where: { courseId, id: { in: trialModuleIds } },
+            orderBy: { orderIndex: "asc" },
+          });
         }
       }
       return this.prisma.courseModule.findMany({

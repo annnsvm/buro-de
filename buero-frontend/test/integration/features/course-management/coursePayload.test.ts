@@ -15,6 +15,7 @@ describe('courseCreatePayload / courseUpdatePayload', () => {
     tags: ['Culture & Life'],
     level: 'B1',
     levelTo: '' as const,
+    trialModuleCount: '2',
   });
 
   it('create payload trims title/description and sets is_published false', () => {
@@ -26,6 +27,7 @@ describe('courseCreatePayload / courseUpdatePayload', () => {
       price: 10,
       level: 'B1',
       duration_hours: 2,
+      trial_module_count: 2,
       is_published: false,
     });
   });
@@ -39,7 +41,21 @@ describe('courseCreatePayload / courseUpdatePayload', () => {
       price: 10,
       level: 'B1',
       duration_hours: 2,
+      trial_module_count: 2,
     });
+  });
+
+  /**
+   * Sent even when it is zero, unlike the duration. Leaving it out would let the server keep
+   * the number it had, and "this course has no free preview" is exactly the change that must
+   * not be quietly dropped.
+   */
+  it('sends no free modules as a zero rather than omitting it', () => {
+    const noPreview = createCourseSchema.parse({
+      ...parsed,
+      trialModuleCount: '0',
+    });
+    expect(courseCreatePayload(noPreview)).toMatchObject({ trial_module_count: 0 });
   });
 
   it('omits duration_hours when empty', () => {

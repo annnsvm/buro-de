@@ -12,6 +12,8 @@ export type ApiCourseTreeResponse = {
   level?: string | null;
   /** Top of the level range, when the course covers more than one. */
   levelTo?: string | null;
+  trialModuleCount?: number | null;
+  trial_module_count?: number | null;
   isPublished?: boolean;
   is_published?: boolean;
   image_url?: string | null;
