@@ -20,7 +20,8 @@ const ModalRoot: React.FC<ModalRootProps> = ({ globalModal, uiModalStack }) => {
   const [uiModalClosing, setUiModalClosing] = useState(false);
 
   const prevGlobalModalTypeRef = useRef<GlobalModalType | undefined>(undefined);
-  const authVariantRef = useRef<'login' | 'signup'>('login');
+  const authVariantRef = useRef<'login' | 'signup' | 'resetPassword'>('login');
+  const authEmailRef = useRef<string | undefined>(undefined);
   const authRedirectRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -33,30 +34,42 @@ const ModalRoot: React.FC<ModalRootProps> = ({ globalModal, uiModalStack }) => {
     const curr = globalModal.type;
     const prev = prevGlobalModalTypeRef.current;
 
-    if (curr === 'login' || curr === 'signup') {
+    /**
+     * The reset panel is a third face of the auth dialog rather than a dialog of its own:
+     * moving between "log in" and "I forgot it" must not look like one box closing and
+     * another opening on top of it.
+     */
+    if (curr === 'login' || curr === 'signup' || curr === 'resetPassword') {
       setAuthExitHold(true);
       authVariantRef.current = curr;
       if (globalModal.type === 'login' || globalModal.type === 'signup') {
         authRedirectRef.current = globalModal.redirectTo;
       }
+      if (globalModal.type === 'resetPassword') {
+        authEmailRef.current = globalModal.prefillEmail;
+      }
     } else if (
-      (prev === 'login' || prev === 'signup') &&
-      curr !== null &&
-      curr !== 'login' &&
-      curr !== 'signup'
+      /**
+       * Moved from an auth panel to some other modal. The branch above has already
+       * excluded every auth type from `curr`, so re-testing them here only told the
+       * compiler what it knew - and a condition that cannot be false reads as a
+       * condition that was meant to do something.
+       */
+      (prev === 'login' || prev === 'signup' || prev === 'resetPassword') &&
+      curr !== null
     ) {
       setAuthExitHold(false);
     }
 
     if (curr === 'profile') {
       setProfileExitHold(true);
-    } else if (prev === 'profile' && curr !== null && curr !== 'profile') {
+    } else if (prev === 'profile' && curr !== null) {
       setProfileExitHold(false);
     }
 
     if (curr === 'logoutConfirm') {
       setLogoutExitHold(true);
-    } else if (prev === 'logoutConfirm' && curr !== null && curr !== 'logoutConfirm') {
+    } else if (prev === 'logoutConfirm' && curr !== null) {
       setLogoutExitHold(false);
     }
 
@@ -76,19 +89,24 @@ const ModalRoot: React.FC<ModalRootProps> = ({ globalModal, uiModalStack }) => {
   const isTopUiOpen = topUiIndex >= 0 && !uiModalClosing;
 
   const shouldMountAuth =
-    globalModal.type === 'login' || globalModal.type === 'signup' || authExitHold;
+    globalModal.type === 'login' ||
+    globalModal.type === 'signup' ||
+    globalModal.type === 'resetPassword' ||
+    authExitHold;
 
   const renderAuthModal = () => {
     if (!shouldMountAuth) {
       return null;
     }
 
-    const variant: 'login' | 'signup' =
+    const variant: 'login' | 'signup' | 'resetPassword' =
       globalModal.type === 'login'
         ? 'login'
         : globalModal.type === 'signup'
           ? 'signup'
-          : authVariantRef.current;
+          : globalModal.type === 'resetPassword'
+            ? 'resetPassword'
+            : authVariantRef.current;
 
     const redirectTo =
       globalModal.type === 'login' || globalModal.type === 'signup'
@@ -98,8 +116,17 @@ const ModalRoot: React.FC<ModalRootProps> = ({ globalModal, uiModalStack }) => {
     return (
       <AuthGlobalDialog
         variant={variant}
-        isOpen={globalModal.type === 'login' || globalModal.type === 'signup'}
+        isOpen={
+          globalModal.type === 'login' ||
+          globalModal.type === 'signup' ||
+          globalModal.type === 'resetPassword'
+        }
         redirectTo={redirectTo}
+        prefillEmail={
+          globalModal.type === 'resetPassword'
+            ? globalModal.prefillEmail
+            : authEmailRef.current
+        }
         onRequestClose={() => {
           clearAllPendingAuthCourseSession();
           dispatch(closeGlobalModal());

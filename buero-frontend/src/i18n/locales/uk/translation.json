@@ -47,7 +47,22 @@
     "logoutDescription": "Щоб повернутися до курсів і свого прогресу, треба буде увійти знову.",
     "logoutConfirm": "Вийти",
     "logoutCancel": "Скасувати",
-    "logoutFailed": "Не вдалося вийти. Спробуйте ще раз."
+    "logoutFailed": "Не вдалося вийти. Спробуйте ще раз.",
+    "forgotPassword": "Забули пароль?",
+    "resetTitle": "Новий пароль",
+    "resetDescription": "Вкажіть пошту акаунта - надішлемо код для зміни пароля.",
+    "resetSendCode": "Надіслати код",
+    "resetCodeSent": "Якщо акаунт із такою поштою існує, код уже летить. Він дійсний 15 хвилин.",
+    "resetCodePlaceholder": "Код із листа",
+    "resetNewPassword": "Новий пароль",
+    "resetPasswordRule": "Щонайменше 9 символів, одна велика літера й одна цифра.",
+    "resetSubmit": "Зберегти новий пароль",
+    "resetWrongEmail": "Вказали не ту пошту? Повернутись",
+    "resetBackToLogin": "Згадали пароль? Увійти",
+    "resetDoneTitle": "Пароль змінено",
+    "resetDoneDescription": "Усі попередні сеанси завершено. Увійдіть із новим паролем.",
+    "resetRequestFailed": "Не вдалося надіслати код. Спробуйте ще раз.",
+    "resetFailed": "Невірний або прострочений код."
   },
   "footer": {
     "siteFooter": "Підвал сайту",

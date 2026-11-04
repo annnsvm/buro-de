@@ -45,6 +45,7 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
+    getValues,
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -159,6 +160,25 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
         </FormField>
 
         {errors.root && <p className="text-[var(--color-error)]">{errors.root.message}</p>}
+
+        {/**
+         * Under the password, where it is wanted, and carrying whatever was typed above -
+         * someone who has just failed to log in has already written their address once.
+         */}
+        <button
+          type="button"
+          className="self-start text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
+          onClick={() => {
+            dispatch(
+              openGlobalModal({
+                type: 'resetPassword',
+                prefillEmail: getValues('email'),
+              }),
+            );
+          }}
+        >
+          {t('auth.forgotPassword')}
+        </button>
 
         <Button type="submit" disabled={isSubmitting} className="mt-2 w-full" variant="solid">
           {loadingStatus === LOADING_STATUS.LOADING ? <Spinner /> : t('auth.loginButton')}
