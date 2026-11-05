@@ -23,7 +23,10 @@ import { VerifyRegistrationDto } from "./dto/verify-registration.dto";
 import { ResendRegistrationCodeDto } from "./dto/resend-registration-code.dto";
 import { CookieService } from "./cookie.service";
 import { UserService } from "../user/user.service";
+import { PasswordResetService } from "./password-reset.service";
 import { RegistrationService } from "./registration.service";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { Response, Request } from "express";
 import { RegisterDto } from "./dto/register.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
@@ -36,6 +39,7 @@ export class AuthController {
     private readonly cookieService: CookieService,
     private readonly userService: UserService,
     private readonly registrationService: RegistrationService,
+    private readonly passwordResetService: PasswordResetService,
   ) {}
 
   @Post("register")
@@ -90,6 +94,41 @@ export class AuthController {
   @ApiResponse({ status: 404, description: "Немає незавершеної реєстрації" })
   async resendRegistrationCode(@Body() dto: ResendRegistrationCodeDto) {
     return this.registrationService.resendCode(dto.email);
+  }
+
+  @Post("forgot-password")
+  /** Tighter than login: this one sends mail, and the limit is what stops it being a cannon. */
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Попросити код для нового пароля",
+    description:
+      "Надсилає 6-значний код на пошту акаунта. Відповідь однакова незалежно від того, " +
+      "чи існує такий акаунт - інакше цей роут став би способом дізнатися, хто " +
+      "зареєстрований. Код дійсний 15 хвилин; доки його не використано, старий пароль " +
+      "працює далі.",
+  })
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiResponse({ status: 200, description: "Код надіслано, якщо акаунт існує" })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.passwordResetService.request(dto.email, dto.locale);
+  }
+
+  @Post("reset-password")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Задати новий пароль за кодом",
+    description:
+      "Перевіряє код і встановлює новий пароль. Усі активні сесії відкликаються: той, " +
+      "хто відновлює пароль, може робити це саме тому, що акаунтом користується хтось " +
+      "інший. 5 невдалих спроб - код згорає.",
+  })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiResponse({ status: 200, description: "Пароль змінено" })
+  @ApiResponse({ status: 400, description: "Невірний або прострочений код" })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.passwordResetService.reset(dto.email, dto.code, dto.new_password);
   }
 
   @Post("login")

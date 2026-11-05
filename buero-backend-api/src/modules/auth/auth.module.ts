@@ -7,6 +7,7 @@ import { UserModule } from "../user/user.module";
 import { MailModule } from "../mail/mail.module";
 import { PrismaModule } from "../../prisma/prisma.module";
 import { RolesGuard } from "./guards/roles.guard";
+import { PasswordResetService } from "./password-reset.service";
 import { RegistrationService } from "./registration.service";
 
 @Module({
@@ -14,6 +15,7 @@ import { RegistrationService } from "./registration.service";
   controllers: [AuthController],
   providers: [
     CookieService,
+    PasswordResetService,
     RegistrationService,
     JwtAuthGuard,
     OptionalJwtAuthGuard,

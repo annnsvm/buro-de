@@ -47,7 +47,22 @@
     "logoutDescription": "You will need to sign in again to reach your courses and your progress.",
     "logoutConfirm": "Log out",
     "logoutCancel": "Cancel",
-    "logoutFailed": "Could not log out. Please try again."
+    "logoutFailed": "Could not log out. Please try again.",
+    "forgotPassword": "Forgotten your password?",
+    "resetTitle": "New password",
+    "resetDescription": "Give the email of the account and we will send a code.",
+    "resetSendCode": "Send the code",
+    "resetCodeSent": "If an account uses this address, the code is on its way. It is valid for 15 minutes.",
+    "resetCodePlaceholder": "Code from the email",
+    "resetNewPassword": "New password",
+    "resetPasswordRule": "At least 9 characters, one capital letter and one digit.",
+    "resetSubmit": "Save the new password",
+    "resetWrongEmail": "Wrong address? Go back",
+    "resetBackToLogin": "Remembered it? Log in",
+    "resetDoneTitle": "Password changed",
+    "resetDoneDescription": "Every earlier session has been signed out. Log in with the new password.",
+    "resetRequestFailed": "Could not send the code. Please try again.",
+    "resetFailed": "That code is wrong or has expired."
   },
   "footer": {
     "siteFooter": "Site footer",

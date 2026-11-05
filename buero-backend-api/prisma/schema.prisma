@@ -167,6 +167,31 @@ model User {
   @@map("users")
 }
 
+/// A password reset in progress: the code that was emailed, and nothing else.
+///
+/// Shaped like `PendingRegistration` on purpose - the same six digits, the same hash, the
+/// same fifteen minutes, the same attempt cap - because a student who has already received
+/// one code from this platform should not have to learn a second kind of flow to get back
+/// into it.
+///
+/// Keyed by email rather than by user id, and holding no reference to the user, so that
+/// asking for a reset reveals nothing: a row exists whether or not the address belongs to
+/// an account, and the table cannot be read as a list of who forgot their password.
+model PasswordReset {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  /// Only the hash. A leak of this table must not hand anyone a working code.
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  /// Counted up on every wrong code, so the six digits cannot be worked through.
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@map("password_resets")
+}
+
 model RefreshToken {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")

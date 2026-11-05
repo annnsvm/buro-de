@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { UserModule } from "../user/user.module";
+import { MailModule } from "../mail/mail.module";
 import { PaymentFulfillmentService } from "./payment-fulfillment.service";
 import { PaymentService } from "./payment.service";
 import { PaymentsController } from "./payments.controller";
@@ -11,7 +12,7 @@ import { WebhookController } from "./webhook.controller";
 import { WebhookService } from "./webhook.service";
 
 @Module({
-  imports: [PrismaModule, AuthModule, UserModule],
+  imports: [PrismaModule, AuthModule, UserModule, MailModule],
   controllers: [
     SubscriptionsController,
     PaymentsController,

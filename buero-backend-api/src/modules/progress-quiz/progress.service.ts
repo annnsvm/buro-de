@@ -95,8 +95,19 @@ export class ProgressService {
       course: { title: string; level: string | null };
     }[],
   ) {
+    /**
+     * Which course, decided by the newest row of any kind.
+     *
+     * Some rows carry no material - they record that the student did something in the
+     * course without naming what. Skipping them when choosing the course meant a course
+     * worked in last week could lose to one finished the week before: the newest row said
+     * A2.1 and the card sent the student back to an A1 lesson they had already done.
+     *
+     * They are still not treated as completed work; that is counted below, from the rows
+     * that name a material.
+     */
     const latest = progressRows
-      .filter((row) => row.courseMaterialId)
+      .slice()
       .sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime())[0];
     if (!latest) return null;
 

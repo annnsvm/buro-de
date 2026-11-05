@@ -4,34 +4,23 @@ import { CourseMaterialService } from "../course-materials/course-material.servi
 import { ProgressService } from "./progress.service";
 
 /**
- * Which lesson "continue" offers.
+ * "Continue where you left off", and which course that is.
  *
- * `course_progress` holds only what has been finished, so the newest row is the lesson the
- * student just left behind. Offering that one sent them back into a lesson they had already
- * done, while opening the course itself landed on the next one - two different answers to
- * "where did I stop".
+ * `course_progress` holds two kinds of row: one that names a material the student
+ * finished, and one that names only the course. The second kind is older and says no more
+ * than "something happened here, then" - but that is exactly the question being asked, and
+ * skipping those rows meant the newest thing a student had done could lose to an older
+ * one. The card offered an A1 lesson already finished on the 28th while the newest row,
+ * for A2.1 on the 29th, was thrown away for having no material id.
+ *
+ * The rows that name a material still decide what counts as *done*; only the choice of
+ * course reads them all.
  */
-describe("ProgressService resume lesson", () => {
-  const COURSE = "course-1";
-  const OTHER = "course-2";
+const USER = "u1";
+const A1 = "course-a1";
+const A21 = "course-a21";
 
-  /** Eight lessons across two modules, in the order a student meets them. */
-  const moduleMaterials = [
-    {
-      materials: [
-        { id: "m1", title: "Hallo!" },
-        { id: "m2", title: "Zahlen" },
-        { id: "m3", title: "Ich heiße" },
-      ],
-    },
-    {
-      materials: [
-        { id: "m4", title: "Mein Alltag" },
-        { id: "m5", title: "Beim Arzt" },
-      ],
-    },
-  ];
-
+describe("the lesson offered as continue", () => {
   let service: ProgressService;
   let prisma: {
     courseProgress: { findMany: jest.Mock };
@@ -39,112 +28,107 @@ describe("ProgressService resume lesson", () => {
     courseModule: { findMany: jest.Mock };
   };
 
-  const done = (materialId: string, at: string, courseId = COURSE) => ({
+  const row = (
+    courseId: string,
+    title: string,
+    materialId: string | null,
+    day: number,
+  ) => ({
     courseId,
     courseMaterialId: materialId,
-    completedAt: new Date(at),
-    score: null,
-    course: { id: courseId, title: "Deutsch A2.1", level: "A2" },
-    courseMaterial: { id: materialId },
+    completedAt: new Date(Date.UTC(2026, 9, day)),
+    course: { id: courseId, title, level: "A1" },
+    courseMaterial: materialId ? { id: materialId } : null,
   });
+
+  const arrange = (rows: ReturnType<typeof row>[]) => {
+    prisma.courseProgress.findMany.mockResolvedValue(rows);
+    prisma.courseModule.findMany.mockImplementation(
+      (args: { where: { courseId?: string }; select?: { _count?: unknown } }) => {
+        /** The counting query, which only needs a shape. */
+        if (args.select && "_count" in args.select) return Promise.resolve([]);
+        const forA21 = args.where.courseId === A21;
+        return Promise.resolve([
+          {
+            materials: forA21
+              ? [
+                  { id: "a21-m1", title: "Lesson 1" },
+                  { id: "a21-m2", title: "Lesson 2" },
+                ]
+              : [{ id: "a1-m1", title: "Begrüßung" }],
+          },
+        ]);
+      },
+    );
+  };
 
   beforeEach(async () => {
     prisma = {
       courseProgress: { findMany: jest.fn().mockResolvedValue([]) },
-      studentProfile: { findUnique: jest.fn().mockResolvedValue({ level: "A2" }) },
-      /**
-       * `getMyProgress` asks for modules twice and for different things: once to count a
-       * course's materials, once for the materials themselves. The mock answers by which
-       * of the two was asked.
-       */
-      courseModule: {
-        findMany: jest.fn((args: { select?: Record<string, unknown> }) =>
-          Promise.resolve(
-            args.select?._count
-              ? [{ courseId: COURSE, _count: { materials: 5 } }]
-              : moduleMaterials,
-          ),
-        ),
-      },
+      studentProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+      courseModule: { findMany: jest.fn().mockResolvedValue([]) },
     };
 
-    const moduleRef: TestingModule = await Test.createTestingModule({
+    const mod: TestingModule = await Test.createTestingModule({
       providers: [
         ProgressService,
         { provide: PrismaService, useValue: prisma as unknown as PrismaService },
-        {
-          provide: CourseMaterialService,
-          useValue: { assertCanAccessCourse: jest.fn(), assertCanAccessModule: jest.fn() },
-        },
+        { provide: CourseMaterialService, useValue: {} },
       ],
     }).compile();
-    service = moduleRef.get(ProgressService);
+    service = mod.get(ProgressService);
   });
 
-  const resume = async () => (await service.getMyProgress("user-1")).resume;
+  const resume = async () => (await service.getMyProgress(USER)).resume;
 
-  it("offers the first lesson not yet finished, not the one just finished", async () => {
-    prisma.courseProgress.findMany.mockResolvedValue([
-      done("m1", "2026-09-01"),
-      done("m2", "2026-09-02"),
+  /** The exact reported case: the newest row names no material, and used to be ignored. */
+  it("follows the newest row even when it names no material", async () => {
+    arrange([
+      row(A21, "Deutsch A2.1", null, 29),
+      row(A1, "Deutsch A1", "a1-m1", 28),
     ]);
 
-    expect(await resume()).toMatchObject({
-      material_id: "m3",
-      material_title: "Ich heiße",
-      lesson_number: 3,
-      lesson_total: 5,
-    });
+    await expect(resume()).resolves.toMatchObject({ course_id: A21 });
   });
 
-  it("skips over a gap, so a lesson done out of order is not offered again", async () => {
-    // The student jumped ahead to m3; m2 is still the one waiting.
-    prisma.courseProgress.findMany.mockResolvedValue([
-      done("m1", "2026-09-01"),
-      done("m3", "2026-09-03"),
+  it("offers the first lesson of that course not yet finished", async () => {
+    arrange([
+      row(A21, "Deutsch A2.1", null, 29),
+      row(A21, "Deutsch A2.1", "a21-m1", 20),
     ]);
 
-    expect(await resume()).toMatchObject({ material_id: "m2", lesson_number: 2 });
+    await expect(resume()).resolves.toMatchObject({
+      material_id: "a21-m2",
+      lesson_number: 2,
+      lesson_total: 2,
+    });
   });
 
-  it("follows the course worked in most recently", async () => {
-    prisma.courseProgress.findMany.mockResolvedValue([
-      done("x1", "2026-09-10", OTHER),
-      done("m1", "2026-09-01"),
+  /**
+   * A row with no material says where the student was, never what they finished. Counting
+   * it as done would skip a lesson nobody had taken.
+   */
+  it("does not count a row with no material as a finished lesson", async () => {
+    arrange([row(A21, "Deutsch A2.1", null, 29)]);
+
+    await expect(resume()).resolves.toMatchObject({
+      material_id: "a21-m1",
+      lesson_number: 1,
+    });
+  });
+
+  it("still prefers a material row when it is the newest", async () => {
+    arrange([
+      row(A1, "Deutsch A1", "a1-m1", 30),
+      row(A21, "Deutsch A2.1", null, 29),
     ]);
 
-    expect(await resume()).toMatchObject({ course_id: OTHER });
+    await expect(resume()).resolves.toMatchObject({ course_id: A1 });
   });
 
-  it("points at the last lesson once the whole course is done", async () => {
-    prisma.courseProgress.findMany.mockResolvedValue(
-      ["m1", "m2", "m3", "m4", "m5"].map((id, index) =>
-        done(id, `2026-09-0${index + 1}`),
-      ),
-    );
+  it("offers nothing to a student who has done nothing", async () => {
+    arrange([]);
 
-    expect(await resume()).toMatchObject({ material_id: "m5", lesson_number: 5 });
-  });
-
-  it("carries the course name and level for the card", async () => {
-    prisma.courseProgress.findMany.mockResolvedValue([done("m1", "2026-09-01")]);
-
-    expect(await resume()).toMatchObject({
-      course_title: "Deutsch A2.1",
-      course_level: "A2",
-    });
-  });
-
-  describe("when there is nothing to continue", () => {
-    it("says so for a student who has finished nothing", async () => {
-      expect(await resume()).toBeNull();
-    });
-
-    it("says so when the course has no lessons at all", async () => {
-      prisma.courseProgress.findMany.mockResolvedValue([done("m1", "2026-09-01")]);
-      prisma.courseModule.findMany.mockImplementation(() => Promise.resolve([]));
-
-      expect(await resume()).toBeNull();
-    });
+    await expect(resume()).resolves.toBeNull();
   });
 });

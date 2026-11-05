@@ -7,18 +7,8 @@ import SharedLayout from '../components/layout/SharedLayout/SharedLayout';
 import PrivateGuard from '../components/guards/PrivateGuard/PrivateGuard';
 
 const HomePage = lazy(() => import('../pages/HomePage/HomePage'));
-const AssessmentPage = lazy(() => import('../pages/AssessmentPage/AssessmentPage'));
-const ResultsPage = lazy(() => import('../pages/ResultsPage/ResultsPage'));
-const TrialDashboardPage = lazy(() => import('../pages/TrialDashboardPage/TrialDashboardPage'));
-const SubscribedDashboardPage = lazy(
-  () => import('../pages/SubscribedDashboardPage/SubscribedDashboardPage'),
-);
 const SuccessPurchase = lazy(() => import('../pages/SuccessPurchase/SuccessPurchase'));
 const CancelPurchase = lazy(() => import('../pages/CancelPurchase/CancelPurchase'));
-const TeacherDirectoryPage = lazy(
-  () => import('../pages/TeacherDirectoryPage/TeacherDirectoryPage'),
-);
-const AccountSettingsPage = lazy(() => import('../pages/AccountSettingsPage/AccountSettingsPage'));
 /**
  * These three were the only pages imported eagerly, which put the whole course player -
  * the YouTube helpers, the exercise renderers, the quiz panel - into the bundle that an
@@ -28,7 +18,6 @@ const CoursesCatalogPage = lazy(() => import('../pages/CoursesCatalogPage/Course
 const MyLearningPage = lazy(() => import('../pages/MyLearningPage/MyLearningPage'));
 const CoursePage = lazy(() => import('../pages/CoursePage/CoursePage'));
 const CourseManagmentPage = lazy(() => import('../pages/CourseManagmentPage/CourseManagmentPage'));
-const UserProfilePage = lazy(() => import('../pages/UserProfilePage/UserProfilePage'));
 const VocabularyPage = lazy(() => import('../pages/VocabularyPage/VocabularyPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage/NotFoundPage'));
 const PrivacyPolicyPage = lazy(() => import('../pages/PrivacyPolicyPage/PrivacyPolicyPage'));
@@ -51,26 +40,6 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <HomePage /> },
           {
-            path: ROUTES.ASSESSMENT,
-            element: <AssessmentPage />,
-          },
-          {
-            path: ROUTES.RESULTS,
-            element: (
-              <PrivateGuard>
-                <ResultsPage />
-              </PrivateGuard>
-            ),
-          },
-          {
-            path: ROUTES.TRIAL_DASHBOARD,
-            element: (
-              <PrivateGuard>
-                <TrialDashboardPage />
-              </PrivateGuard>
-            ),
-          },
-          {
             path: ROUTES.PURCHES_SUCCESS,
             element: (
               <PrivateGuard>
@@ -83,14 +52,6 @@ export const router = createBrowserRouter([
             element: (
               <PrivateGuard>
                 <CancelPurchase />
-              </PrivateGuard>
-            ),
-          },
-          {
-            path: ROUTES.SUBSCRIBED_DASHBOARD,
-            element: (
-              <PrivateGuard>
-                <SubscribedDashboardPage />
               </PrivateGuard>
             ),
           },
@@ -119,14 +80,6 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: ROUTES.SETTINGS_ACCOUNT,
-            element: (
-              <PrivateGuard>
-                <AccountSettingsPage />
-              </PrivateGuard>
-            ),
-          },
-          {
             path: ROUTES.COURSES,
             element: <CoursesCatalogPage />,
           },
@@ -151,14 +104,6 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: ROUTES.TEACHERS,
-            element: (
-              <PrivateGuard>
-                <TeacherDirectoryPage />
-              </PrivateGuard>
-            ),
-          },
-          {
             path: ROUTES.VOCABULARY,
             element: (
               <PrivateGuard>
@@ -171,14 +116,6 @@ export const router = createBrowserRouter([
             element: (
               <PrivateGuard>
                 <CoursePage />
-              </PrivateGuard>
-            ),
-          },
-          {
-            path: ROUTES.PROFILE,
-            element: (
-              <PrivateGuard>
-                <UserProfilePage />
               </PrivateGuard>
             ),
           },

@@ -146,6 +146,131 @@ export function buildVerificationEmail(opts: {
   };
 }
 
+/**
+ * The code that lets someone back into an account they have paid for.
+ *
+ * Built like the verification email, down to the block of six digits, because to the
+ * reader it is the same act: Büro.de sent me a number, I type the number. The one thing
+ * it says that the other does not is what to do if the request was not theirs - a reset
+ * email arriving unasked is the first sign that someone else knows the address.
+ */
+export function buildPasswordResetEmail(opts: {
+  name?: string | null;
+  code: string;
+  locale: EmailLocale;
+  logoUrl: string;
+  siteUrl: string;
+}): { subject: string; html: string; text: string } {
+  const locale = opts.locale;
+  const name = greetingName(opts.name, locale);
+  const title = locale === "uk" ? "Відновлення пароля" : "Reset your password";
+  const subject =
+    locale === "uk" ? "Код для нового пароля - Büro.de" : "Your Büro.de password reset code";
+  const intro =
+    locale === "uk"
+      ? `Привіт, ${name}! Щоб задати новий пароль на Büro.de, введи цей код:`
+      : `Hi ${name}! To set a new Büro.de password, enter this code:`;
+  const valid =
+    locale === "uk"
+      ? "Код дійсний 15 хвилин. Доки ти не введеш його, старий пароль працює далі."
+      : "This code is valid for 15 minutes. Until you use it, your old password keeps working.";
+  const notYou =
+    locale === "uk"
+      ? "Якщо це був не ти - нічого робити не треба, пароль лишається тим самим. Але варто перевірити, чи до твоєї пошти ніхто не має доступу."
+      : "If this was not you, there is nothing to do and your password stays as it is - though it is worth checking that nobody else can read your email.";
+  const footerNote =
+    locale === "uk"
+      ? "Ти отримав цей лист, бо хтось попросив відновити пароль до акаунта Büro.de з цією адресою."
+      : "You received this email because someone asked to reset the Büro.de password for this address.";
+
+  const bodyHtml = `
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.ink};">${escapeHtml(intro)}</p>
+    <p style="margin:16px 0;padding:16px 18px;background:${BRAND.soft};border-radius:12px;text-align:center;font-size:32px;letter-spacing:0.28em;font-weight:700;color:${BRAND.ink};">${escapeHtml(opts.code)}</p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.muted};">${escapeHtml(valid)}</p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.muted};">${escapeHtml(notYou)}</p>
+  `;
+
+  return {
+    subject,
+    html: layout({
+      logoUrl: opts.logoUrl,
+      title,
+      bodyHtml,
+      siteUrl: opts.siteUrl,
+      footerNote,
+      locale,
+    }),
+    text: [title, "", intro, opts.code, "", valid, "", notYou].join("\n"),
+  };
+}
+
+/**
+ * The receipt a student gets when a course opens for them.
+ *
+ * WayForPay sends its own confirmation that money moved; this one says the thing the
+ * bank cannot - which course, and where it now is. Before it existed the payment went
+ * through and nothing arrived: the course simply appeared in the account of anyone who
+ * thought to go and look, which reads less like a purchase than like a hope.
+ *
+ * The link goes to the course rather than to the catalogue, because the next thing anyone
+ * wants after paying is the first lesson.
+ */
+export function buildPurchaseEmail(opts: {
+  name?: string | null;
+  courseTitle: string;
+  amount: string;
+  currency: string;
+  courseUrl: string;
+  locale: EmailLocale;
+  logoUrl: string;
+  siteUrl: string;
+}): { subject: string; html: string; text: string } {
+  const locale = opts.locale;
+  const name = greetingName(opts.name, locale);
+  const title = locale === "uk" ? "Курс відкрито" : "Your course is open";
+  const subject =
+    locale === "uk"
+      ? `${opts.courseTitle} - курс відкрито`
+      : `${opts.courseTitle} - your course is open`;
+  const intro =
+    locale === "uk"
+      ? `Привіт, ${name}! Оплату отримано, курс «${opts.courseTitle}» уже у вашому навчанні.`
+      : `Hi ${name}! Your payment went through and "${opts.courseTitle}" is now in your learning.`;
+  const paid =
+    locale === "uk"
+      ? `Сплачено: ${opts.amount} ${opts.currency.toUpperCase()}`
+      : `Paid: ${opts.amount} ${opts.currency.toUpperCase()}`;
+  const cta = locale === "uk" ? "Почати навчання" : "Start learning";
+  const keeps =
+    locale === "uk"
+      ? "Доступ безстроковий: курс лишається з вами, і повертатися до нього можна скільки завгодно."
+      : "The course stays with you - there is no time limit, and you can come back to it as often as you like.";
+  const footerNote =
+    locale === "uk"
+      ? "Ти отримав цей лист, бо оплатив курс на Büro.de."
+      : "You received this email because you bought a course on Büro.de.";
+
+  const bodyHtml = `
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.ink};">${escapeHtml(intro)}</p>
+    <p style="margin:16px 0;padding:14px 18px;background:${BRAND.soft};border-radius:12px;font-size:15px;color:${BRAND.ink};">${escapeHtml(paid)}</p>
+    <p style="margin:22px 0;"><a href="${escapeHtml(opts.courseUrl)}" style="display:inline-block;padding:12px 22px;border-radius:999px;background:${BRAND.coral};color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">${escapeHtml(cta)}</a></p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.muted};">${escapeHtml(keeps)}</p>
+  `;
+
+  return {
+    subject,
+    html: layout({
+      logoUrl: opts.logoUrl,
+      title,
+      bodyHtml,
+      siteUrl: opts.siteUrl,
+      footerNote,
+      locale,
+    }),
+    text: [title, "", intro, paid, "", cta + ": " + opts.courseUrl, "", keeps].join("\n"),
+  };
+}
+
 export function buildWelcomeEmail(opts: {
   name?: string | null;
   locale: EmailLocale;

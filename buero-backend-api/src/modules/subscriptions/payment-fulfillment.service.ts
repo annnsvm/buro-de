@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { UserCourseAccessType } from "src/generated/prisma/enums";
 import { PrismaService } from "src/prisma/prisma.service";
+import { MailerService } from "../mail/mailer.service";
+import { buildPurchaseEmail } from "../auth/auth-email.templates";
 import { WayForPayService } from "../wayforpay/wayforpay.service";
 
 export const PAYMENT_STATUS = {
@@ -25,6 +27,7 @@ export class PaymentFulfillmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly wayForPay: WayForPayService,
+    private readonly mailer: MailerService,
   ) {}
 
   /**
@@ -154,7 +157,82 @@ export class PaymentFulfillmentService {
     this.logger.log(
       `Course ${payment.courseId} unlocked for user ${payment.userId} (order ${params.orderReference})`,
     );
+
+    /**
+     * Only the first time this payment turns paid.
+     *
+     * `markPaid` is called by the webhook and again by the reconciliation that runs when a
+     * student comes back to the success page, so without this the same purchase would be
+     * announced twice. `needsStatusUpdate` was false on the second pass, and that is
+     * already the signal that nothing changed.
+     */
+    if (needsStatusUpdate) {
+      await this.announcePurchase(payment.id, payment.userId, courseId);
+    }
+
     return { granted: true };
+  }
+
+  /**
+   * Tells the student their course is open.
+   *
+   * WayForPay confirms that money moved; nothing confirmed what they had bought or where
+   * it now was, so a purchase ended in silence and the course simply appeared for whoever
+   * thought to go and look.
+   *
+   * Sent after the transaction rather than inside it, and swallowed if it fails. A mail
+   * server that is down must not undo a payment, and must not make the webhook retry a
+   * fulfilment that has already happened - the student has their course either way, and a
+   * missing receipt is a smaller problem than a course that locked itself again.
+   */
+  private async announcePurchase(
+    paymentId: string,
+    userId: string,
+    courseId: string,
+  ): Promise<void> {
+    try {
+      const [user, course, payment] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true, name: true, language: true },
+        }),
+        this.prisma.course.findUnique({
+          where: { id: courseId },
+          select: { title: true },
+        }),
+        this.prisma.payment.findUnique({
+          where: { id: paymentId },
+          select: { amount: true, currency: true },
+        }),
+      ]);
+      if (!user || !course || !payment) return;
+
+      const siteUrl = this.mailer.getSiteUrl();
+      const { logoUrl } = this.mailer.resolveLogo();
+      const mail = buildPurchaseEmail({
+        name: user.name,
+        courseTitle: course.title,
+        amount: Number(payment.amount).toFixed(2),
+        currency: payment.currency,
+        courseUrl: `${siteUrl.replace(/\/$/, "")}/courses/${courseId}`,
+        /** The language the account is set to; the emails know only these two. */
+        locale: user.language === "de" ? "en" : "uk",
+        logoUrl,
+        siteUrl,
+      });
+      await this.mailer.send({
+        to: user.email,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Course is open but the receipt did not go out for payment ${paymentId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   /** Фіксує неуспішний платіж; доступ не змінюється. */

@@ -74,6 +74,24 @@ describe('the practice and test wear the lesson palette', () => {
   });
 
   /**
+   * And nowhere else a student looks either.
+   *
+   * My Learning is not dressed in the lesson palette - it has a look of its own - but the
+   * small capitals were the same habit, and the card that says which course to continue
+   * sat right beside a lesson that no longer used them.
+   */
+  it('sets none on the My Learning screen either', () => {
+    const offenders = sourcesUnder('src/features/my-courses-catalog')
+      .concat(sourcesUnder('src/pages/MyLearningPage'))
+      .filter((path) => {
+        const source = readFileSync(path, 'utf8');
+        return /uppercase/.test(source) && /tracking-\[0\./.test(source);
+      });
+
+    expect(offenders).toEqual([]);
+  });
+
+  /**
    * Every heading from the one place.
    *
    * They drifted apart one file at a time - the block heading at 2.1rem in warm grey, the
