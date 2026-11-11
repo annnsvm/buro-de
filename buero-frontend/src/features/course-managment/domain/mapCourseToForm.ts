@@ -33,7 +33,6 @@ export const mapCourseToForm = (data: ApiCourseTreeResponse): CreateCourseFormVa
       durationRaw != null && Number.isFinite(Number(durationRaw))
         ? String(durationRaw)
         : '',
-    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     level: isLevel(levelRaw) ? levelRaw : '',
     levelTo: isLevel(levelToRaw) ? levelToRaw : '',
     /**
@@ -42,5 +41,7 @@ export const mapCourseToForm = (data: ApiCourseTreeResponse): CreateCourseFormVa
      */
     trialModuleCount:
       trialRaw != null && Number.isFinite(Number(trialRaw)) ? String(trialRaw) : '2',
+    /** False when the server said nothing, which is the column's own default. */
+    isIntegration: data.isIntegration === true,
   };
 };

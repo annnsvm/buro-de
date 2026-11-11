@@ -260,7 +260,14 @@ model Course {
   language         Language
   isPublished      Boolean        @default(false) @map("is_published")
   price            Decimal?       @db.Decimal(10, 2)
-  tags             String[]       @default([])
+  /// Whether this is an integration course rather than a language course.
+  ///
+  /// It is the one thing that decides which half of the catalogue a course appears in, and
+  /// which tab of "My learning" shows it. That used to be read off an `Integration` tag,
+  /// which made a split the students see depend on a teacher spelling a word - with the
+  /// right capitals, because the server matched the tag exactly while the page matched it
+  /// loosely. A column cannot be misspelled.
+  isIntegration    Boolean        @default(false) @map("is_integration")
   /// Where the course starts on the CEFR ladder.
   level            Level?
   /// The highest level the course reaches, when it spans more than one - an integration

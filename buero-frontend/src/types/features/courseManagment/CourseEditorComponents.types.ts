@@ -73,7 +73,6 @@ export type CourseEditorCourseFormTabProps = {
   watchedDescription: string;
   watchedLevel: string;
   watchedLevelTo: string;
-  watchedTags: string[];
   watchedPrice: string;
   priceCurrencySymbol: CurrencySymbol;
   setPriceCurrencySymbol: (v: CurrencySymbol) => void;
@@ -81,6 +80,8 @@ export type CourseEditorCourseFormTabProps = {
   computedDurationMinutes: number;
   watchedVideoLessonsCount: number;
   watchedTrialModuleCount: string;
+  /** Which half of the catalogue the course is in. */
+  watchedIsIntegration: boolean;
   /** Judged against the figure above, so the teacher can see when it is the whole course. */
   moduleCount: number;
   coverFile: File | null;

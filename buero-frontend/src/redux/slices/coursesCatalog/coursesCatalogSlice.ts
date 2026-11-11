@@ -6,7 +6,15 @@ export type PublicationFilter = 'all' | 'published' | 'unpublished';
 
 export type CoursesCatalogFilters = {
   search?: string;
-  tags?: string;
+  /**
+   * Which catalogue tab is open: 'language', 'integration', or a level. Absent for "all
+   * courses", which is why the page clears it rather than naming a tab.
+   *
+   * It was called `tags` while the tabs were described with course tags. They are not any
+   * more - the tracks are a column on the course - and the tags themselves are gone, so a
+   * field named after them would be the last thing still pointing at something removed.
+   */
+  tab?: string;
   language?: string;
   publicationStatus?: PublicationFilter;
   category?: string;

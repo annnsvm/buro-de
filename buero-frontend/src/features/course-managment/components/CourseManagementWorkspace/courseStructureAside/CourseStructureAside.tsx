@@ -27,6 +27,10 @@ import CourseStructureAsideActionButton from './CourseStructureAsideActionButton
 import CourseStructureAsideEmptyState from './CourseStructureAsideEmptyState';
 import SortableCourseModule from './SortableCourseModule';
 import { getStructureDragData, toModuleSortableId } from './courseStructureDnd.ids';
+import {
+  applyMaterialDrop,
+  settleMaterials,
+} from '@/features/course-managment/helpers/applyMaterialDrop';
 import { Button, Logo } from '@/components/ui';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '@/helpers/routes';
@@ -147,6 +151,15 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
         if (overIndex >= 0) insertIndex = overIndex;
       }
       toModule.materials.splice(insertIndex, 0, moved);
+
+      /**
+       * Both lists are renumbered, because the list is drawn by sorting on `orderIndex` and
+       * an array position is not one. The arriving material also lets go of a lesson it left
+       * behind in the other module - the server refuses such a parent outright, and refusing
+       * loses the whole move.
+       */
+      fromModule.materials = settleMaterials(fromModule.materials);
+      toModule.materials = settleMaterials(toModule.materials);
       onDraftStructureChange(next);
     },
     [dragEnabled, modules, onDraftStructureChange],
@@ -193,12 +206,17 @@ const CourseStructureAside: React.FC<CourseStructureAsideProps> = ({
         const next = cloneModules(modules);
         const target = next.find((mod) => mod.id === currentModuleId);
         if (!target) return;
-        const oldIndex = target.materials.findIndex((item) => item.id === materialId);
-        const newIndex = target.materials.findIndex((item) => item.id === overData.materialId);
-        if (oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
-          target.materials = arrayMove(target.materials, oldIndex, newIndex);
-          onDraftStructureChange(next);
-        }
+
+        /**
+         * Position and lesson both, decided in one place. Moving a row inside the array is
+         * not enough on its own: the list is drawn by sorting on `orderIndex`, so without
+         * renumbering, the sort puts every row straight back and nothing can be reordered.
+         */
+        const settled = applyMaterialDrop(target.materials, materialId, overData.materialId);
+        if (settled === target.materials) return;
+
+        target.materials = settled;
+        onDraftStructureChange(next);
         return;
       }
 

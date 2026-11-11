@@ -2,9 +2,9 @@ import React from 'react';
 import { Container, Section } from '@/components/layout';
 import CourseCoverSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseCoverSection';
 import CourseDetailsSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseDetailsSection';
-import CourseTagsSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseTagsSection';
 import CoursePriceSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CoursePriceSection';
 import CourseTrialSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseTrialSection';
+import CourseTrackSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseTrackSection';
 import CourseDurationSection from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseDurationSection';
 import CourseCreateActions from '@/features/course-managment/components/CourseManagementWorkspace/parts/CourseCreateActions';
 import type { CourseLevel } from '@/types/features/courseManagment/CourseLevel.types';
@@ -31,7 +31,6 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
   watchedDescription,
   watchedLevel,
   watchedLevelTo,
-  watchedTags,
   watchedPrice,
   priceCurrencySymbol,
   setPriceCurrencySymbol,
@@ -39,6 +38,7 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
   computedDurationMinutes,
   watchedVideoLessonsCount,
   watchedTrialModuleCount,
+  watchedIsIntegration,
   moduleCount,
   coverFile,
 }) => {
@@ -84,13 +84,15 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
           }
         />
 
-        <CourseTagsSection
-          tags={watchedTags}
+        <CourseTrackSection
+          isIntegration={watchedIsIntegration}
           disabled={fieldsLocked}
-          onChangeTags={(next) =>
-            setValue('tags', next, { shouldDirty: true, shouldValidate: true })
+          onChangeIsIntegration={(next) =>
+            setValue('isIntegration', next, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
           }
-          error={errors.tags?.message}
         />
 
         <CoursePriceSection

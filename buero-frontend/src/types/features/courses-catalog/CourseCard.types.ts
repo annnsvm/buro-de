@@ -14,7 +14,14 @@ export type CourseCardProps = {
   lessonsCount: number;
   durationHours: number;
   avgVideoLessonMinutes?: number | null;
-  tags: string[];
+  /**
+   * Whether this is an integration course rather than a language one. It decides which half
+   * of the catalogue the course appears in and which tab of "My learning" shows it.
+   *
+   * It is the only grouping a course carries since the tags were removed: nothing ever
+   * showed those to a student, and this was the only work they did.
+   */
+  isIntegration?: boolean;
   /**
    * The CEFR range the course covers, and its place in the catalogue order. Used by the
    * list to group courses and lay them out as a path; the card itself ignores them.

@@ -12,10 +12,10 @@ describe('courseCreatePayload / courseUpdatePayload', () => {
     category: 'sociocultural',
     price: '10',
     durationHours: '2',
-    tags: ['Culture & Life'],
     level: 'B1',
     levelTo: '' as const,
     trialModuleCount: '2',
+    isIntegration: true,
   });
 
   it('create payload trims title/description and sets is_published false', () => {
@@ -23,11 +23,16 @@ describe('courseCreatePayload / courseUpdatePayload', () => {
       title: 'Trim me',
       description: 'Desc',
       language: 'en',
-      tags: ['Culture & Life'],
       price: 10,
       level: 'B1',
       duration_hours: 2,
       trial_module_count: 2,
+      /**
+       * Which half of the catalogue the course is in, sent on create and on update alike.
+       * It used to ride on an `Integration` tag, which the editor offered no way to apply
+       * and which the server compared case-sensitively while the page did not.
+       */
+      is_integration: true,
       is_published: false,
     });
   });
@@ -37,11 +42,11 @@ describe('courseCreatePayload / courseUpdatePayload', () => {
       title: 'Trim me',
       description: 'Desc',
       language: 'en',
-      tags: ['Culture & Life'],
       price: 10,
       level: 'B1',
       duration_hours: 2,
       trial_module_count: 2,
+      is_integration: true,
     });
   });
 

@@ -46,7 +46,6 @@ describe("CourseService", () => {
     language: "en",
     isPublished: true,
     price: { toString: () => "19.99" },
-    tags: ["Language"],
     level: "A1",
     durationHours: 10,
     imageUrl: null,
@@ -137,13 +136,17 @@ describe("CourseService", () => {
       expect(arg.where.isPublished).toBeUndefined();
     });
 
-    it("applies search, language, level, tags", async () => {
+    /**
+     * Tags are gone. They were never shown to a student, nothing rendered them, and the one
+     * job they did - saying which half of the catalogue a course belongs to - is a column on
+     * the course now. This used to assert a `tags` filter alongside the rest.
+     */
+    it("applies search, language and level", async () => {
       prisma.course.findMany.mockResolvedValue([]);
       const q: ListCoursesQueryDto = {
         search: "  German  ",
         language: Language.de,
         level: Level.B1,
-        tags: "A, B",
       };
       await service.findAll(q, { publicationFilter: PublicationStatus.all });
       /**
@@ -173,7 +176,6 @@ describe("CourseService", () => {
             { title: { contains: "German", mode: "insensitive" } },
             { description: { contains: "German", mode: "insensitive" } },
           ],
-          tags: { hasSome: ["A", "B"] },
         },
         orderBy: [{ orderIndex: "asc" }, { createdAt: "desc" }],
       });
@@ -208,6 +210,61 @@ describe("CourseService", () => {
       });
       expect(prisma.courseMaterial.findMany).not.toHaveBeenCalled();
       expect(list[0].avgVideoLessonMinutes).toBeNull();
+    });
+  });
+
+
+  /**
+   * Which half of the catalogue a course is in.
+   *
+   * This used to be described with tags - `tags=Integration` for one section,
+   * `tags_exclude=Integration` for the other. The server matched a tag exactly while the page
+   * matched it lowercased, so a course tagged "integration" showed in the integration section
+   * and was missing from the server's filter at the same time. And there was no way to make an
+   * integration course in the editor at all: `Integration` was not among the tags it offered.
+   */
+  describe("findAll: the integration split", () => {
+    beforeEach(() => {
+      prisma.$queryRaw.mockResolvedValue([]);
+      (
+        service as unknown as { clearCourseCaches: () => void }
+      ).clearCourseCaches();
+      prisma.course.findMany.mockResolvedValue([]);
+    });
+
+    it("returns only integration courses when asked for them", async () => {
+      await service.findAll({ integration: true });
+      expect(prisma.course.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ isIntegration: true }),
+        }),
+      );
+    });
+
+    it("returns only language courses when asked for those", async () => {
+      await service.findAll({ integration: false });
+      expect(prisma.course.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ isIntegration: false }),
+        }),
+      );
+    });
+
+    /** No parameter means the whole catalogue, not one half of it. */
+    it("does not split the catalogue when the filter is absent", async () => {
+      await service.findAll({});
+      const arg = prisma.course.findMany.mock.calls[0][0];
+      expect(arg.where.isIntegration).toBeUndefined();
+    });
+
+    /**
+     * `false` is a real answer here, and the earlier tag spelling could not express it:
+     * "not integration" had to be written as excluding a tag.
+     */
+    it("treats false as a filter rather than as nothing", async () => {
+      await service.findAll({ integration: false });
+      const arg = prisma.course.findMany.mock.calls[0][0];
+      expect(arg.where.isIntegration).toBe(false);
     });
   });
 
@@ -466,6 +523,27 @@ describe("CourseService", () => {
       expect(out.title).toBe("New");
       expect(out.price).toBeNull();
     });
+
+    /** A new course is a language course unless the editor says otherwise. */
+    it("makes a language course by default", async () => {
+      prisma.course.create.mockResolvedValue(courseRow({ title: "New" }));
+      await service.create({ title: "New", language: Language.en });
+      expect(prisma.course.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ isIntegration: false }),
+      });
+    });
+
+    it("makes an integration course when the editor says so", async () => {
+      prisma.course.create.mockResolvedValue(courseRow({ title: "Ankommen" }));
+      await service.create({
+        title: "Ankommen",
+        language: Language.en,
+        is_integration: true,
+      });
+      expect(prisma.course.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ isIntegration: true }),
+      });
+    });
   });
 
   describe("update", () => {
@@ -553,6 +631,43 @@ describe("CourseService", () => {
         }),
       );
       expect(out.price).toBe(25);
+    });
+  });
+
+  describe("update: moving a course between halves of the catalogue", () => {
+    beforeEach(() => {
+      prisma.course.findUnique.mockResolvedValue({
+        id: "c1",
+        title: "Ankommen",
+        price: null,
+        isPublished: true,
+      });
+      prisma.course.update.mockResolvedValue(courseRow({ title: "Ankommen" }));
+    });
+
+    it("writes the switch when it is turned on", async () => {
+      await service.update("c1", { is_integration: true });
+      expect(prisma.course.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ isIntegration: true }),
+        }),
+      );
+    });
+
+    /** Turning it off is a real edit, not an omission. */
+    it("writes the switch when it is turned off", async () => {
+      await service.update("c1", { is_integration: false });
+      expect(prisma.course.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ isIntegration: false }),
+        }),
+      );
+    });
+
+    it("leaves it alone when the edit does not mention it", async () => {
+      await service.update("c1", { title: "Renamed" });
+      const data = prisma.course.update.mock.calls[0][0].data;
+      expect(data).not.toHaveProperty("isIntegration");
     });
   });
 

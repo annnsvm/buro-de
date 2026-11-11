@@ -40,20 +40,21 @@ export const useCourseEditorState = () => {
       category: 'language',
       price: '',
       durationHours: '',
-      tags: [],
       level: '',
       levelTo: '',
       trialModuleCount: '2',
+      /** A new course is a language course until the switch says otherwise. */
+      isIntegration: false,
     },
   });
 
   const watchedTitle = watch('title') ?? '';
   const watchedDescription = watch('description') ?? '';
-  const watchedTags = watch('tags') ?? [];
   const watchedPrice = watch('price') ?? '';
   const watchedLevel = watch('level') ?? '';
   const watchedLevelTo = watch('levelTo') ?? '';
   const watchedTrialModuleCount = watch('trialModuleCount') ?? '2';
+  const watchedIsIntegration = watch('isIntegration') ?? false;
   const watchedVideoLessonsCount = videoMaterialCount(modules);
   const computedDurationMinutes = videoMinutesSum(modules);
 
@@ -134,10 +135,11 @@ export const useCourseEditorState = () => {
       category: 'language',
       price: '',
       durationHours: '',
-      tags: [],
       level: '',
       levelTo: '',
       trialModuleCount: '2',
+      /** A new course is a language course until the switch says otherwise. */
+      isIntegration: false,
     });
   }, [reset]);
 
@@ -157,11 +159,11 @@ export const useCourseEditorState = () => {
     setIsCoursePublished,
     watchedTitle,
     watchedDescription,
-    watchedTags,
     watchedPrice,
     watchedLevel,
     watchedLevelTo,
     watchedTrialModuleCount,
+    watchedIsIntegration,
     watchedVideoLessonsCount,
     computedDurationMinutes,
     coverFile,

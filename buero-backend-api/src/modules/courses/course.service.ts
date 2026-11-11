@@ -62,8 +62,8 @@ type ReadableModules = "all" | ReadonlySet<string>;
 type CourseListWhere = {
   isPublished?: boolean;
   language?: Language;
-  tags?: { hasSome: string[] };
-  NOT?: { tags: { hasSome: string[] } };
+  /** The catalogue's own split: integration courses on one side, language courses on the other. */
+  isIntegration?: boolean;
   OR?: Array<
     | { title: { contains: string; mode: "insensitive" } }
     | { description: { contains: string; mode: "insensitive" } }
@@ -163,29 +163,16 @@ export class CourseService {
           { description: { contains: searchTrim, mode: "insensitive" } },
         ];
       }
-      const splitTags = (value: string) =>
-        value
-          .split(",")
-          .map((part) => part.trim())
-          .filter(Boolean);
-
-      if (filters?.tags) {
-        const tagsArray = splitTags(filters.tags);
-        if (tagsArray.length > 0) where.tags = { hasSome: tagsArray };
-      }
 
       /**
-       * Selecting everything *except* a tag.
+       * The catalogue's own split, read off the column.
        *
-       * The catalogue's "language courses" filter used to look for a `Language` tag, so
-       * it depended on every language course having been tagged by hand - and most had
-       * not, which is why it returned one course out of three. Defined as the opposite of
-       * the integration tag instead, it cannot fall out of date: a new course counts as a
-       * language course unless it is explicitly tagged otherwise.
+       * It comes last so that it wins over the tag filters above, which described the same
+       * split by spelling a tag and disagreed with the page about capitals. Those stay for
+       * anything else that still sends them.
        */
-      if (filters?.tags_exclude) {
-        const excluded = splitTags(filters.tags_exclude);
-        if (excluded.length > 0) where.NOT = { tags: { hasSome: excluded } };
+      if (filters?.integration !== undefined) {
+        where.isIntegration = filters.integration;
       }
 
       const cacheKey = JSON.stringify({ pubFilter, filters: filters ?? {} });
@@ -469,7 +456,7 @@ export class CourseService {
           isPublished: dto.is_published ?? false,
           orderIndex: nextOrderIndex,
           ...(dto.price !== undefined && { price: dto.price }),
-          tags: dto.tags ?? [],
+          isIntegration: dto.is_integration ?? false,
           ...(dto.level !== undefined && { level: dto.level }),
           ...(dto.level_to !== undefined && { levelTo: dto.level_to }),
           ...(dto.duration_hours !== undefined && {
@@ -539,7 +526,9 @@ export class CourseService {
           isPublished: dto.is_published,
         }),
         ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.tags !== undefined && { tags: dto.tags }),
+        ...(dto.is_integration !== undefined && {
+          isIntegration: dto.is_integration,
+        }),
         ...(dto.level !== undefined && { level: dto.level }),
           ...(dto.level_to !== undefined && { levelTo: dto.level_to }),
         ...(dto.duration_hours !== undefined && {

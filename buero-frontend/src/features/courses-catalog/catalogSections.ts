@@ -1,15 +1,18 @@
 import type { CourseCardProps } from '@/types/features/courses-catalog/CourseCard.types';
 
 /**
- * A course belongs to the integration track when it is tagged for it, and is a language
+ * A course belongs to the integration track when it is marked as one, and is a language
  * course otherwise.
  *
- * Stated this way round on purpose: the `Language` tag has to be applied by hand and
- * mostly has not been, whereas `Integration` is the one that really is used. A new course
- * is therefore a language course until it is marked otherwise, and nothing falls through.
+ * This reads the course's own `isIntegration`, which the editor sets with a switch. It used
+ * to read an `Integration` tag, and that failed twice over: the tag was not among the ones
+ * the editor offered, so an integration course could not be made at all; and the server
+ * matched the tag exactly while this matched it lowercased, so a course tagged
+ * "integration" appeared here and was missing from the server's filter at the same time.
+ * The tags are gone now, and this flag is the whole answer.
  */
 export const isIntegrationCourse = (course: CourseCardProps): boolean =>
-  course.tags?.some((tag) => tag.toLowerCase().includes('integration')) ?? false;
+  course.isIntegration === true;
 
 export type CatalogSectionId = 'language' | 'integration';
 

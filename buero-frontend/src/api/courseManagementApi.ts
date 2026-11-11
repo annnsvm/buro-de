@@ -89,7 +89,12 @@ export const deleteMaterial = async (
 export type ReorderStructurePayload = {
   id: string;
   order_index: number;
-  materials: { id: string; order_index: number }[];
+  materials: {
+    id: string;
+    order_index: number;
+    /** The lesson a practice hangs under; null for a top-level row. */
+    parent_material_id?: string | null;
+  }[];
 }[];
 
 export const reorderCourseStructure = async (

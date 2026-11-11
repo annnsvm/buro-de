@@ -12,8 +12,8 @@ describe('coursesCatalogSlice', () => {
     let state = coursesCatalogReducer(undefined, setPage(5));
     expect(state.page).toBe(5);
 
-    state = coursesCatalogReducer(state, setFilters({ tags: 'beginner' }));
-    expect(state.filters.tags).toBe('beginner');
+    state = coursesCatalogReducer(state, setFilters({ tab: 'beginner' }));
+    expect(state.filters.tab).toBe('beginner');
     expect(state.page).toBe(1);
   });
 
