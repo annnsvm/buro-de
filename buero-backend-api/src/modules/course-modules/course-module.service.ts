@@ -180,7 +180,15 @@ export class CourseModuleService {
         select: {
           id: true,
           orderIndex: true,
-          materials: { select: { id: true, orderIndex: true, moduleId: true } },
+          materials: {
+            select: {
+              id: true,
+              orderIndex: true,
+              moduleId: true,
+              parentMaterialId: true,
+              type: true,
+            },
+          },
         },
       });
       const knownModuleIds = new Set(courseModules.map((m) => m.id));
@@ -231,21 +239,86 @@ export class CourseModuleService {
         (moduleItem) =>
           currentModuleById.get(moduleItem.id) !== moduleItem.order_index
       );
+      /**
+       * Where each material ends up, so a practice's new lesson can be checked against the
+       * module it is landing in rather than the one it came from.
+       */
+      const moduleIdAfter = new Map<string, string>();
+      for (const moduleItem of dto.modules) {
+        for (const materialItem of moduleItem.materials ?? []) {
+          moduleIdAfter.set(materialItem.id, moduleItem.id);
+        }
+      }
+
+      /**
+       * A practice hangs under a lesson, and the list that draws it assumes exactly one
+       * level. So a parent has to be a material that ends up in the same module, must not
+       * be the practice itself, and must not already hang under something else - otherwise
+       * the tree gains a depth the editor cannot draw or the author cannot undo.
+       */
+      const checkParent = (
+        materialId: string,
+        parentId: string,
+        landsIn: string
+      ): void => {
+        if (parentId === materialId) {
+          throw new BadRequestException(
+            `Material ${materialId} cannot hang under itself`
+          );
+        }
+        const parent = currentMaterialById.get(parentId);
+        if (!parent) {
+          throw new NotFoundException(
+            `Material ${parentId} not found in this course`
+          );
+        }
+        if ((moduleIdAfter.get(parentId) ?? parent.moduleId) !== landsIn) {
+          throw new BadRequestException(
+            `Material ${parentId} is not in the same module as ${materialId}`
+          );
+        }
+        const parentsParent =
+          dto.modules
+            .flatMap((moduleItem) => moduleItem.materials ?? [])
+            .find((item) => item.id === parentId)?.parent_material_id ??
+          parent.parentMaterialId;
+        if (parentsParent) {
+          throw new BadRequestException(
+            `Material ${parentId} already hangs under another, so nothing can hang under it`
+          );
+        }
+      };
+
       const materialUpdates = dto.modules.flatMap((moduleItem) =>
         (moduleItem.materials ?? [])
-          .filter((materialItem) => {
+          .map((materialItem) => {
             const current = currentMaterialById.get(materialItem.id);
-            return (
+            /** Omitted means "leave the lesson alone"; null means "detach". */
+            const parentGiven = materialItem.parent_material_id !== undefined;
+            const nextParent = parentGiven
+              ? materialItem.parent_material_id
+              : (current?.parentMaterialId ?? null);
+
+            if (parentGiven && nextParent) {
+              checkParent(materialItem.id, nextParent, moduleItem.id);
+            }
+
+            const moved =
               !current ||
               current.moduleId !== moduleItem.id ||
-              current.orderIndex !== materialItem.order_index
-            );
+              current.orderIndex !== materialItem.order_index ||
+              (parentGiven &&
+                (current.parentMaterialId ?? null) !== (nextParent ?? null));
+            if (!moved) return null;
+
+            return {
+              id: materialItem.id,
+              moduleId: moduleItem.id,
+              orderIndex: materialItem.order_index,
+              ...(parentGiven && { parentMaterialId: nextParent ?? null }),
+            };
           })
-          .map((materialItem) => ({
-            id: materialItem.id,
-            moduleId: moduleItem.id,
-            orderIndex: materialItem.order_index,
-          }))
+          .filter((item): item is NonNullable<typeof item> => item !== null)
       );
 
       if (moduleUpdates.length > 0 || materialUpdates.length > 0) {
@@ -263,6 +336,9 @@ export class CourseModuleService {
                 data: {
                   moduleId: materialItem.moduleId,
                   orderIndex: materialItem.orderIndex,
+                  ...("parentMaterialId" in materialItem && {
+                    parentMaterialId: materialItem.parentMaterialId,
+                  }),
                 },
               });
             }

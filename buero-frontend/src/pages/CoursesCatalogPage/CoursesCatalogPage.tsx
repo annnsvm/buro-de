@@ -63,10 +63,10 @@ const CoursesCatalogPage: FC = () => {
       }
     }
 
-    switch (filters.tags) {
+    switch (filters.tab) {
       case 'language':
       case 'integration':
-        return filters.tags;
+        return filters.tab;
       default:
         return 'all';
     }
@@ -94,7 +94,7 @@ const CoursesCatalogPage: FC = () => {
             setFilters({
               ...filters,
               publicationStatus: id,
-              tags: undefined,
+              tab: undefined,
             })
           );
         }
@@ -104,7 +104,7 @@ const CoursesCatalogPage: FC = () => {
         dispatch(
           setFilters({
             ...filters,
-            tags: undefined,
+            tab: undefined,
             publicationStatus: undefined,
           })
         );
@@ -115,7 +115,7 @@ const CoursesCatalogPage: FC = () => {
         dispatch(
           setFilters({
             ...filters,
-            tags: id, 
+            tab: id,
             publicationStatus: undefined,
           })
         );

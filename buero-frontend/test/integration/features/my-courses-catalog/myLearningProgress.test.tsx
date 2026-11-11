@@ -23,7 +23,7 @@ const course = (id: string, title: string) =>
     price: '0',
     lessonsCount: 24,
     durationHours: 6,
-    tags: ['language'],
+    isIntegration: false,
   }) as unknown as CourseInfoData;
 
 const courses = [course('c1', 'A2.1'), course('c2', 'B1.1')];

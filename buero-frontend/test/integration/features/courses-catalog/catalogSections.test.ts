@@ -15,29 +15,33 @@ const course = (
   ({
     title: over.id,
     levelLabel: 'A1',
-    tags: [],
     ...over,
   }) as CourseCardProps;
 
 describe('which track a course belongs to', () => {
-  it('reads the integration tag', () => {
-    expect(isIntegrationCourse(course({ id: 'ank', tags: ['Integration'] }))).toBe(true);
+  it('reads the course\u2019s own flag', () => {
+    expect(isIntegrationCourse(course({ id: 'ank', isIntegration: true }))).toBe(true);
+    expect(isIntegrationCourse(course({ id: 'a1', isIntegration: false }))).toBe(false);
   });
 
   /**
-   * Stated as "not integration" on purpose: the `Language` tag has to be applied by hand
-   * and mostly has not been, so a course must not need it to be placed correctly.
+   * Anything that does not say it is an integration course is a language course.
+   *
+   * This replaced reading an `Integration` tag, which the tags could not carry properly: the
+   * editor offered no such tag to apply, and the server compared it exactly while this
+   * compared it lowercased, so a course tagged "integration" was in the integration section
+   * here and outside the server's filter at the same time. Tags are gone entirely now.
    */
-  it('treats an untagged course as a language course', () => {
-    expect(isIntegrationCourse(course({ id: 'a1', tags: [] }))).toBe(false);
-    expect(isIntegrationCourse(course({ id: 'a2', tags: ['Grammar'] }))).toBe(false);
+  it('treats a course that says nothing as a language course', () => {
+    expect(isIntegrationCourse(course({ id: 'a1' }))).toBe(false);
   });
+
 });
 
 describe('splitting the catalogue into sections', () => {
   const courses = [
     course({ id: 'a2', orderIndex: 2, level: 'A2' }),
-    course({ id: 'ank', orderIndex: 1, tags: ['Integration'], level: 'A2' }),
+    course({ id: 'ank', orderIndex: 1, isIntegration: true, level: 'A2' }),
     course({ id: 'a1', orderIndex: 1, level: 'A1' }),
   ];
 

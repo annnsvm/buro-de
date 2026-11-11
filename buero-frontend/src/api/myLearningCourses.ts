@@ -50,8 +50,6 @@ export const mapApiCourseToCourseInfo = (course: CatalogCourse): CourseInfoData 
   const durationHours =
     typeof durationRaw === 'number' ? durationRaw : Number(durationRaw ?? 0);
 
-  const tags = Array.isArray(course.tags) ? (course.tags as string[]) : [];
-
   return {
     id: String(course.id),
     title: String(course.title ?? ''),
@@ -80,7 +78,7 @@ export const mapApiCourseToCourseInfo = (course: CatalogCourse): CourseInfoData 
           : 0,
     durationHours: Number.isFinite(durationHours) && durationHours > 0 ? durationHours : 1,
     avgVideoLessonMinutes: readAvgVideoLessonMinutes(course),
-    tags,
+    isIntegration: course.isIntegration === true,
     hasTrial:
       !!course.my_access &&
       typeof course.my_access === 'object' &&
@@ -104,8 +102,6 @@ export const mapApiCourseToCourseCard = (course: CatalogCourse): CourseCardProps
   const durationRaw = course.durationHours ?? course.duration_hours;
   const durationHours =
     typeof durationRaw === 'number' ? durationRaw : Number(durationRaw ?? 0);
-
-  const tags = Array.isArray(course.tags) ? (course.tags as string[]) : [];
 
   const myAccess = course.my_access;
   const isAdded =
@@ -141,7 +137,7 @@ export const mapApiCourseToCourseCard = (course: CatalogCourse): CourseCardProps
           : 0,
     durationHours: Number.isFinite(durationHours) && durationHours > 0 ? durationHours : 1,
     avgVideoLessonMinutes: readAvgVideoLessonMinutes(course),
-    tags,
+    isIntegration: course.isIntegration === true,
     isPublished: readIsPublished(course),
     isAdded,
   };
@@ -186,15 +182,15 @@ export const filterMyLearningCourses = (
   const { category, search } = filters;
 
   /**
-   * The same two categories the catalogue offers, decided the same way.
+   * The same two categories the catalogue offers, decided the same way - by the course's own
+   * `isIntegration`, which the editor sets with a switch.
    *
    * These used to be read off `c.category`, which does not exist on a course: the mapper
    * fills it in as "language" for every one of them, so the language filter matched
-   * everything and a "culture & life" filter matched nothing. Integration is a tag that
-   * really is applied; a language course is simply one without it.
+   * everything and a "culture & life" filter matched nothing. Then it read an `Integration`
+   * tag, which the editor offered no way to apply. Tags are gone; the flag is the answer.
    */
-  const isIntegration = (course: CourseInfoData) =>
-    course.tags.some((tag: string) => tag.toLowerCase().includes('integration'));
+  const isIntegration = (course: CourseInfoData) => course.isIntegration === true;
 
   if (category === 'language') {
     out = out.filter((course) => !isIntegration(course));
@@ -204,11 +200,15 @@ export const filterMyLearningCourses = (
 
   const q = search?.trim().toLowerCase();
   if (q) {
+    /**
+     * Title and description. It used to match tags as well, which is the one thing tags
+     * really did - and it did more harm than good: every course carried `Beginner`, so
+     * searching for it returned the whole shelf, including a B1 course.
+     */
     out = out.filter(
       (c) =>
         c.title.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q) ||
-        c.tags.some((t: string) => t.toLowerCase().includes(q)),
+        c.description.toLowerCase().includes(q),
     );
   }
 

@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
+import { Transform } from "class-transformer";
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from "class-validator";
 import { Language, Level } from "../../../generated/prisma/enums";
 
 /** Фільтр публікації. Використовується в GET /courses/manage. */
@@ -27,24 +34,28 @@ export class ListCoursesQueryDto {
   @IsEnum(Language)
   language?: Language;
 
+  /**
+   * Which half of the catalogue to return.
+   *
+   * This replaced a pair of tag filters - `tags=Integration` and `tags_exclude=Integration` -
+   * which needed the tag spelled exactly here and only loosely on the page, so the two
+   * disagreed about any course whose tag was capitalised differently. Those filters are gone,
+   * along with tags themselves.
+   */
   @ApiPropertyOptional({
-    example: "Language,Integration",
+    type: Boolean,
     description:
-      "Фільтр за тегами (через кому). Курс має містити хоча б один із тегів.",
+      "true - тільки інтеграційні курси, false - тільки мовні. Без параметра - усі.",
   })
   @IsOptional()
-  @IsString()
-  tags?: string;
-
-  @ApiPropertyOptional({
-    example: "Integration",
-    description:
-      "Виключити курси з цими тегами (через кому). Дозволяє описати категорію через те, " +
-      "чим вона не є, і не залежати від того, чи розставлені теги вручну.",
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === true || value === "true") return true;
+    if (value === false || value === "false") return false;
+    /** Anything else stays as it came, so validation can reject it out loud. */
+    return value;
   })
-  @IsOptional()
-  @IsString()
-  tags_exclude?: string;
+  @IsBoolean()
+  integration?: boolean;
 
   @ApiPropertyOptional({
     enum: Level,

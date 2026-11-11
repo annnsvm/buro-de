@@ -53,7 +53,7 @@ export class CoursesController {
   @ApiOperation({
     summary: "Список опублікованих курсів (каталог)",
     description:
-      "Публічний каталог опублікованих курсів (is_published = true). Опційні query: search (підрядок у title АБО description, без урахування регістру), language, tags (через кому), level. У відповіді: price, tags, level, durationHours, videoLessonCount, lessonsCount, avgVideoLessonMinutes (середня тривалість відеоуроку).",
+      "Публічний каталог опублікованих курсів (is_published = true). Опційні query: search (підрядок у title АБО description, без урахування регістру), language, integration, level. У відповіді: price, isIntegration, level, durationHours, videoLessonCount, lessonsCount, avgVideoLessonMinutes (середня тривалість відеоуроку).",
   })
   @ApiQuery({
     name: "search",
@@ -62,15 +62,17 @@ export class CoursesController {
   })
   @ApiQuery({ name: "language", required: false, enum: ["en", "de"] })
   @ApiQuery({
-    name: "tags",
+    name: "integration",
     required: false,
-    description: "Фільтр за тегами (через кому). Напр. Language,Integration",
+    type: Boolean,
+    description:
+      "true - тільки інтеграційні курси, false - тільки мовні. Без параметра - усі.",
   })
   @ApiQuery({ name: "level", required: false, enum: ["A1", "A2", "B1", "B2"] })
   @ApiResponse({
     status: 200,
     description:
-      "Масив опублікованих курсів (поля: price, tags, level, durationHours, image_url, videoLessonCount тощо)",
+      "Масив опублікованих курсів (поля: price, isIntegration, level, durationHours, image_url, videoLessonCount тощо)",
   })
   list(@Query() query: ListCoursesQueryDto) {
     return this.courseService.findAll(query, {
@@ -85,7 +87,7 @@ export class CoursesController {
   @ApiOperation({
     summary: "Усі курси для управління (вчитель)",
     description:
-      "Список усіх курсів (опублікованих і неопублікованих). Тільки для вчителів. Ті ж query-параметри, що й для каталогу: search, language, tags, level.",
+      "Список усіх курсів (опублікованих і неопублікованих). Тільки для вчителів. Ті ж query-параметри, що й для каталогу: search, language, integration, level.",
   })
   @ApiQuery({
     name: "search",
@@ -94,9 +96,11 @@ export class CoursesController {
   })
   @ApiQuery({ name: "language", required: false, enum: ["en", "de"] })
   @ApiQuery({
-    name: "tags",
+    name: "integration",
     required: false,
-    description: "Фільтр за тегами (через кому)",
+    type: Boolean,
+    description:
+      "true - тільки інтеграційні курси, false - тільки мовні. Без параметра - усі.",
   })
   @ApiQuery({ name: "level", required: false, enum: ["A1", "A2", "B1", "B2"] })
   @ApiQuery({
@@ -164,7 +168,7 @@ export class CoursesController {
         language: "en",
         isPublished: true,
         price: 29.99,
-        tags: ["Language", "Integration"],
+        isIntegration: false,
         level: "A1",
         durationHours: 12,
         createdAt: "2025-02-16T10:00:00.000Z",
@@ -278,7 +282,7 @@ export class CoursesController {
   @ApiOperation({
     summary: "Оновити курс",
     description:
-      "Тільки для вчителів. Оновити курс за id. Поля body: title, description, language, is_published, price, tags, level, duration_hours (усі опційні). 404, якщо не знайдено.",
+      "Тільки для вчителів. Оновити курс за id. Поля body: title, description, language, is_published, price, is_integration, level, duration_hours (усі опційні). 404, якщо не знайдено.",
   })
   @ApiParam({ name: "id", description: "UUID курсу" })
   @ApiBody({ type: UpdateCourseDto })

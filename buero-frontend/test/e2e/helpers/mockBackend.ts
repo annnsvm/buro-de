@@ -8,7 +8,7 @@ const sampleCourses = [
     description: 'Alpha description for catalog search',
     level: 'A2',
     language: 'de',
-    tags: ['Beginner', 'A2'],
+    isIntegration: false,
     price: 19.99,
     is_published: true,
     duration_hours: 1,
@@ -21,7 +21,7 @@ const sampleCourses = [
     description: 'Beta description',
     level: 'B2',
     language: 'de',
-    tags: ['Language', 'B2'],
+    isIntegration: true,
     price: 29.99,
     is_published: true,
     duration_hours: 2,
@@ -77,16 +77,21 @@ export const installCatalogApiMocks = async (page: Page) => {
       }
 
       const requestUrl = new URL(route.request().url());
-      const tags = requestUrl.searchParams.get('tags');
+      /**
+       * The tracks, as the real server reads them: a column on the course. This stood on
+       * `tags=Language` and `tags=Beginner` while the server filtered on tags, and both the
+       * filter and the tags are gone.
+       */
+      const integration = requestUrl.searchParams.get('integration');
       const level = requestUrl.searchParams.get('level');
 
       let rows: typeof sampleCourses = [...sampleCourses];
 
-      if (tags === 'Language') {
-        rows = rows.filter((c) => c.tags.includes('Language'));
+      if (integration === 'true') {
+        rows = rows.filter((c) => c.isIntegration);
       }
-      if (tags === 'Beginner') {
-        rows = rows.filter((c) => c.tags.includes('Beginner'));
+      if (integration === 'false') {
+        rows = rows.filter((c) => !c.isIntegration);
       }
       if (level === 'B1') {
         rows = rows.filter((c) => c.level === 'B1');

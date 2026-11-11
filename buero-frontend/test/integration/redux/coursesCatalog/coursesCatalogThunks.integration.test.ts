@@ -12,7 +12,13 @@ import { TEST_API_BASE_URL } from '../../../constants';
 import { server } from '../../../mocks/server';
 
 describe('fetchCoursesCatalogThunk', () => {
-  it('requests /courses excluding integration when the language filter is active', async () => {
+  /**
+   * The language half used to be asked for as "every course without the Integration tag".
+   * It is asked for by the course's own flag now: the tag was not among those the editor
+   * offered, so an integration course could not be made, and the server compared the tag
+   * exactly while the page compared it lowercased, so the two disagreed.
+   */
+  it('requests the language half by the integration flag', async () => {
     let requestUrl = '';
 
     server.use(
@@ -24,12 +30,13 @@ describe('fetchCoursesCatalogThunk', () => {
 
     const store = configureStore({ reducer: rootReducer });
     setStore(store);
-    store.dispatch(setFilters({ tags: 'language' }));
+    store.dispatch(setFilters({ tab: 'language' }));
 
     await store.dispatch(fetchCoursesCatalogThunk());
 
     expect(requestUrl).toContain(`${TEST_API_BASE_URL}/courses`);
-    expect(new URL(requestUrl).searchParams.get('tags_exclude')).toBe('Integration');
+    expect(new URL(requestUrl).searchParams.get('integration')).toBe('false');
+    expect(new URL(requestUrl).searchParams.get('tags_exclude')).toBeNull();
   });
 
   it('requests /courses/manage for teacher role', async () => {
@@ -53,12 +60,12 @@ describe('fetchCoursesCatalogThunk', () => {
         language: 'de',
       }),
     );
-    store.dispatch(setFilters({ tags: 'language' }));
+    store.dispatch(setFilters({ tab: 'language' }));
 
     await store.dispatch(fetchCoursesCatalogThunk());
 
     expect(new URL(requestUrl).pathname).toBe('/api/courses/manage');
-    expect(new URL(requestUrl).searchParams.get('tags_exclude')).toBe('Integration');
+    expect(new URL(requestUrl).searchParams.get('integration')).toBe('false');
   });
 
   it('loads access from /subscriptions/me in parallel for a student', async () => {

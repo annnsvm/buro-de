@@ -28,6 +28,12 @@ export const useCourseEditorStructureDnd = ({
             materials: mod.materials.map((material, materialIndex) => ({
               id: material.id,
               order_index: materialIndex,
+              /**
+               * Sent on every row, because a practice is placed in the list by its lesson
+               * rather than by its position, and a drag that re-parents one has nothing
+               * else to carry the change.
+               */
+              parent_material_id: material.parentMaterialId ?? null,
             })),
           })),
         );

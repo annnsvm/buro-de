@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsUUID,
   Min,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 
@@ -21,6 +22,24 @@ export class ReorderStructureMaterialDto {
   @IsInt()
   @Min(0)
   order_index!: number;
+
+  /**
+   * The lesson a practice hangs under, or null for a row that stands on its own.
+   *
+   * It travels with the order because a practice is placed in the list by its lesson rather
+   * than by its position, so dragging one between lessons has nothing else to carry the
+   * change. Omitted leaves the material where it is.
+   */
+  @ApiPropertyOptional({
+    format: "uuid",
+    nullable: true,
+    description:
+      "Lesson this practice hangs under; null detaches it. Omit to leave it unchanged.",
+  })
+  @IsOptional()
+  @ValidateIf((o: ReorderStructureMaterialDto) => o.parent_material_id !== null)
+  @IsUUID()
+  parent_material_id?: string | null;
 }
 
 export class ReorderStructureModuleDto {

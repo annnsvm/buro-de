@@ -29,14 +29,15 @@ export class CreateCourseDto {
   price?: number;
 
   @ApiPropertyOptional({
-    example: ['Language', 'Integration'],
-    description: 'Теги для пошуку: Language, Integration, Culture & Life',
-    type: [String],
+    default: false,
+    description:
+      'Чи це інтеграційний курс. Саме це поле розділяє каталог на "мова" та "інтеграція" ' +
+      'і визначає вкладку в "Моєму навчанні". Раніше роль грав тег Integration, через що ' +
+      'поділ залежав від того, як учитель напише слово.',
   })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  tags?: string[];
+  @IsBoolean()
+  is_integration?: boolean;
 
   @ApiPropertyOptional({
     enum: Level,

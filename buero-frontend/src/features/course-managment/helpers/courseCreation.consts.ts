@@ -16,13 +16,3 @@ export const CURRENCY_OPTIONS: Array<{ value: CurrencySymbol; label: string }> =
   { value: '£', label: '£' },
 ];
 
-export const TAG_SUGGESTIONS = [
-  'Beginner',
-  'Grammar',
-  'Vocabulary',
-  'Listening',
-  'Speaking',
-  'Reading',
-  'Writing',
-] as const;
-

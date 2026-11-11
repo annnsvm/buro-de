@@ -366,14 +366,6 @@
       "module": "MODULE",
       "completed": "{{completed}}/{{total}} completed"
     },
-    "tags": {
-      "language": "Language",
-      "integration": "Integration",
-      "sociocultural": "Culture & Life",
-      "beginner": "Beginner",
-      "middle": "Middle",
-      "advanced": "Advanced"
-    },
     "trial": "Trial",
     "unpublished": "Unpublished",
     "whereToStart": {

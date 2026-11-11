@@ -33,16 +33,22 @@ export const createCourseSchema = z.object({
   price: z.string().trim(),
   durationHours: z.string().trim().optional().or(z.literal('')),
 
-  tags: z.array(
-    z.string().trim().min(1, { message: 'Тег не може бути порожнім' }),
-  ),
-
   level: z.union([levelSchema, z.literal('')]),
   /**
    * Only a course spanning several levels needs a top of the range, so an absent value is
    * the ordinary case and reads as empty rather than as missing.
    */
   levelTo: z.union([levelSchema, z.literal('')]),
+
+  /**
+   * Which half of the catalogue this course belongs to.
+   *
+   * A plain boolean, and now the only grouping a course carries. It used to be one of the
+   * tags, which was both undiscoverable - `Integration` was not among the tags the editor
+   * offered - and case-sensitive on the server but not on the page. The tags themselves are
+   * gone: nothing ever showed them to a student, and this was the only work they did.
+   */
+  isIntegration: z.boolean(),
 
   /**
    * How many modules a trial opens. Required, unlike the duration: a cleared field would
@@ -65,14 +71,6 @@ export const createCourseSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['price'],
       message: 'Ціна не може бути відʼємною',
-    });
-  }
-
-  if (values.tags.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['tags'],
-      message: 'Додайте хоча б один тег',
     });
   }
 

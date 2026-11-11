@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { Role } from "src/generated/prisma/enums";
 import { PrismaService } from "src/prisma/prisma.service";
@@ -252,6 +256,186 @@ describe("CourseModuleService", () => {
         where: { id: moduleId },
         data: { title: "New", orderIndex: 2 },
       });
+    });
+  });
+
+
+  /**
+   * Moving a practice between lessons.
+   *
+   * The author reported that practices could not be dragged at all. The order was being
+   * saved, but the list is drawn as a tree and puts every practice back under the lesson in
+   * its `parentMaterialId`, so the row sprang back. The order was never the thing to change
+   * here - the lesson was - and so the payload now carries it.
+   */
+  describe("reorderStructure: which lesson a practice hangs under", () => {
+    const otherModuleId = "nnnnnnnn-nnnn-nnnn-nnnn-nnnnnnnnnnnn";
+    const lessonOne = "11111111-1111-1111-1111-111111111111";
+    const lessonTwo = "22222222-2222-2222-2222-222222222222";
+    const practice = "33333333-3333-3333-3333-333333333333";
+    const faraway = "44444444-4444-4444-4444-444444444444";
+
+    /** One module with two lessons and a practice on the first, plus a lesson elsewhere. */
+    const tree = () => [
+      {
+        id: moduleId,
+        orderIndex: 0,
+        materials: [
+          {
+            id: lessonOne,
+            orderIndex: 0,
+            moduleId,
+            parentMaterialId: null,
+            type: "video",
+          },
+          {
+            id: practice,
+            orderIndex: 1,
+            moduleId,
+            parentMaterialId: lessonOne,
+            type: "practice",
+          },
+          {
+            id: lessonTwo,
+            orderIndex: 2,
+            moduleId,
+            parentMaterialId: null,
+            type: "video",
+          },
+        ],
+      },
+      {
+        id: otherModuleId,
+        orderIndex: 1,
+        materials: [
+          {
+            id: faraway,
+            orderIndex: 0,
+            moduleId: otherModuleId,
+            parentMaterialId: null,
+            type: "video",
+          },
+        ],
+      },
+    ];
+
+    const rows = (
+      items: { id: string; order_index: number; parent_material_id?: string | null }[],
+    ) => ({
+      modules: [{ id: moduleId, order_index: 0, materials: items }],
+    });
+
+    beforeEach(() => {
+      prisma.course.findUnique.mockResolvedValue({ id: courseId });
+      prisma.courseModule.findMany.mockResolvedValue(tree());
+      prisma.$transaction.mockImplementation(
+        async (fn: (tx: unknown) => Promise<void>) => fn(prisma),
+      );
+    });
+
+    it("writes the new lesson when a practice is moved to another", async () => {
+      await service.reorderStructure(
+        courseId,
+        rows([
+          { id: lessonOne, order_index: 0 },
+          { id: lessonTwo, order_index: 1 },
+          { id: practice, order_index: 2, parent_material_id: lessonTwo },
+        ]),
+      );
+
+      expect(prisma.courseMaterial.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: practice },
+          data: expect.objectContaining({ parentMaterialId: lessonTwo }),
+        }),
+      );
+    });
+
+    it("detaches a practice when the lesson is given as null", async () => {
+      await service.reorderStructure(
+        courseId,
+        rows([
+          { id: lessonOne, order_index: 0 },
+          { id: practice, order_index: 1, parent_material_id: null },
+        ]),
+      );
+
+      expect(prisma.courseMaterial.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: practice },
+          data: expect.objectContaining({ parentMaterialId: null }),
+        }),
+      );
+    });
+
+    /** Order alone must not quietly rewrite a lesson the author never touched. */
+    it("leaves the lesson alone when the payload omits it", async () => {
+      await service.reorderStructure(
+        courseId,
+        rows([
+          { id: practice, order_index: 0 },
+          { id: lessonOne, order_index: 1 },
+        ]),
+      );
+
+      const calls = prisma.courseMaterial.update.mock.calls as {
+        0: { where: { id: string }; data: Record<string, unknown> };
+      }[];
+      const forPractice = calls.find((call) => call[0].where.id === practice);
+      expect(forPractice).toBeDefined();
+      expect(forPractice![0].data).not.toHaveProperty("parentMaterialId");
+    });
+
+    it("refuses a lesson that is in a different module", async () => {
+      await expect(
+        service.reorderStructure(
+          courseId,
+          rows([{ id: practice, order_index: 0, parent_material_id: faraway }]),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.courseMaterial.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses a material hung under itself", async () => {
+      await expect(
+        service.reorderStructure(
+          courseId,
+          rows([{ id: practice, order_index: 0, parent_material_id: practice }]),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    /** The list draws one level, so a practice under a practice has nowhere to be drawn. */
+    it("refuses hanging one practice under another", async () => {
+      await expect(
+        service.reorderStructure(
+          courseId,
+          rows([
+            { id: lessonOne, order_index: 0 },
+            { id: practice, order_index: 1, parent_material_id: lessonOne },
+            {
+              id: lessonTwo,
+              order_index: 2,
+              parent_material_id: practice,
+            },
+          ]),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("refuses a lesson that is not in this course at all", async () => {
+      await expect(
+        service.reorderStructure(
+          courseId,
+          rows([
+            {
+              id: practice,
+              order_index: 0,
+              parent_material_id: "99999999-9999-9999-9999-999999999999",
+            },
+          ]),
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 

@@ -172,12 +172,15 @@ export class CourseMaterialService {
           content: dto.content as object,
           orderIndex: dto.order_index,
           /**
-           * Made by hand, so it is published by hand - which here means at once. A teacher
-           * who creates a lesson in the editor is looking at it and goes on to fill it; a
-           * draft would simply hide the thing she just made. The import is the opposite
-           * case, and it leaves this null on purpose.
+           * New is a draft, whatever made it.
+           *
+           * It used to publish on the spot, on the reasoning that a teacher who creates a
+           * lesson is looking at it anyway. That turned out to be the wrong way round: a
+           * material is created empty and filled afterwards, so publishing at creation put
+           * a blank lesson, and later a whole practice, in front of students while it was
+           * still being written. The import always left this null; now the editor does the
+           * same, and one button publishes it when it is ready.
            */
-          publishedAt: new Date(),
           ...(dto.quiz_mode !== undefined && { quizMode: dto.quiz_mode }),
           /** Null detaches a practice from its lesson; undefined leaves it where it is. */
           ...(dto.parent_material_id !== undefined && {

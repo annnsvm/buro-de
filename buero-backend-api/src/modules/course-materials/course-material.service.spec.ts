@@ -161,17 +161,39 @@ describe("CourseMaterialService", () => {
           title: "Intro",
           content: { youtube_video_id: "abc" },
           orderIndex: 0,
-          /**
-           * Visible at once, because a teacher who creates a lesson by hand is looking at
-           * it and goes on to fill it. The import is the opposite case and leaves this null.
-           */
-          publishedAt: expect.any(Date),
         },
       });
       expect(out.title).toBe("Intro");
     });
 
+    /**
+     * This used to assert the opposite - that creating a material set `publishedAt` and so
+     * published it at once. The author reported the consequence: a practice created by hand
+     * was in front of students before a single question was in it, with no way to hold it
+     * back. A material is made empty and filled afterwards, so new now means draft whatever
+     * made it, and one button publishes it when it is ready.
+     */
+    it("leaves a new material unpublished, whatever its type", async () => {
+      prisma.courseModule.findFirst.mockResolvedValue({ id: moduleId });
+      prisma.courseMaterial.create.mockResolvedValue({ id: materialId });
 
+      for (const type of [
+        CourseMaterialType.video,
+        CourseMaterialType.quiz,
+        CourseMaterialType.practice,
+      ]) {
+        prisma.courseMaterial.create.mockClear();
+        await service.create(courseId, moduleId, {
+          type,
+          title: "New",
+          content: {},
+          order_index: 0,
+        });
+
+        const sent = prisma.courseMaterial.create.mock.calls[0][0].data;
+        expect(sent.publishedAt).toBeUndefined();
+      }
+    });
   });
 
   describe("update", () => {

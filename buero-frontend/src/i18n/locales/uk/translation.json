@@ -374,14 +374,6 @@
       "module": "МОДУЛЬ",
       "completed": "{{completed}}/{{total}} пройдено"
     },
-    "tags": {
-      "language": "Мова",
-      "integration": "Інтеграція",
-      "sociocultural": "Культура та життя",
-      "beginner": "Початковий",
-      "middle": "Середній",
-      "advanced": "Просунутий"
-    },
     "trial": "Спробувати",
     "unpublished": "Не опубліковано",
     "whereToStart": {

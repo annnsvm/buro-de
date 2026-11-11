@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FormField, Input } from '@/components/ui';
 import { extractYouTubeVideoId } from '@/features/course-managment/helpers/extractYouTubeVideoId';
-import { formatSeconds } from '@/features/course-managment/helpers/formatSeconds';
-import { loadYoutubeIframeApi } from '@/helpers/youtubeIframeApi';
+import { useYoutubeDuration } from '@/features/course-managment/helpers/useYoutubeDuration';
 import { fetchYoutubePreview, type YoutubePreview } from '@/api/youtubeApi';
 import type { CourseMaterialVideoFieldsProps } from '@/types/features/courseManagment/CourseMaterialVideoFields.types';
 
 /**
  * Adding a video: paste the link, and the rest fills itself in.
  *
- * The title and the thumbnail come from YouTube through our own server; the length comes from the
- * player, which is the only thing that knows it without an API key. All three are only ever
+ * The title and the thumbnail come from YouTube through our own server; the length comes from
+ * the player, which is the only thing that knows it without an API key. All three are only ever
  * suggestions - every field stays editable, and nothing here can stop the form being saved if
  * YouTube is slow, private or unreachable.
  */
@@ -31,6 +30,16 @@ const CourseMaterialVideoFields: React.FC<
   /** Only a settled, eleven-character id is worth asking about. */
   const resolvedId = extractYouTubeVideoId(youtubeVideoId.trim()) ?? '';
 
+  /**
+   * The video this form opened on, which for a saved lesson is the one already stored.
+   * Kept so that opening a lesson to rename it does not quietly rewrite its length and leave
+   * the form looking unsaved.
+   */
+  const idAtOpen = useRef(resolvedId);
+
+  /** Which video the length on screen was read for, so an answer is taken only once. */
+  const filledFor = useRef<string | null>(null);
+
   const handleBlur = () => {
     const id = extractYouTubeVideoId(youtubeVideoId.trim());
     if (id && id !== youtubeVideoId.trim()) onYoutubeVideoIdChange(id);
@@ -43,6 +52,25 @@ const CourseMaterialVideoFields: React.FC<
     },
     [onYoutubeTitleFound],
   );
+
+  /**
+   * What to do with a length once YouTube gives one up.
+   *
+   * It is written in two cases: the field is empty, or this is a different video from the one
+   * the form opened on. A length a teacher corrected by hand is never overwritten.
+   */
+  const takeDuration = useCallback(
+    (duration: string) => {
+      if (filledFor.current === resolvedId) return;
+      const isSavedVideo = resolvedId === idAtOpen.current;
+      if (isSavedVideo && youtubeVideoDuration.trim()) return;
+      filledFor.current = resolvedId;
+      onYoutubeVideoDurationChange(duration);
+    },
+    [resolvedId, youtubeVideoDuration, onYoutubeVideoDurationChange],
+  );
+
+  const { isReading } = useYoutubeDuration(resolvedId, playerHost, takeDuration);
 
   useEffect(() => {
     if (!resolvedId) {
@@ -70,41 +98,6 @@ const CourseMaterialVideoFields: React.FC<
       cancelled = true;
     };
   }, [resolvedId, suggestTitle]);
-
-  /**
-   * A hidden player, purely to be asked how long the video is. It also proves the id plays at
-   * all - a video that will not load here would not have loaded for a student either.
-   */
-  useEffect(() => {
-    if (!resolvedId || !playerHost.current) return;
-    let cancelled = false;
-    let player: { destroy?: () => void } | null = null;
-
-    void loadYoutubeIframeApi()
-      .then(() => {
-        if (cancelled || !playerHost.current || !window.YT?.Player) return;
-        player = new window.YT.Player(playerHost.current, {
-          videoId: resolvedId,
-          events: {
-            onReady: (event) => {
-              if (cancelled) return;
-              const formatted = formatSeconds(event.target.getDuration?.() ?? 0);
-              if (formatted) onYoutubeVideoDurationChange(formatted);
-            },
-          },
-        });
-      })
-      .catch(() => {
-        /* No player, no automatic length - the field is still there to type into. */
-      });
-
-    return () => {
-      cancelled = true;
-      player?.destroy?.();
-    };
-    // The duration callback is stable enough; re-running on it would remount the player.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedId]);
 
   return (
     <>
@@ -161,6 +154,12 @@ const CourseMaterialVideoFields: React.FC<
           disabled={isSubmitting}
         />
       </FormField>
+      {/* Says why the field is still empty, so nobody starts typing over an answer on its way. */}
+      {isReading && !youtubeVideoDuration.trim() ? (
+        <p className="-mt-2 text-xs text-[var(--color-text-secondary)]">
+          Читаємо тривалість з YouTube…
+        </p>
+      ) : null}
     </>
   );
 };

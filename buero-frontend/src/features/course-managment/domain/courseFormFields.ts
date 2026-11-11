@@ -6,7 +6,6 @@ export const courseFormFields = (
   title: values.title.trim(),
   description: values.description?.trim() ?? '',
   language: values.language,
-  tags: values.tags,
   price: Number(values.price.trim()),
   level: values.level,
   /**
@@ -22,4 +21,9 @@ export const courseFormFields = (
    * and "I set the free preview to none" is exactly the change that must not be dropped.
    */
   trial_module_count: Number(values.trialModuleCount.trim()),
+  /**
+   * Always sent, including false. It decides which half of the catalogue the course shows
+   * in, so "this is not an integration course" has to be sendable, not just omittable.
+   */
+  is_integration: values.isIntegration,
 });
