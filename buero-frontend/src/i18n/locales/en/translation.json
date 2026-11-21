@@ -88,7 +88,9 @@
     "copyright": "© {{year}} Buro.de. All rights reserved.",
     "terms": "Terms of Service",
     "cookies": "Cookies Settings",
-    "legalNav": "Legal links"
+    "legalNav": "Legal links",
+    "payment": "Payment and refunds",
+    "offer": "Public offer"
   },
   "landing": {
     "benefitLifetimeDesc": "Buy once and keep access - no renewal, no end date.",
@@ -117,7 +119,7 @@
     "faqA4": "Language courses (A1–B2) and integration courses about life in Germany - so you learn the language and how to use it day to day.",
     "faqA5": "Yes. Büro.de works in the browser on your phone, tablet, and computer. You do not need to install an app.",
     "faqA6": "The course appears in My Learning. You can open any lesson, track what you have completed, and continue from where you left off.",
-    "faqA7": "Refund terms will be published here. If you have a question about a purchase, please contact us.",
+    "faqA7": "Yes. Within 14 days of payment we return the full amount, as long as you have not opened a single paid lesson. If the course does not match its description, or access never opened, we refund after that period too. Your progress is kept either way: buy the course again and you carry on where you stopped.",
     "faqA8": "You can leave your contact details and book a 1-on-1 session with a teacher - for personal explanations when self-study is not enough.",
     "faqQ1": "Is the first module really free?",
     "faqQ2": "How long do I have access to the course?",
@@ -257,7 +259,8 @@
     "whyDescription": "Büro.de combines German language courses with integration courses. You learn the language and also where and how to use it - from everyday situations to bureaucracy.",
     "whyFeatures": "Why Büro.de",
     "whySection": "WHY BÜRO.DE",
-    "whyTitle": "Language and life in Germany - in one place"
+    "whyTitle": "Language and life in Germany - in one place",
+    "faqLinkPayment": "Payment and refund terms"
   },
   "courses": {
     "buyCourse": "Buy Course",

@@ -23,6 +23,8 @@ const NotFoundPage = lazy(() => import('../pages/NotFoundPage/NotFoundPage'));
 const PrivacyPolicyPage = lazy(() => import('../pages/PrivacyPolicyPage/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('../pages/TermsOfServicePage/TermsOfServicePage'));
 const CookiesPolicyPage = lazy(() => import('../pages/CookiesPolicyPage/CookiesPolicyPage'));
+const PaymentPolicyPage = lazy(() => import('../pages/PaymentPolicyPage/PaymentPolicyPage'));
+const PublicOfferPage = lazy(() => import('../pages/PublicOfferPage/PublicOfferPage'));
 
 export const router = createBrowserRouter([
   {
@@ -94,6 +96,14 @@ export const router = createBrowserRouter([
           {
             path: ROUTES.COOKIES,
             element: <CookiesPolicyPage />,
+          },
+          {
+            path: ROUTES.PAYMENT,
+            element: <PaymentPolicyPage />,
+          },
+          {
+            path: ROUTES.OFFER,
+            element: <PublicOfferPage />,
           },
           {
             path: ROUTES.MY_LEARNING,

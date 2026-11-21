@@ -13,7 +13,11 @@ describe("PaymentFulfillmentService", () => {
       update: jest.Mock;
       updateMany: jest.Mock;
     };
-    userCourseAccess: { upsert: jest.Mock };
+    userCourseAccess: {
+      upsert: jest.Mock;
+      findUnique: jest.Mock;
+      delete: jest.Mock;
+    };
     /** Read after the transaction, for the receipt. */
     user: { findUnique: jest.Mock };
     course: { findUnique: jest.Mock };
@@ -31,6 +35,7 @@ describe("PaymentFulfillmentService", () => {
   const courseId = "22222222-2222-2222-2222-222222222222";
   const paymentId = "33333333-3333-3333-3333-333333333333";
   const orderReference = "bd-1700000000000-abcd1234";
+  const accessId = "44444444-4444-4444-4444-444444444444";
 
   beforeEach(async () => {
     prisma = {
@@ -45,7 +50,17 @@ describe("PaymentFulfillmentService", () => {
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
-      userCourseAccess: { upsert: jest.fn() },
+      userCourseAccess: {
+        upsert: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue({
+          id: accessId,
+          userId,
+          courseId,
+          accessType: "purchase",
+          paymentId,
+        }),
+        delete: jest.fn(),
+      },
       /** Read after the transaction, for the receipt. */
       user: {
         findUnique: jest.fn().mockResolvedValue({
@@ -95,6 +110,156 @@ describe("PaymentFulfillmentService", () => {
     }).compile();
 
     service = module.get(PaymentFulfillmentService);
+  });
+
+  /**
+   * A refund takes the course back.
+   *
+   * It used to write a line in the log and leave the course open, which made giving the money
+   * back a gift rather than a reversal. The author asked for the opposite outright: refunded
+   * means the student no longer has the course.
+   */
+  describe("taking a course back after a refund", () => {
+    beforeEach(() => {
+      prisma.payment.findUnique.mockResolvedValue({
+        id: paymentId,
+        userId,
+        courseId,
+        status: "paid",
+        /** Both are NOT NULL on the table, and the letter quotes them. */
+        amount: 30,
+        currency: "eur",
+      });
+    });
+
+    it("marks the payment refunded", async () => {
+      await service.markRefunded(orderReference);
+      expect(prisma.payment.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: paymentId },
+          data: { status: "refunded" },
+        }),
+      );
+    });
+
+    it("closes the course again", async () => {
+      const out = await service.markRefunded(orderReference);
+      expect(prisma.userCourseAccess.delete).toHaveBeenCalledWith({
+        where: { id: accessId },
+      });
+      expect(out.revoked).toBe(true);
+    });
+
+    /**
+     * Deleted rather than downgraded, so the student can start the free trial again: the
+     * trial is refused while any access row exists. A refund puts them back where they were
+     * before they paid, not somewhere new.
+     */
+    it("leaves no access row behind, so a trial can be started again", async () => {
+      await service.markRefunded(orderReference);
+      expect(prisma.userCourseAccess.delete).toHaveBeenCalled();
+      expect(prisma.userCourseAccess.upsert).not.toHaveBeenCalled();
+    });
+
+    /**
+     * A student refunded once and buying again holds access from the newer payment, and a
+     * teacher may have opened the course by hand. Neither is this refund's to take.
+     */
+    it("does not take access that another payment granted", async () => {
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        id: accessId,
+        userId,
+        courseId,
+        accessType: "purchase",
+        paymentId: "99999999-9999-9999-9999-999999999999",
+      });
+
+      const out = await service.markRefunded(orderReference);
+
+      expect(prisma.userCourseAccess.delete).not.toHaveBeenCalled();
+      expect(out.revoked).toBe(false);
+      /** The payment is still recorded as refunded, whatever happened to the access. */
+      expect(prisma.payment.update).toHaveBeenCalled();
+    });
+
+    it("does not touch a course a teacher opened by hand", async () => {
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        id: accessId,
+        userId,
+        courseId,
+        accessType: "trial",
+        paymentId: null,
+      });
+
+      const out = await service.markRefunded(orderReference);
+      expect(prisma.userCourseAccess.delete).not.toHaveBeenCalled();
+      expect(out.revoked).toBe(false);
+    });
+
+    it("says nothing happened when the order is unknown", async () => {
+      prisma.payment.findUnique.mockResolvedValue(null);
+      const out = await service.markRefunded("bd-nothing-here");
+      expect(out.revoked).toBe(false);
+      expect(prisma.payment.update).not.toHaveBeenCalled();
+      expect(prisma.userCourseAccess.delete).not.toHaveBeenCalled();
+    });
+
+    /** WayForPay can send the same callback twice; the second must not throw. */
+    it("is safe to run twice", async () => {
+      prisma.payment.findUnique.mockResolvedValue({
+        id: paymentId,
+        userId,
+        courseId,
+        status: "refunded",
+      });
+      prisma.userCourseAccess.findUnique.mockResolvedValue(null);
+
+      const out = await service.markRefunded(orderReference);
+
+      expect(out.revoked).toBe(false);
+      /** Already refunded, so the status is left alone rather than written again. */
+      expect(prisma.payment.update).not.toHaveBeenCalled();
+    });
+
+    it("tells the student the course has closed", async () => {
+      await service.markRefunded(orderReference);
+      expect(mailer.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "anna@example.com" }),
+      );
+      const sent = mailer.send.mock.calls[0][0] as { subject: string };
+      expect(sent.subject).toContain("Deutsch A2.1");
+    });
+
+    /** Nothing closed, so there is nothing to tell them about. */
+    it("stays quiet when the access was not this payment's to take", async () => {
+      prisma.userCourseAccess.findUnique.mockResolvedValue({
+        id: accessId,
+        userId,
+        courseId,
+        accessType: "purchase",
+        paymentId: "99999999-9999-9999-9999-999999999999",
+      });
+
+      await service.markRefunded(orderReference);
+      expect(mailer.send).not.toHaveBeenCalled();
+    });
+
+    /** The course is closed either way; a mail server being down must not undo that. */
+    it("still closes the course when the letter cannot be sent", async () => {
+      mailer.send.mockRejectedValue(new Error("smtp is down"));
+
+      const out = await service.markRefunded(orderReference);
+
+      expect(out.revoked).toBe(true);
+      expect(prisma.userCourseAccess.delete).toHaveBeenCalled();
+    });
+
+    it("keeps the lessons the student already finished", async () => {
+      await service.markRefunded(orderReference);
+      expect(
+        (prisma as unknown as { courseProgress?: unknown }).courseProgress,
+      ).toBeUndefined();
+    });
   });
 
   describe("reconcilePendingForUser", () => {

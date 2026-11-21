@@ -2,7 +2,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { UserCourseAccessType } from "src/generated/prisma/enums";
 import { PrismaService } from "src/prisma/prisma.service";
 import { MailerService } from "../mail/mailer.service";
-import { buildPurchaseEmail } from "../auth/auth-email.templates";
+import {
+  buildPurchaseEmail,
+  buildRefundEmail,
+} from "../auth/auth-email.templates";
 import { WayForPayService } from "../wayforpay/wayforpay.service";
 
 export const PAYMENT_STATUS = {
@@ -185,6 +188,56 @@ export class PaymentFulfillmentService {
    * fulfilment that has already happened - the student has their course either way, and a
    * missing receipt is a smaller problem than a course that locked itself again.
    */
+  private async announceRefund(
+    paymentId: string,
+    userId: string,
+    courseId: string,
+  ): Promise<void> {
+    try {
+      const [user, course, payment] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true, name: true, language: true },
+        }),
+        this.prisma.course.findUnique({
+          where: { id: courseId },
+          select: { title: true },
+        }),
+        this.prisma.payment.findUnique({
+          where: { id: paymentId },
+          select: { amount: true, currency: true },
+        }),
+      ]);
+      if (!user || !course || !payment) return;
+
+      const siteUrl = this.mailer.getSiteUrl();
+      const { logoUrl } = this.mailer.resolveLogo();
+      const mail = buildRefundEmail({
+        name: user.name,
+        courseTitle: course.title,
+        amount: Number(payment.amount).toFixed(2),
+        currency: payment.currency,
+        /** The language the account is set to; the emails know only these two. */
+        locale: user.language === "de" ? "en" : "uk",
+        logoUrl,
+        siteUrl,
+      });
+      await this.mailer.send({
+        to: user.email,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+      });
+    } catch (error) {
+      /** The course is closed either way; a failed letter must not undo that. */
+      this.logger.error(
+        `Course is closed but the refund notice did not go out for payment ${paymentId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
   private async announcePurchase(
     paymentId: string,
     userId: string,
@@ -236,6 +289,79 @@ export class PaymentFulfillmentService {
   }
 
   /** Фіксує неуспішний платіж; доступ не змінюється. */
+  /**
+   * Money given back, so the course goes back too.
+   *
+   * It used to only write a line in the log and leave the course open, which made a refund a
+   * gift rather than a reversal. The access row is deleted rather than downgraded: a refund
+   * undoes the purchase, and with no row left the student can start the free trial again, so
+   * this puts them back exactly where they were before they paid.
+   *
+   * What it never touches is their progress. Lessons they finished stay finished, so buying
+   * again picks up where they left off rather than starting the course over.
+   */
+  async markRefunded(orderReference: string): Promise<{ revoked: boolean }> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { orderReference },
+    });
+
+    if (!payment) {
+      this.logger.warn(
+        `Payment for order ${orderReference} not found, nothing to take back`,
+      );
+      return { revoked: false };
+    }
+
+    const access = payment.courseId
+      ? await this.prisma.userCourseAccess.findUnique({
+          where: {
+            userId_courseId: {
+              userId: payment.userId,
+              courseId: payment.courseId,
+            },
+          },
+        })
+      : null;
+
+    /**
+     * Only the access this very payment bought.
+     *
+     * A student who was refunded once and bought again holds access from the newer payment,
+     * and a teacher may have opened the course by hand. Neither is this refund's to take.
+     */
+    const revokes = access != null && access.paymentId === payment.id;
+
+    await this.prisma.$transaction(async (tx) => {
+      if (payment.status !== PAYMENT_STATUS.refunded) {
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: { status: PAYMENT_STATUS.refunded },
+        });
+      }
+      if (revokes && access) {
+        await tx.userCourseAccess.delete({ where: { id: access.id } });
+      }
+    });
+
+    if (revokes) {
+      this.logger.log(
+        `Course ${payment.courseId} closed again for user ${payment.userId} after refund of order ${orderReference}`,
+      );
+      /**
+       * Only when the course really closed, and only on the pass that closed it. A course
+       * that vanishes from "My learning" with no word reads as a fault rather than as the
+       * refund the student asked for.
+       */
+      await this.announceRefund(payment.id, payment.userId, payment.courseId!);
+    } else {
+      this.logger.log(
+        `Order ${orderReference} refunded; access was not this payment's to take, left as it is`,
+      );
+    }
+
+    return { revoked: revokes };
+  }
+
   async markFailed(orderReference: string, reason?: string): Promise<void> {
     const updated = await this.prisma.payment.updateMany({
       where: { orderReference, status: PAYMENT_STATUS.pending },

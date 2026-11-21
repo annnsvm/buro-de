@@ -26,6 +26,7 @@ describe("the lesson offered as continue", () => {
     courseProgress: { findMany: jest.Mock };
     studentProfile: { findUnique: jest.Mock };
     courseModule: { findMany: jest.Mock };
+    courseResumePoint: { findFirst: jest.Mock };
   };
 
   const row = (
@@ -67,6 +68,8 @@ describe("the lesson offered as continue", () => {
       courseProgress: { findMany: jest.fn().mockResolvedValue([]) },
       studentProfile: { findUnique: jest.fn().mockResolvedValue(null) },
       courseModule: { findMany: jest.fn().mockResolvedValue([]) },
+      /** No bookmark by default: these cases are about the fallback rule. */
+      courseResumePoint: { findFirst: jest.fn().mockResolvedValue(null) },
     };
 
     const mod: TestingModule = await Test.createTestingModule({
@@ -129,6 +132,136 @@ describe("the lesson offered as continue", () => {
   it("offers nothing to a student who has done nothing", async () => {
     arrange([]);
 
+    await expect(resume()).resolves.toBeNull();
+  });
+});
+
+
+/**
+ * Where the student was actually reading.
+ *
+ * Progress records only what was *finished*, so it could never see a lesson opened and left
+ * half-read: the card pointed at the first unfinished lesson, often one already read past.
+ * Every lesson a student opens now writes a resume point, and that is the answer when there
+ * is one. The author asked for exactly this: the last lesson opened, not the last finished.
+ */
+describe("continue, when the student has a bookmark", () => {
+  let service: ProgressService;
+  let prisma: {
+    courseProgress: { findMany: jest.Mock };
+    studentProfile: { findUnique: jest.Mock };
+    courseModule: { findMany: jest.Mock };
+    courseResumePoint: { findFirst: jest.Mock };
+  };
+
+  const bookmark = (courseId: string, materialId: string, title: string) => ({
+    courseId,
+    courseMaterialId: materialId,
+    course: { title, level: "A2" },
+  });
+
+  beforeEach(async () => {
+    prisma = {
+      courseProgress: { findMany: jest.fn().mockResolvedValue([]) },
+      studentProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+      courseModule: { findMany: jest.fn().mockImplementation(
+        (args: { select?: { _count?: unknown } }) => {
+          if (args.select && "_count" in args.select) return Promise.resolve([]);
+          return Promise.resolve([
+            {
+              materials: [
+                { id: "a21-m1", title: "Lesson 1" },
+                { id: "a21-m2", title: "Lesson 2" },
+                { id: "a21-m3", title: "Lesson 3" },
+              ],
+            },
+          ]);
+        },
+      ) },
+      courseResumePoint: { findFirst: jest.fn().mockResolvedValue(null) },
+    };
+
+    const mod: TestingModule = await Test.createTestingModule({
+      providers: [
+        ProgressService,
+        { provide: PrismaService, useValue: prisma as unknown as PrismaService },
+        { provide: CourseMaterialService, useValue: {} },
+      ],
+    }).compile();
+    service = mod.get(ProgressService);
+  });
+
+  const resume = async () => (await service.getMyProgress(USER)).resume;
+
+  it("offers the lesson they last opened, not the next unfinished one", async () => {
+    prisma.courseResumePoint.findFirst.mockResolvedValue(
+      bookmark(A21, "a21-m3", "Deutsch A2.1"),
+    );
+    prisma.courseProgress.findMany.mockResolvedValue([]);
+
+    await expect(resume()).resolves.toMatchObject({
+      course_id: A21,
+      material_id: "a21-m3",
+      lesson_number: 3,
+    });
+  });
+
+  /**
+   * The case the author described: lesson 3 opened and left half-read while lessons 1 and 2
+   * are finished. The old rule offered lesson 3 as "first unfinished" by luck; this one
+   * offers it because that is where they were - and it still works when they have read
+   * ahead to a lesson they never finished.
+   */
+  it("offers a lesson read past, which the old rule could not", async () => {
+    prisma.courseResumePoint.findFirst.mockResolvedValue(
+      bookmark(A21, "a21-m1", "Deutsch A2.1"),
+    );
+    prisma.courseProgress.findMany.mockResolvedValue([
+      {
+        courseId: A21,
+        courseMaterialId: "a21-m1",
+        completedAt: new Date(Date.UTC(2026, 9, 20)),
+        course: { id: A21, title: "Deutsch A2.1", level: "A2" },
+        courseMaterial: { id: "a21-m1" },
+      },
+    ]);
+
+    /** Lesson 1 is finished, so the old rule would have said lesson 2. */
+    await expect(resume()).resolves.toMatchObject({ material_id: "a21-m1" });
+  });
+
+  it("takes the course from the bookmark as well as the lesson", async () => {
+    prisma.courseResumePoint.findFirst.mockResolvedValue(
+      bookmark(A21, "a21-m2", "Deutsch A2.1"),
+    );
+    prisma.courseProgress.findMany.mockResolvedValue([
+      {
+        courseId: A1,
+        courseMaterialId: "a1-m1",
+        completedAt: new Date(Date.UTC(2026, 9, 29)),
+        course: { id: A1, title: "Deutsch A1", level: "A1" },
+        courseMaterial: { id: "a1-m1" },
+      },
+    ]);
+
+    await expect(resume()).resolves.toMatchObject({
+      course_id: A21,
+      course_title: "Deutsch A2.1",
+      material_id: "a21-m2",
+    });
+  });
+
+  /** A lesson deleted since it was opened must not leave the card blank. */
+  it("falls back to the old rule when the bookmarked lesson is gone", async () => {
+    prisma.courseResumePoint.findFirst.mockResolvedValue(
+      bookmark(A21, "deleted-material", "Deutsch A2.1"),
+    );
+    prisma.courseProgress.findMany.mockResolvedValue([]);
+
+    await expect(resume()).resolves.toMatchObject({ material_id: "a21-m1" });
+  });
+
+  it("offers nothing to a student with neither a bookmark nor progress", async () => {
     await expect(resume()).resolves.toBeNull();
   });
 });

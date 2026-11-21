@@ -21,6 +21,8 @@ const assertPageContent = (page: PublicPage, appHtml: string): void => {
     '/privacy': 'Політика конфіденційності',
     '/terms': 'Умови використання',
     '/cookies': 'Політика використання файлів Cookie',
+    '/payment': 'Оплата і повернення коштів',
+    '/offer': 'Публічна оферта',
   };
 
   const snippet = requiredSnippets[page.path];

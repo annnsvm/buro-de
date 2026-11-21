@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Container } from '@/components/layout';
+import { SELLER } from '@/seo/seller';
 import { ROUTES } from '@/helpers/routes';
 
 const sectionTitleClass =
@@ -11,10 +12,10 @@ const listClass = 'mt-3 list-disc space-y-2 pl-5 text-base leading-relaxed text-
 
 const contactEmail = (
   <a
-    href="mailto:burode452@gmail.com"
+    href={`mailto:${SELLER.email}`}
     className="text-[var(--color-primary)] underline hover:text-[var(--color-primary-hover)]"
   >
-    burode452@gmail.com
+    {SELLER.email}
   </a>
 );
 
@@ -213,11 +214,11 @@ const CookiesPolicyPage = () => {
             <p className={paragraphClass}>
               BÜRO.DE
               <br />
-              ФОП Самойлова Анна
+              ФОП {SELLER.name}
               <br />
               Адреса:
               <br />
-              Україна, м. Київ, вул. Іоанна Павла II, 6/1
+              {SELLER.address}
               <br />
               Email:
               <br />

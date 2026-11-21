@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Container } from '@/components/layout';
+import { SELLER } from '@/seo/seller';
 import { ROUTES } from '@/helpers/routes';
 
 const sectionTitleClass =
@@ -11,10 +12,10 @@ const listClass = 'mt-3 list-disc space-y-2 pl-5 text-base leading-relaxed text-
 
 const contactEmail = (
   <a
-    href="mailto:burode452@gmail.com"
+    href={`mailto:${SELLER.email}`}
     className="text-[var(--color-primary)] underline hover:text-[var(--color-primary-hover)]"
   >
-    burode452@gmail.com
+    {SELLER.email}
   </a>
 );
 
@@ -49,13 +50,13 @@ const TermsOfServicePage = () => {
             <p className={paragraphClass}>Оператор платформи:</p>
             <p className={paragraphClass}>
               <strong className="font-semibold text-[var(--color-text-primary)]">
-                ФОП Самойлова Анна
+                ФОП {SELLER.name}
               </strong>
             </p>
             <p className={paragraphClass}>
               Адреса:
               <br />
-              Україна, м. Київ, вул. Іоанна Павла II, 6/1
+              {SELLER.address}
             </p>
             <p className={paragraphClass}>
               Email:
@@ -202,7 +203,15 @@ const TermsOfServicePage = () => {
             <p className={paragraphClass}>Вартість курсів зазначається на сайті BÜRO.DE.</p>
             <p className={subSectionTitleClass}>7.4.</p>
             <p className={paragraphClass}>
-              Умови повернення коштів регулюються Публічною офертою BÜRO.DE.
+              Умови повернення коштів визначені{' '}
+              <Link to={ROUTES.OFFER} className="text-[var(--color-primary)] underline hover:text-[var(--color-primary-hover)]">
+                Публічною офертою
+              </Link>{' '}
+              і стисло викладені на сторінці{' '}
+              <Link to={ROUTES.PAYMENT} className="text-[var(--color-primary)] underline hover:text-[var(--color-primary-hover)]">
+                Оплата і повернення коштів
+              </Link>
+              .
             </p>
 
             <h2 className={sectionTitleClass}>8. Відповідальність користувача</h2>
@@ -303,9 +312,9 @@ const TermsOfServicePage = () => {
             <p className={paragraphClass}>
               BÜRO.DE
               <br />
-              ФОП Самойлова Анна
+              ФОП {SELLER.name}
               <br />
-              Україна, м. Київ, вул. Іоанна Павла II, 6/1
+              {SELLER.address}
               <br />
               Email:
               <br />

@@ -12,6 +12,8 @@ import { DEFAULT_LOCALE } from '@/i18n/constants';
 import CookiesPolicyPage from '@/pages/CookiesPolicyPage/CookiesPolicyPage';
 import CoursesCatalogPage from '@/pages/CoursesCatalogPage/CoursesCatalogPage';
 import HomePage from '@/pages/HomePage/HomePage';
+import PaymentPolicyPage from '@/pages/PaymentPolicyPage/PaymentPolicyPage';
+import PublicOfferPage from '@/pages/PublicOfferPage/PublicOfferPage';
 import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage/PrivacyPolicyPage';
 import TermsOfServicePage from '@/pages/TermsOfServicePage/TermsOfServicePage';
 import { rootReducer } from '@/redux/rootReducer';
@@ -30,6 +32,8 @@ const PrerenderApp = ({ url }: { url: string }) => (
               <Route path={ROUTES.PRIVACY} element={<PrivacyPolicyPage />} />
               <Route path={ROUTES.TERMS} element={<TermsOfServicePage />} />
               <Route path={ROUTES.COOKIES} element={<CookiesPolicyPage />} />
+              <Route path={ROUTES.PAYMENT} element={<PaymentPolicyPage />} />
+              <Route path={ROUTES.OFFER} element={<PublicOfferPage />} />
             </Route>
           </Routes>
         </ModalProvider>

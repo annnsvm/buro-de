@@ -27,6 +27,12 @@ const FooterBottomBar: React.FC = () => {
           <Link to={ROUTES.COOKIES} className={linkClass}>
             {t('footer.cookies')}
           </Link>
+          <Link to={ROUTES.PAYMENT} className={linkClass}>
+            {t('footer.payment')}
+          </Link>
+          <Link to={ROUTES.OFFER} className={linkClass}>
+            {t('footer.offer')}
+          </Link>
         </nav>
       </Container>
     </div>
