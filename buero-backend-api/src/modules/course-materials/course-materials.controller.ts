@@ -112,27 +112,18 @@ export class CourseMaterialsController {
       courseId,
       moduleId,
     );
-    const material = await this.courseMaterialService.findOne(
+    /**
+     * No bookmark is written here. This endpoint is the editor's: a student never calls it,
+     * because the whole course tree arrives in one request and opening a lesson is
+     * navigation inside the page. The lesson the student is reading is reported explicitly
+     * by `POST /progress/opened`.
+     */
+    return this.courseMaterialService.findOne(
       courseId,
       moduleId,
       id,
       user.role,
     );
-
-    /**
-     * Only a student's own reading is a bookmark. A teacher opening a lesson to edit it is
-     * not "where I left off", and would otherwise overwrite their own students' view of it
-     * if they ever studied the course themselves.
-     */
-    if (user.role !== Role.teacher) {
-      await this.courseMaterialService.rememberOpenedLesson(
-        user.id,
-        courseId,
-        id,
-      );
-    }
-
-    return material;
   }
 
   @Get(":id/questions")

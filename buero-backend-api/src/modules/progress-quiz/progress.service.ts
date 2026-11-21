@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -88,6 +89,46 @@ export class ProgressService {
    * The old rule remains underneath, for a student who has finished lessons but not opened
    * one since this shipped, and for a resume point whose lesson has since been deleted.
    */
+  /**
+   * Remembers the lesson a student has just opened, so "continue" leads back to it.
+   *
+   * Progress records only what was *finished*, which cannot see a lesson opened and left
+   * half-read - and that was the complaint: the card kept offering the first unfinished
+   * lesson, often one already read past.
+   *
+   * The material is checked against the course before anything is written: a bookmark is
+   * read back later and must never name a lesson of a course the student cannot open.
+   */
+  async markLessonOpened(
+    userId: string,
+    courseId: string,
+    courseMaterialId: string,
+  ): Promise<void> {
+    const material = await this.prisma.courseMaterial.findFirst({
+      where: { id: courseMaterialId, module: { courseId } },
+      select: { id: true },
+    });
+    if (!material) {
+      throw new NotFoundException(
+        `Матеріал ${courseMaterialId} не належить курсу ${courseId}`,
+      );
+    }
+
+    const access = await this.prisma.userCourseAccess.findUnique({
+      where: { userId_courseId: { userId, courseId } },
+      select: { id: true },
+    });
+    if (!access) {
+      throw new ForbiddenException("Немає доступу до цього курсу");
+    }
+
+    await this.prisma.courseResumePoint.upsert({
+      where: { userId_courseId: { userId, courseId } },
+      create: { userId, courseId, courseMaterialId },
+      update: { courseMaterialId, openedAt: new Date() },
+    });
+  }
+
   private async resumeLesson(
     userId: string,
     progressRows: {

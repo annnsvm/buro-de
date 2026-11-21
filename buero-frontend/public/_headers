@@ -16,5 +16,19 @@
 /cookies/*
   Cache-Control: public, max-age=0, must-revalidate
 
+/payment/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/offer/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Hashed filenames, so these are safe to keep forever. Must stay ABOVE the catch-all.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Everything else is the SPA shell, served by the /* fallback. Without this, a route like
+# /purchase/success can be cached by a browser in whatever state it was served in - and a
+# copy caught mid-deploy, with no <script> in it, becomes a permanent white screen that
+# survives a reload, because the reload reads that same cached copy.
+/*
+  Cache-Control: public, max-age=0, must-revalidate

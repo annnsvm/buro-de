@@ -62,3 +62,27 @@ export const completeCourseMaterial = async (
   const { data } = await apiInstance.post(API_ENDPOINTS.progress.complete(courseId, moduleId, materialId), {});
   return data;
 };
+
+/**
+ * Tells the server which lesson the student has just opened.
+ *
+ * It has to be said explicitly: the whole course tree arrives in one request and moving
+ * between lessons is navigation inside the page, so without this the server never learns
+ * that anything was read and "continue" falls back to guessing from finished lessons.
+ *
+ * Never throws. A lost bookmark is a far smaller harm than a lesson that will not open, so
+ * a failure here must not reach the page.
+ */
+export const markLessonOpened = async (
+  courseId: string,
+  courseMaterialId: string,
+): Promise<void> => {
+  try {
+    await apiInstance.post(API_ENDPOINTS.progress.opened, {
+      course_id: courseId,
+      course_material_id: courseMaterialId,
+    });
+  } catch {
+    /* The lesson is open either way. */
+  }
+};
