@@ -1,3 +1,4 @@
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CourseMaterialService } from "../course-materials/course-material.service";
@@ -263,5 +264,83 @@ describe("continue, when the student has a bookmark", () => {
 
   it("offers nothing to a student with neither a bookmark nor progress", async () => {
     await expect(resume()).resolves.toBeNull();
+  });
+});
+
+
+/**
+ * Reporting that a lesson was opened.
+ *
+ * The first attempt hung this on `GET .../course-materials/:id`, which only the editor
+ * calls: a student receives the whole course tree in one request and moves between lessons
+ * inside the page, asking the server for nothing. So nothing was ever written, and
+ * "continue" went on guessing from finished work - exactly the bug it was meant to fix.
+ *
+ * Hence a route of its own, and these tests check it writes, and refuses what it should.
+ */
+describe('reporting that a lesson was opened', () => {
+  let service: ProgressService;
+  let prisma: {
+    courseMaterial: { findFirst: jest.Mock };
+    userCourseAccess: { findUnique: jest.Mock };
+    courseResumePoint: { upsert: jest.Mock };
+  };
+
+  const COURSE = 'course-a21';
+  const MATERIAL = 'a21-m3';
+
+  beforeEach(async () => {
+    prisma = {
+      courseMaterial: { findFirst: jest.fn().mockResolvedValue({ id: MATERIAL }) },
+      userCourseAccess: { findUnique: jest.fn().mockResolvedValue({ id: 'access-1' }) },
+      courseResumePoint: { upsert: jest.fn() },
+    };
+
+    const mod: TestingModule = await Test.createTestingModule({
+      providers: [
+        ProgressService,
+        { provide: PrismaService, useValue: prisma as unknown as PrismaService },
+        { provide: CourseMaterialService, useValue: {} },
+      ],
+    }).compile();
+    service = mod.get(ProgressService);
+  });
+
+  it('writes the bookmark for this course', async () => {
+    await service.markLessonOpened(USER, COURSE, MATERIAL);
+
+    expect(prisma.courseResumePoint.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId_courseId: { userId: USER, courseId: COURSE } },
+        create: { userId: USER, courseId: COURSE, courseMaterialId: MATERIAL },
+      }),
+    );
+  });
+
+  /** One bookmark per course: opening a second lesson moves it, it does not add a row. */
+  it('moves the bookmark rather than adding another', async () => {
+    await service.markLessonOpened(USER, COURSE, MATERIAL);
+    const call = prisma.courseResumePoint.upsert.mock.calls[0][0] as {
+      update: { courseMaterialId: string; openedAt: Date };
+    };
+    expect(call.update.courseMaterialId).toBe(MATERIAL);
+    expect(call.update.openedAt).toBeInstanceOf(Date);
+  });
+
+  /** A bookmark is read back later, so it must never name a lesson of another course. */
+  it('refuses a material that is not in that course', async () => {
+    prisma.courseMaterial.findFirst.mockResolvedValue(null);
+    await expect(
+      service.markLessonOpened(USER, COURSE, 'someone-elses-lesson'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.courseResumePoint.upsert).not.toHaveBeenCalled();
+  });
+
+  it('refuses a course the student has no access to', async () => {
+    prisma.userCourseAccess.findUnique.mockResolvedValue(null);
+    await expect(
+      service.markLessonOpened(USER, COURSE, MATERIAL),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.courseResumePoint.upsert).not.toHaveBeenCalled();
   });
 });

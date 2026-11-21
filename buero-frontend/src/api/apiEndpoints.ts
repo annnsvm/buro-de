@@ -114,6 +114,7 @@ export const API_ENDPOINTS = {
   },
   progress: {
     me: '/progress/me',
+    opened: '/progress/opened',
     course: (courseId: string) => `/courses/${courseId}/progress`,
     complete: (courseId: string, moduleId: string, materialId: string) =>
       `/courses/${courseId}/modules/${moduleId}/materials/${materialId}/complete`,

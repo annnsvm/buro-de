@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { NavLink, useParams, useSearchParams } from 'react-router-dom';
 
 import { getCachedCourseProgress, getCachedCourseTree } from '@/api/courseWorkspaceCache';
-import { completeCourseMaterial } from '@/api/progressApi';
+import { completeCourseMaterial, markLessonOpened } from '@/api/progressApi';
 import type { CourseModule } from '@/features/courses-catalog/CourseStructure';
 import {
   CourseLearningSidebar,
@@ -289,6 +289,22 @@ const CoursePage: React.FC = () => {
    * silent on failure - a student in the middle of a lesson should not be interrupted by a
    * bookkeeping error, and the next visit records it again.
    */
+  /**
+   * Tells the server which lesson is open, so "continue" leads back here.
+   *
+   * Opening a lesson asks the server for nothing - the whole course tree came in one
+   * request and this is navigation inside the page - so unless it is reported, the server
+   * only ever learns what was *finished*, and the card goes on offering the first
+   * unfinished lesson, often one already read past.
+   *
+   * Teachers are left out: a teacher reading a course is not a student's bookmark.
+   */
+  useEffect(() => {
+    if (!courseId || !selectedMaterialId) return;
+    if (currentUser?.role !== 'student') return;
+    void markLessonOpened(courseId, selectedMaterialId);
+  }, [courseId, selectedMaterialId, currentUser?.role]);
+
   const handlePracticeComplete = useCallback(async () => {
     if (!courseId || !selectedMaterialId || !selectedModuleId) return;
     if (currentUser?.role !== 'student') return;
