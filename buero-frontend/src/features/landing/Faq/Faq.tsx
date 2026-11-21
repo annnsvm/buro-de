@@ -1,10 +1,19 @@
 import React, { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Container, Section, SectionTitle, Text, Title } from '@/components/layout';
 import { Icon } from '@/components/ui';
 import { ICON_NAMES } from '@/helpers/iconNames';
+import { ROUTES } from '@/helpers/routes';
 
-const FAQ_ITEMS = [
+type FaqItem = {
+  q: string;
+  a: string;
+  /** Where the full answer lives, for the questions a short answer cannot finish. */
+  readMore?: { to: string; label: string };
+};
+
+const FAQ_ITEMS: readonly FaqItem[] = [
   { q: 'faqQ1', a: 'faqA1' },
   { q: 'faqQ2', a: 'faqA2' },
   { q: 'faqQ3', a: 'faqA3' },
@@ -12,8 +21,17 @@ const FAQ_ITEMS = [
   { q: 'faqQ5', a: 'faqA5' },
   { q: 'faqQ6', a: 'faqA6' },
   { q: 'faqQ8', a: 'faqA8' },
-  { q: 'faqQ7', a: 'faqA7' },
-] as const;
+  /**
+   * Money back is the one answer somebody reads before deciding to pay, and the short
+   * version cannot carry the conditions, so it points at the terms rather than paraphrasing
+   * them into something the offer does not say.
+   */
+  {
+    q: 'faqQ7',
+    a: 'faqA7',
+    readMore: { to: ROUTES.PAYMENT, label: 'faqLinkPayment' },
+  },
+];
 
 const Faq: React.FC = () => {
   const { t } = useTranslation();
@@ -71,6 +89,14 @@ const Faq: React.FC = () => {
                   <p className="max-w-[640px] text-[1.05rem] leading-[1.6] text-[var(--color-text-primary)]">
                     {t(`landing.${item.a}`)}
                   </p>
+                  {item.readMore ? (
+                    <Link
+                      to={item.readMore.to}
+                      className="mt-3 inline-block text-[1.05rem] text-[var(--color-burnt-siena-dark)] underline underline-offset-4 hover:opacity-80"
+                    >
+                      {t(`landing.${item.readMore.label}`)}
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             );

@@ -165,6 +165,7 @@ model User {
   @@index([email])
   @@index([stripeCustomerId])
   @@map("users")
+  resumePoints       CourseResumePoint[]
 }
 
 /// A password reset in progress: the code that was emailed, and nothing else.
@@ -302,6 +303,7 @@ model Course {
   subscriptions      Subscription[]
   payments           Payment[]
   courseProgress     CourseProgress[]
+  resumePoints       CourseResumePoint[]
   vocabularyEntries  UserVocabularyEntry[]
 
   @@index([teacherId])
@@ -368,6 +370,7 @@ model CourseMaterial {
   @@index([moduleId, publishedAt])
   @@index([parentMaterialId])
   @@map("course_materials")
+  resumePoints     CourseResumePoint[]
 }
 
 model MaterialAttachment {
@@ -482,6 +485,31 @@ model StripeWebhookEvent {
 }
 
 // ─── Progress & Quizzes ────────────────────────────────────────────────────
+
+/// Where a student was last reading in a course, so "continue" can send them back there.
+///
+/// Separate from CourseProgress on purpose: that table records what was *finished*, and a
+/// finished lesson is not where someone left off. A student who opened lesson 7, read half
+/// of it and closed the tab had no row anywhere, so "continue" pointed at the first lesson
+/// they had not completed - often one they had already read past.
+///
+/// One row per student per course: the question is "where was I in this course", not a log
+/// of every page view.
+model CourseResumePoint {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  courseId         String   @map("course_id")
+  courseMaterialId String   @map("course_material_id")
+  openedAt         DateTime @default(now()) @map("opened_at")
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course         Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseMaterial CourseMaterial @relation(fields: [courseMaterialId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId, openedAt])
+  @@map("course_resume_points")
+}
 
 model CourseProgress {
   id               String   @id @default(uuid())

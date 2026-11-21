@@ -1,4 +1,5 @@
 import { Container } from '@/components/layout';
+import { SELLER } from '@/seo/seller';
 
 const sectionTitleClass =
   'mt-10 text-xl font-semibold text-[var(--color-neutral-darkest)] sm:text-2xl first:mt-0';
@@ -32,21 +33,21 @@ const PrivacyPolicyPage = () => {
             <p className={paragraphClass}>Оператором платформи BÜRO.DE є:</p>
             <p className={paragraphClass}>
               <strong className="font-semibold text-[var(--color-text-primary)]">
-                ФОП Самойлова Анна
+                ФОП {SELLER.name}
               </strong>
             </p>
             <p className={paragraphClass}>
               Адреса:
               <br />
-              Україна, м. Київ, вул. Іоанна Павла II, 6/1
+              {SELLER.address}
             </p>
             <p className={paragraphClass}>
               Email для звернень щодо персональних даних:{' '}
               <a
-                href="mailto:burode452@gmail.com"
+                href={`mailto:${SELLER.email}`}
                 className="text-[var(--color-primary)] underline hover:text-[var(--color-primary-hover)]"
               >
-                burode452@gmail.com
+                {SELLER.email}
               </a>
             </p>
             <p className={paragraphClass}>
@@ -202,10 +203,10 @@ const PrivacyPolicyPage = () => {
               Користувач може відписатися від рекламних повідомлень через відповідне посилання у
               листі або звернувшись на:{' '}
               <a
-                href="mailto:burode452@gmail.com"
+                href={`mailto:${SELLER.email}`}
                 className="text-[var(--color-primary)] underline hover:text-[var(--color-primary-hover)]"
               >
-                burode452@gmail.com
+                {SELLER.email}
               </a>
             </p>
 
@@ -237,10 +238,10 @@ const PrivacyPolicyPage = () => {
             <p className={paragraphClass}>
               Для реалізації своїх прав зверніться:{' '}
               <a
-                href="mailto:burode452@gmail.com"
+                href={`mailto:${SELLER.email}`}
                 className="text-[var(--color-primary)] underline hover:text-[var(--color-primary-hover)]"
               >
-                burode452@gmail.com
+                {SELLER.email}
               </a>
             </p>
 
@@ -289,10 +290,10 @@ const PrivacyPolicyPage = () => {
               <br />
               Email:{' '}
               <a
-                href="mailto:burode452@gmail.com"
+                href={`mailto:${SELLER.email}`}
                 className="text-[var(--color-primary)] underline hover:text-[var(--color-primary-hover)]"
               >
-                burode452@gmail.com
+                {SELLER.email}
               </a>
             </p>
           </article>

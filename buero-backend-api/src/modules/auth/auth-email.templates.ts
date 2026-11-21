@@ -271,6 +271,71 @@ export function buildPurchaseEmail(opts: {
   };
 }
 
+/**
+ * The money went back, so the course closed.
+ *
+ * Sent because the alternative is a course quietly vanishing from "My learning", which reads
+ * as the platform being broken rather than as the refund the student asked for. It says the
+ * one thing they would otherwise write in to ask: their progress is still there.
+ */
+export function buildRefundEmail(opts: {
+  name?: string | null;
+  courseTitle: string;
+  amount: string;
+  currency: string;
+  locale: EmailLocale;
+  logoUrl: string;
+  siteUrl: string;
+}): { subject: string; html: string; text: string } {
+  const locale = opts.locale;
+  const name = greetingName(opts.name, locale);
+  const title = locale === "uk" ? "Кошти повернено" : "Your refund is done";
+  const subject =
+    locale === "uk"
+      ? `${opts.courseTitle} - кошти повернено`
+      : `${opts.courseTitle} - your refund is done`;
+  const intro =
+    locale === "uk"
+      ? `Привіт, ${name}! Кошти за курс «${opts.courseTitle}» повернуто, тому доступ до нього закрито.`
+      : `Hi ${name}! The payment for "${opts.courseTitle}" has been returned, so the course is closed again.`;
+  const paid =
+    locale === "uk"
+      ? `Повернено: ${opts.amount} ${opts.currency.toUpperCase()}`
+      : `Returned: ${opts.amount} ${opts.currency.toUpperCase()}`;
+  const keeps =
+    locale === "uk"
+      ? "Ваш прогрес збережено. Якщо колись придбаєте курс знову, навчання продовжиться з того місця, де ви зупинилися."
+      : "Your progress is kept. If you buy the course again, you will carry on from where you stopped.";
+  const bank =
+    locale === "uk"
+      ? "Гроші зараховуються банком зазвичай за кілька робочих днів."
+      : "Banks usually take a few working days to post the money back."
+  const footerNote =
+    locale === "uk"
+      ? "Ти отримав цей лист, бо повернув кошти за курс на Büro.de."
+      : "You received this email because a course payment on Büro.de was returned.";
+
+  const bodyHtml = `
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.ink};">${escapeHtml(intro)}</p>
+    <p style="margin:16px 0;padding:14px 18px;background:${BRAND.soft};border-radius:12px;font-size:15px;color:${BRAND.ink};">${escapeHtml(paid)}</p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.muted};">${escapeHtml(keeps)}</p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.muted};">${escapeHtml(bank)}</p>
+  `;
+
+  return {
+    subject,
+    html: layout({
+      logoUrl: opts.logoUrl,
+      title,
+      bodyHtml,
+      siteUrl: opts.siteUrl,
+      footerNote,
+      locale,
+    }),
+    text: [title, "", intro, paid, "", keeps, bank].join("\n"),
+  };
+}
+
 export function buildWelcomeEmail(opts: {
   name?: string | null;
   locale: EmailLocale;

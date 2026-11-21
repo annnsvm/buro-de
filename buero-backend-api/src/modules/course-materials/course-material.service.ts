@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -18,6 +19,8 @@ import { UpdateCourseMaterialDto } from './dto/update-course-material.dto';
 
 @Injectable()
 export class CourseMaterialService {
+  private readonly logger = new Logger(CourseMaterialService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async assertCanAccessCourse(
@@ -124,6 +127,37 @@ export class CourseMaterialService {
     if (!material) {
       throw new NotFoundException(
         `Матеріал з id ${id} не знайдено або не належить модулю`,
+      );
+    }
+  }
+
+  /**
+   * Remembers that this student opened this lesson, so "continue" can send them back here.
+   *
+   * Deliberately not part of progress: progress records what was *finished*, and where someone
+   * left off is a different question. A student who opened a lesson and closed the tab left no
+   * trace at all before this, so the card pointed at the first unfinished lesson - often one
+   * they had already read past.
+   *
+   * Never throws. Losing the bookmark is a smaller harm than failing to serve the lesson, so a
+   * write that fails is logged and the page goes out regardless.
+   */
+  async rememberOpenedLesson(
+    userId: string,
+    courseId: string,
+    courseMaterialId: string,
+  ): Promise<void> {
+    try {
+      await this.prisma.courseResumePoint.upsert({
+        where: { userId_courseId: { userId, courseId } },
+        create: { userId, courseId, courseMaterialId },
+        update: { courseMaterialId, openedAt: new Date() },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Could not note that user ${userId} opened material ${courseMaterialId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
   }

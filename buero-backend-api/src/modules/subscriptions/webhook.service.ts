@@ -91,7 +91,7 @@ export class WebhookService {
     } else if (this.wayForPay.isPendingStatus(status)) {
       this.logger.log(`Order ${orderReference} still in progress: ${status}`);
     } else if (status === WAYFORPAY_STATUS.refunded) {
-      this.logger.log(`Order ${orderReference} refunded, access left untouched`);
+      await this.fulfillment.markRefunded(orderReference);
     } else {
       await this.fulfillment.markFailed(orderReference, payload.reason);
     }

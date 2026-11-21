@@ -112,12 +112,27 @@ export class CourseMaterialsController {
       courseId,
       moduleId,
     );
-    return this.courseMaterialService.findOne(
+    const material = await this.courseMaterialService.findOne(
       courseId,
       moduleId,
       id,
       user.role,
     );
+
+    /**
+     * Only a student's own reading is a bookmark. A teacher opening a lesson to edit it is
+     * not "where I left off", and would otherwise overwrite their own students' view of it
+     * if they ever studied the course themselves.
+     */
+    if (user.role !== Role.teacher) {
+      await this.courseMaterialService.rememberOpenedLesson(
+        user.id,
+        courseId,
+        id,
+      );
+    }
+
+    return material;
   }
 
   @Get(":id/questions")

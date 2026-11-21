@@ -59,6 +59,20 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
     title: 'Політика Cookie | Büro.de',
     description: 'Як Büro.de використовує cookies та подібні технології.',
   },
+  {
+    path: '/payment',
+    file: 'payment/index.html',
+    title: 'Оплата і повернення коштів | Büro.de',
+    description:
+      'Хто продає курси на Büro.de, як проходить оплата через WayForPay та за яких умов повертаються кошти.',
+  },
+  {
+    path: '/offer',
+    file: 'offer/index.html',
+    title: 'Публічна оферта | Büro.de',
+    description:
+      'Договір про надання доступу до онлайн-курсів Büro.de: предмет, оплата, доступ, повернення коштів та права сторін.',
+  },
 ];
 
 export const absoluteUrl = (path: string): string =>

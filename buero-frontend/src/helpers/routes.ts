@@ -13,6 +13,8 @@ export const ROUTES = Object.freeze({
   PRIVACY: '/privacy',
   TERMS: '/terms',
   COOKIES: '/cookies',
+  PAYMENT: '/payment',
+  OFFER: '/offer',
   NOT_FOUND: '/404',
 } as const);
 

@@ -72,22 +72,24 @@ export class ProgressService {
     return {
       courses,
       level: profile?.level ?? null,
-      resume: await this.resumeLesson(progressRows),
+      resume: await this.resumeLesson(userId, progressRows),
     };
   }
 
   /**
-   * The lesson to offer as "continue": the first one not yet finished, in the course the
-   * student worked in most recently.
+   * The lesson to offer as "continue": the last one the student actually opened.
    *
-   * `course_progress` records only what has been *completed*, so the newest row is the
-   * lesson they just left behind - not the one to go back to. Offering it sent the student
-   * to a lesson they had already done, and the card counted it as where they were.
+   * It used to be worked out from `course_progress`, which records only what was *finished*.
+   * That could not see reading in progress at all: open lesson 7, read half of it, close the
+   * tab, and the card still pointed at the first lesson not completed - often one already
+   * read past. Now every lesson a student opens writes a resume point, and that is the
+   * answer when there is one.
    *
-   * The rule matches what the course page does when it is opened without a lesson named,
-   * so the two cannot disagree about where somebody stopped.
+   * The old rule remains underneath, for a student who has finished lessons but not opened
+   * one since this shipped, and for a resume point whose lesson has since been deleted.
    */
   private async resumeLesson(
+    userId: string,
     progressRows: {
       courseId: string;
       courseMaterialId: string | null;
@@ -109,10 +111,29 @@ export class ProgressService {
     const latest = progressRows
       .slice()
       .sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime())[0];
-    if (!latest) return null;
+
+    /**
+     * Where they were actually reading, which beats anything inferred from finished work.
+     * Taken across every course, so it names the course as well as the lesson.
+     */
+    const bookmark = await this.prisma.courseResumePoint.findFirst({
+      where: { userId },
+      orderBy: { openedAt: "desc" },
+      select: {
+        courseId: true,
+        courseMaterialId: true,
+        course: { select: { title: true, level: true } },
+      },
+    });
+
+    if (!latest && !bookmark) return null;
+
+    const courseId = bookmark?.courseId ?? latest!.courseId;
+    const courseTitle = bookmark?.course.title ?? latest!.course.title;
+    const courseLevel = bookmark?.course.level ?? latest!.course.level;
 
     const modules = await this.prisma.courseModule.findMany({
-      where: { courseId: latest.courseId },
+      where: { courseId },
       orderBy: { orderIndex: "asc" },
       select: {
         materials: {
@@ -124,21 +145,37 @@ export class ProgressService {
     const flat = modules.flatMap((mod) => mod.materials);
     if (flat.length === 0) return null;
 
+    /**
+     * The bookmarked lesson, when it is still in the course. A lesson deleted since it was
+     * opened falls through to the old rule rather than leaving the card blank.
+     */
+    const bookmarked =
+      bookmark && bookmark.courseId === courseId
+        ? flat.findIndex((material) => material.id === bookmark.courseMaterialId)
+        : -1;
+
     const completed = new Set(
       progressRows
-        .filter((row) => row.courseId === latest.courseId && row.courseMaterialId)
+        .filter((row) => row.courseId === courseId && row.courseMaterialId)
         .map((row) => row.courseMaterialId as string),
     );
 
-    const index = flat.findIndex((material) => !completed.has(material.id));
-    /** Nothing left undone: the course is finished, so point at where it ends. */
-    const at = index >= 0 ? index : flat.length - 1;
+    const firstUnfinished = flat.findIndex(
+      (material) => !completed.has(material.id),
+    );
+    const at =
+      bookmarked >= 0
+        ? bookmarked
+        : /** Nothing left undone: the course is finished, so point at where it ends. */
+          firstUnfinished >= 0
+          ? firstUnfinished
+          : flat.length - 1;
     const material = flat[at];
 
     return {
-      course_id: latest.courseId,
-      course_title: latest.course.title,
-      course_level: latest.course.level,
+      course_id: courseId,
+      course_title: courseTitle,
+      course_level: courseLevel,
       material_id: material.id,
       material_title: material.title,
       lesson_number: at + 1,
