@@ -43,6 +43,12 @@ export type ApiCourseModule = {
   id: string;
   title: string;
   orderIndex?: number;
+  /**
+   * Whether the viewer may study this module. The server decides it from the course's
+   * trial count and the access row, and says so outright - the page does not have to
+   * work it out from what was withheld.
+   */
+  locked?: boolean;
   materials?: ApiCourseMaterial[];
 };
 
@@ -96,15 +102,32 @@ const isUnlocked = (mat: ApiCourseMaterial): boolean => mat.locked !== true;
 export const scopeToUnlockedModules = (course: ApiCourseWithTree): ApiCourseWithTree => ({
   ...course,
   modules: (course.modules ?? []).filter((mod) => {
+    /** The server's own answer, for the same reason as in `findLockedModuleIds`. */
+    if (typeof mod.locked === 'boolean') return !mod.locked;
     const materials = mod.materials ?? [];
     return materials.length === 0 || materials.some(isUnlocked);
   }),
 });
 
 /** Modules shown in the outline but not openable, so the UI can mark them locked. */
+/**
+ * Which modules the viewer may not study.
+ *
+ * Read off the server's own `locked` flag. It used to be guessed from the materials - a
+ * module counted as locked when it had materials and none of them carried content - and a
+ * module with *no* materials therefore counted as open. The author hit exactly that: three
+ * empty modules at the end of A1 appeared among the free ones, renumbered the sidebar, and
+ * left the paywall teaser pointing at a module listed above them.
+ *
+ * The guess remains only for a response that predates the flag; it is not the rule.
+ */
 export const findLockedModuleIds = (course: ApiCourseWithTree): Set<string> => {
   const locked = new Set<string>();
   for (const mod of course.modules ?? []) {
+    if (typeof mod.locked === 'boolean') {
+      if (mod.locked) locked.add(mod.id);
+      continue;
+    }
     const materials = mod.materials ?? [];
     if (materials.length > 0 && !materials.some(isUnlocked)) locked.add(mod.id);
   }
