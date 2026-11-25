@@ -9,7 +9,7 @@ type GlobalModalType =
 
 type GlobalModalState =
   | { type: null }
-  | { type: 'login'; redirectTo?: string }
+  | { type: 'login'; redirectTo?: string; prefillEmail?: string }
   | { type: 'signup'; redirectTo?: string; prefillEmail?: string }
   | { type: 'resetPassword'; prefillEmail?: string }
   | { type: 'paymentCard'; courseId: string; price: number; currency: string }
