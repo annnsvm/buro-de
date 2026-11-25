@@ -5,6 +5,7 @@ import { resetCoursesCatalog } from '../coursesCatalog/coursesCatalogSlice';
 import { API_ENDPOINTS } from '@/api/apiEndpoints';
 import type { RootState } from '@/redux/rootReducer';
 import { getErrorMessage } from '@/helpers/getErrorMessage';
+import { authFailure } from '@/helpers/authErrorMessage';
 
 export const loginThunk = createAsyncThunk<void, LoginPayload>(
   'auth/login',
@@ -17,8 +18,7 @@ export const loginThunk = createAsyncThunk<void, LoginPayload>(
       }
       return;
     } catch (error: unknown) {
-      const message = getErrorMessage(error, 'Login failed');
-      return rejectWithValue(message);
+      return rejectWithValue(authFailure(error));
     }
   },
 );
@@ -41,8 +41,7 @@ export const startSignupThunk = createAsyncThunk<{ email: string }, SignUpPayloa
       });
       return { email: result.data?.email ?? email };
     } catch (error: unknown) {
-      const message = getErrorMessage(error, 'Signup failed');
-      return rejectWithValue(message);
+      return rejectWithValue(authFailure(error));
     }
   },
 );
@@ -61,8 +60,7 @@ export const verifySignupThunk = createAsyncThunk<void, VerifySignupPayload>(
       }
       return;
     } catch (error: unknown) {
-      const message = getErrorMessage(error, 'Verification failed');
-      return rejectWithValue(message);
+      return rejectWithValue(authFailure(error));
     }
   },
 );
@@ -75,8 +73,7 @@ export const resendSignupCodeThunk = createAsyncThunk<void, { email: string }>(
       await apiInstance.post(API_ENDPOINTS.auth.resendRegistrationCode, { email });
       return;
     } catch (error: unknown) {
-      const message = getErrorMessage(error, 'Could not resend code');
-      return rejectWithValue(message);
+      return rejectWithValue(authFailure(error));
     }
   },
 );

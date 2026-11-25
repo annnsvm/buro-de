@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
 import { createHash, randomInt } from "crypto";
 import { PrismaService } from "src/prisma/prisma.service";
 import { MailerService } from "../mail/mailer.service";
 import { buildPasswordResetEmail } from "./auth-email.templates";
+import { AUTH_ERROR, badRequest, notFound } from "./auth-error-codes";
 
 const SALT_ROUNDS = 10;
 const CODE_TTL_MS = 15 * 60 * 1000;
@@ -48,12 +49,18 @@ export class PasswordResetService {
   }
 
   /**
-   * Asks for a code, and says the same thing whether or not the address has an account.
+   * Asks for a code, and says plainly when there is nobody to send one to.
    *
-   * Answering "no such user" would turn this endpoint into a way of finding out who has
-   * bought the course - type an address, read the answer. So the reply never varies, and
-   * the work that differs happens silently: an address we know gets an email, an address
-   * we do not gets nothing at all.
+   * This used to answer "code sent" whichever way it went, so that the endpoint could not
+   * be used to find out who had bought the course. That protected nothing: `POST
+   * /auth/register` answers 409 "User with this email already exists" for exactly the same
+   * question, openly, and has from the start. The secrecy here only ever cost the one
+   * person it was not aimed at - someone who mistyped their address, or signed up with a
+   * different one, and was told a code was on its way to an inbox that would never get it.
+   *
+   * So the two endpoints now agree, and the student is told which of the two things is
+   * true. What keeps this from becoming a cannon is the rate limit on the route (3 a
+   * minute), not a vague answer.
    *
    * The cooldown is kept on the row rather than per address in memory, so restarting the
    * server does not hand anyone a fresh allowance of emails.
@@ -71,7 +78,10 @@ export class PasswordResetService {
 
     if (!user) {
       this.logger.log(`Password reset asked for an unknown address`);
-      return { status: "code_sent" };
+      throw notFound(
+        AUTH_ERROR.accountNotFound,
+        "No account uses this email address",
+      );
     }
 
     const existing = await this.prisma.passwordReset.findUnique({
@@ -83,11 +93,14 @@ export class PasswordResetService {
       Date.now() - existing.updatedAt.getTime() < RESEND_COOLDOWN_MS
     ) {
       /**
-       * Too soon, and still the same answer. Saying "wait a minute" here would tell a
-       * stranger that the address is real, which is the one thing this endpoint must not
-       * do - and the person who really asked twice has the first code in their inbox.
+       * Too soon. This also used to answer "code sent", which left the student pressing a
+       * button that did nothing and watching an inbox that already had the answer in it.
+       * Now it says so, and the screen can point at the code that is already there.
        */
-      return { status: "code_sent" };
+      throw badRequest(
+        AUTH_ERROR.codeTooSoon,
+        "A code was sent less than a minute ago",
+      );
     }
 
     const code = this.generateCode();
@@ -123,10 +136,11 @@ export class PasswordResetService {
   /**
    * Sets the new password, and only then throws the code away.
    *
-   * Every refusal here reads the same - "invalid or expired" - whatever actually went
-   * wrong. Telling a stranger that the code was right but the address has no account, or
-   * that the code has expired rather than never existed, is the same leak the request
-   * endpoint is careful to avoid.
+   * Every refusal here used to read the same - "invalid or expired" - whatever had gone
+   * wrong, so a code that had sat too long and a code with a typo in it were impossible to
+   * tell apart. The two need different things done about them: one wants the button that
+   * asks for a new code, the other wants the digits read again. Each refusal now names
+   * itself, and the screen can say which.
    *
    * The wrong-guess count lives next to the code because six digits is a small space: five
    * tries against a fifteen-minute window is the same ceiling registration uses.
@@ -137,22 +151,28 @@ export class PasswordResetService {
     newPassword: string,
   ): Promise<{ status: "password_changed" }> {
     const address = this.normalise(email);
-    const refuse = () =>
-      new BadRequestException("Невірний або прострочений код");
 
     const pending = await this.prisma.passwordReset.findUnique({
       where: { email: address },
     });
-    if (!pending) throw refuse();
+    if (!pending) {
+      throw badRequest(
+        AUTH_ERROR.codeNotRequested,
+        "No reset code was issued for this address",
+      );
+    }
 
     if (pending.expiresAt.getTime() < Date.now()) {
       await this.prisma.passwordReset.delete({ where: { email: address } });
-      throw refuse();
+      throw badRequest(AUTH_ERROR.codeExpired, "The reset code has expired");
     }
 
     if (pending.attempts >= MAX_ATTEMPTS) {
       await this.prisma.passwordReset.delete({ where: { email: address } });
-      throw refuse();
+      throw badRequest(
+        AUTH_ERROR.codeAttemptsSpent,
+        "Too many wrong guesses - the code is spent",
+      );
     }
 
     if (pending.codeHash !== this.hashCode(code)) {
@@ -160,17 +180,20 @@ export class PasswordResetService {
         where: { email: address },
         data: { attempts: { increment: 1 } },
       });
-      throw refuse();
+      throw badRequest(AUTH_ERROR.codeWrong, "The reset code does not match");
     }
 
     const user = await this.prisma.user.findFirst({
       where: { email: address, deletedAt: null },
       select: { id: true },
     });
-    /** The account went away between asking and answering. Still the same refusal. */
+    /** The account went away between asking and answering. */
     if (!user) {
       await this.prisma.passwordReset.delete({ where: { email: address } });
-      throw refuse();
+      throw notFound(
+        AUTH_ERROR.accountNotFound,
+        "No account uses this email address",
+      );
     }
 
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);

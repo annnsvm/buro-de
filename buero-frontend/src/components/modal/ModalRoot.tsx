@@ -45,7 +45,11 @@ const ModalRoot: React.FC<ModalRootProps> = ({ globalModal, uiModalStack }) => {
       if (globalModal.type === 'login' || globalModal.type === 'signup') {
         authRedirectRef.current = globalModal.redirectTo;
       }
-      if (globalModal.type === 'resetPassword') {
+      /**
+       * Sign-up carries an address as well now: "no account uses this one" is answered
+       * with a button, and the person who just typed it should not have to type it twice.
+       */
+      if (globalModal.type === 'resetPassword' || globalModal.type === 'signup') {
         authEmailRef.current = globalModal.prefillEmail;
       }
     } else if (
@@ -123,7 +127,7 @@ const ModalRoot: React.FC<ModalRootProps> = ({ globalModal, uiModalStack }) => {
         }
         redirectTo={redirectTo}
         prefillEmail={
-          globalModal.type === 'resetPassword'
+          globalModal.type === 'resetPassword' || globalModal.type === 'signup'
             ? globalModal.prefillEmail
             : authEmailRef.current
         }

@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
 import { createHash, randomInt } from "crypto";
 import { Language, Role } from "src/generated/prisma/enums";
@@ -16,6 +10,12 @@ import {
   buildVerificationEmail,
   buildWelcomeEmail,
 } from "./auth-email.templates";
+import {
+  AUTH_ERROR,
+  badRequest,
+  conflict,
+  notFound,
+} from "./auth-error-codes";
 
 const SALT_ROUNDS = 10;
 const CODE_TTL_MS = 15 * 60 * 1000;
@@ -60,7 +60,10 @@ export class RegistrationService {
       where: { email: pending.email, deletedAt: null },
     });
     if (existing) {
-      throw new ConflictException("User with this email already exists");
+      throw conflict(
+        AUTH_ERROR.emailTaken,
+        "User with this email already exists",
+      );
     }
 
     const user = await this.prisma.user.create({
@@ -87,7 +90,10 @@ export class RegistrationService {
       where: { email, deletedAt: null },
     });
     if (existing) {
-      throw new ConflictException("User with this email already exists");
+      throw conflict(
+        AUTH_ERROR.emailTaken,
+        "User with this email already exists",
+      );
     }
 
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
@@ -143,18 +149,33 @@ export class RegistrationService {
     const pending = await this.prisma.pendingRegistration.findUnique({
       where: { email },
     });
+    /**
+     * There is nothing half-finished under this address: either the code was already used,
+     * or it ran out and was swept, or the address is not the one that was signed up with.
+     * Whichever it is, the way out is to start again, and the screen should say so rather
+     * than ask for the digits one more time.
+     */
     if (!pending) {
-      throw new BadRequestException("Invalid or expired verification code");
+      throw badRequest(
+        AUTH_ERROR.codeNotRequested,
+        "No pending registration for this address",
+      );
     }
     if (pending.expiresAt.getTime() < Date.now()) {
       await this.prisma.pendingRegistration.delete({ where: { email } });
-      throw new BadRequestException("Verification code expired. Request a new one.");
+      throw badRequest(
+        AUTH_ERROR.codeExpired,
+        "Verification code expired. Request a new one.",
+      );
     }
 
     const attempts = pending.attempts + 1;
     if (attempts > MAX_ATTEMPTS) {
       await this.prisma.pendingRegistration.delete({ where: { email } });
-      throw new BadRequestException("Too many attempts. Request a new code.");
+      throw badRequest(
+        AUTH_ERROR.codeAttemptsSpent,
+        "Too many attempts. Request a new code.",
+      );
     }
 
     if (pending.codeHash !== this.hashCode(code)) {
@@ -162,7 +183,10 @@ export class RegistrationService {
         where: { email },
         data: { attempts },
       });
-      throw new BadRequestException("Invalid or expired verification code");
+      throw badRequest(
+        AUTH_ERROR.codeWrong,
+        "The verification code does not match",
+      );
     }
 
     const user = await this.createUserFromPending(pending);
@@ -178,12 +202,18 @@ export class RegistrationService {
       where: { email },
     });
     if (!pending) {
-      throw new NotFoundException("No pending registration for this email");
+      throw notFound(
+        AUTH_ERROR.noPendingRegistration,
+        "No pending registration for this email",
+      );
     }
 
     const elapsed = Date.now() - pending.updatedAt.getTime();
     if (elapsed < RESEND_COOLDOWN_MS) {
-      throw new BadRequestException("Please wait before requesting a new code");
+      throw badRequest(
+        AUTH_ERROR.codeTooSoon,
+        "A code was sent less than a minute ago",
+      );
     }
 
     const code = this.generateCode();

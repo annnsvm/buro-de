@@ -11,5 +11,6 @@ export const lessonContent: LearningLesson = {
   title: 'Your First German Words',
   description:
     "Watch this lesson carefully and take notes. You can replay sections as many times as you need. When you're ready, mark it complete and move to the next lesson.",
-  videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+  /** Empty on purpose: this is the fallback lesson, and it has no recording of its own. */
+  videoUrl: '',
 };

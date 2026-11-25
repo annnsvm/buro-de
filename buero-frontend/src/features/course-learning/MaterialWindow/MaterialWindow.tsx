@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, CircleHelp, FileText, Play, SkipForward, Trophy } from 'lucide-react';
 
 import { Container, Text, Title } from '@/components/layout';
 import useModal from '@/components/modal/context/useModal';
-import { loadYoutubeIframeApi } from '@/helpers/youtubeIframeApi';
 import { lessonContent } from './MaterialWindow.data';
+import HardenedYouTubePlayer from './HardenedYouTubePlayer';
+import LessonVideoMissing from './LessonVideoMissing';
 import LessonAttachments from './LessonAttachments';
 import LessonNotes from './LessonNotes';
 import type { LearningPageProps } from '@/types/features/learning/LearningPage.types';
@@ -41,9 +42,6 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [usePlainIframe, setUsePlainIframe] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<{ destroy: () => void } | undefined>(undefined);
-  const hostId = useId().replace(/:/g, '');
   const onEndedRef = useRef(onVideoEnded);
   const endedEmittedRef = useRef(false);
 
@@ -64,83 +62,6 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
     setIsPlaying(true);
   };
 
-  useEffect(() => {
-    if (!isPlaying || usePlainIframe || !videoId) return;
-    const wrapper = wrapperRef.current;
-    if (!wrapper) return;
-
-    let cancelled = false;
-    const host = document.createElement('div');
-    host.id = `yt-host-${hostId}`;
-    host.style.width = '100%';
-    host.style.height = '100%';
-    wrapper.appendChild(host);
-
-    const clearHost = () => {
-      try {
-        playerRef.current?.destroy();
-      } catch {
-        void 0;
-      }
-      playerRef.current = undefined;
-      wrapper.innerHTML = '';
-    };
-
-    const failToIframe = () => {
-      if (!cancelled) {
-        clearHost();
-        setUsePlainIframe(true);
-      }
-    };
-
-    void loadYoutubeIframeApi()
-      .then(() => {
-        if (cancelled || !window.YT?.Player || !window.YT.PlayerState) {
-          failToIframe();
-          return;
-        }
-        try {
-          const player = new window.YT.Player(host, {
-            videoId,
-            width: '100%',
-            height: '100%',
-            playerVars: {
-              autoplay: 1,
-              rel: 0,
-              modestbranding: 1,
-              playsinline: 1,
-            },
-            events: {
-              onStateChange: (event: { data: number }) => {
-                if (event.data === window.YT!.PlayerState.ENDED) {
-                  signalEnded();
-                }
-              },
-            },
-          });
-          if (cancelled) {
-            try {
-              player.destroy();
-            } catch {
-              void 0;
-            }
-            wrapper.innerHTML = '';
-            return;
-          }
-          playerRef.current = player;
-        } catch {
-          failToIframe();
-        }
-      })
-      .catch(() => {
-        failToIframe();
-      });
-
-    return () => {
-      cancelled = true;
-      clearHost();
-    };
-  }, [isPlaying, usePlainIframe, videoId, hostId, signalEnded]);
 
   useEffect(() => {
     if (!isPlaying || !usePlainIframe) return;
@@ -170,6 +91,11 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
     return () => window.clearTimeout(t);
   }, [isPlaying, usePlainIframe, fallbackMarkReadyAfterSeconds, signalEnded]);
 
+  /** Nothing to play, and nothing pretending otherwise - see `LessonVideoMissing`. */
+  if (!videoId) {
+    return <LessonVideoMissing className={videoFrameRadiusClass} />;
+  }
+
   if (isPlaying && usePlainIframe) {
     return (
       <iframe
@@ -183,13 +109,15 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
     );
   }
 
-  if (isPlaying) {
+  if (isPlaying && videoId) {
     return (
-      <div
-        ref={wrapperRef}
-        className={`h-full min-h-[200px] w-full overflow-hidden ${videoFrameRadiusClass}`}
+      <HardenedYouTubePlayer
+        videoId={videoId}
         title={title}
-        aria-label={title}
+        onEnded={signalEnded}
+        /** The API would not load, or the video refused to start: show the plain embed. */
+        onUnavailable={() => setUsePlainIframe(true)}
+        className={`min-h-[200px] ${videoFrameRadiusClass}`}
       />
     );
   }

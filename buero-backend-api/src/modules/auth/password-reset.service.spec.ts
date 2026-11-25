@@ -1,4 +1,8 @@
-import { BadRequestException } from "@nestjs/common";
+import {
+  BadRequestException,
+  HttpException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { createHash } from "crypto";
 import * as bcrypt from "bcrypt";
@@ -9,12 +13,22 @@ import { PasswordResetService } from "./password-reset.service";
 /**
  * Getting back into an account after forgetting the password.
  *
- * Two things are being tested, and the second matters more than the first. One is that a
- * student who asks for a code can use it. The other is that this pair of endpoints cannot
- * be turned round and used to find out who has an account - type an address, read the
- * answer - which is what an honest "no such user" would do on a platform where having an
- * account means having paid.
+ * Two things are being tested. One is that a student who asks for a code can use it. The
+ * other is that each way this can fail says which way it was: for a long time every
+ * refusal here answered with one sentence, on the theory that a frank "no such user" would
+ * turn the endpoint into a way of learning who had paid. It would not - `POST
+ * /auth/register` answers that question openly with a 409 - and the silence fell entirely
+ * on the student who had mistyped their address and was told a code was on its way.
  */
+
+/** The machine-readable name on a coded failure, which is what the client branches on. */
+const codeOf = (error: unknown): string | undefined => {
+  if (!(error instanceof HttpException)) return undefined;
+  const body = error.getResponse();
+  return typeof body === "object" && body !== null
+    ? (body as { code?: string }).code
+    : undefined;
+};
 const EMAIL = "anna@example.com";
 const CODE = "482915";
 const NEW_PASSWORD = "NewSecure2";
@@ -88,15 +102,23 @@ describe("PasswordResetService", () => {
     });
 
     /**
-     * The leak this exists to prevent. "No such user" would make this endpoint a way of
-     * asking whether a given person is a customer.
+     * The case that used to answer "code sent" and send nothing, leaving the student
+     * watching an inbox that would never get anything. It names itself now, so the screen
+     * can offer the one thing that helps: signing up.
      */
-    it("answers exactly the same for an address that has none", async () => {
+    it("says there is no account, and still sends nothing", async () => {
       prisma.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.request(EMAIL)).resolves.toEqual({ status: "code_sent" });
+      await expect(service.request(EMAIL)).rejects.toBeInstanceOf(NotFoundException);
       expect(mailer.send).not.toHaveBeenCalled();
       expect(prisma.passwordReset.upsert).not.toHaveBeenCalled();
+    });
+
+    it("names that failure ACCOUNT_NOT_FOUND", async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+
+      const error = await service.request(EMAIL).catch((e: unknown) => e);
+      expect(codeOf(error)).toBe("ACCOUNT_NOT_FOUND");
     });
 
     it("stores only the hash of the code, never the code", async () => {
@@ -109,13 +131,19 @@ describe("PasswordResetService", () => {
       expect(JSON.stringify(written)).not.toContain(sent as string);
     });
 
-    /** A second ask within the minute is quietly ignored - and still answers the same. */
-    it("does not send twice in a minute, and does not say so", async () => {
+    /**
+     * A second ask within the minute still sends nothing - but saying "code sent" to it
+     * left the student pressing a button that did nothing, when the answer was already in
+     * their inbox. Now it says which.
+     */
+    it("refuses a second ask inside the minute, and says why", async () => {
       prisma.passwordReset.findUnique.mockResolvedValue(
         pending({ updatedAt: new Date() }),
       );
 
-      await expect(service.request(EMAIL)).resolves.toEqual({ status: "code_sent" });
+      const error = await service.request(EMAIL).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect(codeOf(error)).toBe("CODE_TOO_SOON");
       expect(mailer.send).not.toHaveBeenCalled();
     });
 
@@ -211,17 +239,19 @@ describe("PasswordResetService", () => {
     });
 
     /**
-     * Every refusal says the same sentence. "The code is right but there is no account"
-     * would be the same leak the request endpoint is careful to avoid, arrived at from
-     * the other side.
+     * The point of the codes. A code that sat too long wants the button that asks for a new
+     * one; a code with a typo in it wants the digits read again; no code at all means the
+     * student is on the wrong screen. One sentence for all three could not tell them apart,
+     * so the screen could not either.
      */
-    it("says the same thing however it refuses", async () => {
-      const messages: string[] = [];
+    it("names each refusal, so they can be told apart", async () => {
+      const codes: Array<string | undefined> = [];
       const collect = async (arrange: () => void) => {
         arrange();
-        await service
+        const error = await service
           .reset(EMAIL, CODE, NEW_PASSWORD)
-          .catch((e: BadRequestException) => messages.push(e.message));
+          .catch((e: unknown) => e);
+        codes.push(codeOf(error));
       };
 
       await collect(() => prisma.passwordReset.findUnique.mockResolvedValue(null));
@@ -230,13 +260,28 @@ describe("PasswordResetService", () => {
           pending({ expiresAt: new Date(Date.now() - 1) }),
         ),
       );
+      await collect(() =>
+        prisma.passwordReset.findUnique.mockResolvedValue(pending({ attempts: 5 })),
+      );
       await collect(() => {
         prisma.passwordReset.findUnique.mockResolvedValue(pending());
         prisma.user.findFirst.mockResolvedValue(null);
       });
 
-      expect(messages).toHaveLength(3);
-      expect(new Set(messages).size).toBe(1);
+      expect(codes).toEqual([
+        "CODE_NOT_REQUESTED",
+        "CODE_EXPIRED",
+        "CODE_ATTEMPTS_SPENT",
+        "ACCOUNT_NOT_FOUND",
+      ]);
+    });
+
+    it("names a wrong code CODE_WRONG, apart from an expired one", async () => {
+      const error = await service
+        .reset(EMAIL, "000000", NEW_PASSWORD)
+        .catch((e: unknown) => e);
+
+      expect(codeOf(error)).toBe("CODE_WRONG");
     });
   });
 });

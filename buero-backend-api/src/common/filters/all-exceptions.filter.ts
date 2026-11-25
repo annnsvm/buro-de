@@ -12,6 +12,14 @@ export type ApiErrorBody = {
   statusCode: number;
   error: string;
   message: string | string[] | Record<string, unknown>;
+  /**
+   * A stable name for the failure, when the thrower chose to give one.
+   *
+   * The sentence in `message` is written for a log; a client that wants to say something
+   * of its own - in the reader's language, with a button attached - needs something it can
+   * branch on that will not change when the sentence is reworded. See `AUTH_ERROR`.
+   */
+  code?: string;
   timestamp: string;
   path: string;
   stack?: string;
@@ -36,7 +44,7 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
 
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
-      const { error, message } = this.parseHttpException(exception);
+      const { error, message, code } = this.parseHttpException(exception);
       const body: ApiErrorBody = {
         statusCode,
         error,
@@ -44,6 +52,7 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
         timestamp,
         path,
       };
+      if (code) body.code = code;
 
       this.logHttpException(statusCode, req, exception, message);
 
@@ -98,6 +107,7 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
   private parseHttpException(exception: HttpException): {
     error: string;
     message: string | string[] | Record<string, unknown>;
+    code?: string;
   } {
     const statusCode = exception.getStatus();
     const raw = exception.getResponse();
@@ -125,7 +135,9 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
         message = exception.message;
       }
 
-      return { error, message };
+      const code = typeof o.code === "string" ? o.code : undefined;
+
+      return { error, message, code };
     }
 
     return {

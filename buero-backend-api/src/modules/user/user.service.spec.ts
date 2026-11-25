@@ -204,6 +204,27 @@ describe("UserService (auth-related)", () => {
       );
       expect(ok).toBe(false);
     });
+
+    /**
+     * The bug this exists to stop coming back.
+     *
+     * Registration writes `dto.email.toLowerCase()`, and `email` is a plain `String`
+     * column - case-sensitive in Postgres, no `citext` in the schema. This lookup used to
+     * pass the address through exactly as typed, so an account signed up as
+     * `Anna@Example.com` was stored lowercase and could not be found by the address its
+     * owner typed at the front door. Login said "invalid credentials", so the student went
+     * and reset a password that had never been wrong - and the reset, which does lowercase,
+     * succeeded and still did not let them in.
+     */
+    it("finds the account whatever the typing, because registration lowercased it", async () => {
+      prisma.user.findFirst.mockResolvedValue({ id: "u1" });
+
+      await service.findUserByEmailWithPassword("  Anna@Example.COM  ");
+
+      expect(prisma.user.findFirst).toHaveBeenCalledWith({
+        where: { email: "anna@example.com", deletedAt: null },
+      });
+    });
   });
 
   describe("signAccessToken", () => {

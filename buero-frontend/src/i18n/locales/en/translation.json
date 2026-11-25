@@ -52,7 +52,7 @@
     "resetTitle": "New password",
     "resetDescription": "Give the email of the account and we will send a code.",
     "resetSendCode": "Send the code",
-    "resetCodeSent": "If an account uses this address, the code is on its way. It is valid for 15 minutes.",
+    "resetCodeSent": "The code is on its way to {{email}}. It is valid for 15 minutes.",
     "resetCodePlaceholder": "Code from the email",
     "resetNewPassword": "New password",
     "resetPasswordRule": "At least 9 characters, one capital letter and one digit.",
@@ -62,7 +62,35 @@
     "resetDoneTitle": "Password changed",
     "resetDoneDescription": "Every earlier session has been signed out. Log in with the new password.",
     "resetRequestFailed": "Could not send the code. Please try again.",
-    "resetFailed": "That code is wrong or has expired."
+    "resetFailed": "That code is wrong or has expired.",
+    "goSignUp": "Sign up with this address",
+    "goToLogin": "Log in",
+    "resetRequestNewCode": "Ask for a new code",
+    "profileUpdateFailed": "Could not save the changes. Please try again.",
+    "validation": {
+      "emailRequired": "Enter your email.",
+      "emailInvalid": "Check the email address.",
+      "passwordRequired": "Enter a password.",
+      "passwordRule": "The password needs at least 9 characters, one capital letter and one digit.",
+      "nameRequired": "Enter your name.",
+      "nameTooLong": "The name must be 255 characters or less."
+    },
+    "errors": {
+      "ACCOUNT_NOT_FOUND": "No account uses this address. Check the spelling, or sign up.",
+      "WRONG_PASSWORD": "That password is wrong. Try again, or reset it.",
+      "EMAIL_TAKEN": "This address already has an account. Log in, or reset the password.",
+      "CODE_NOT_REQUESTED": "No code was asked for with this address. Start again.",
+      "CODE_EXPIRED": "That code has expired - they last 15 minutes. Ask for a new one.",
+      "CODE_WRONG": "That code is wrong. Check the six digits in the email.",
+      "CODE_ATTEMPTS_SPENT": "Too many wrong tries. Ask for a new code.",
+      "CODE_TOO_SOON": "A code went out less than a minute ago - have a look in your inbox. A new one can be sent in a minute.",
+      "NO_PENDING_REGISTRATION": "Nothing half-finished under this address. Sign up again.",
+      "SAME_PASSWORD": "The new password is the one you already have. Pick a different one.",
+      "VALIDATION_FAILED": "Check what you typed. The password needs at least 9 characters, one capital letter and one digit.",
+      "TOO_MANY_REQUESTS": "Too many tries. Wait a minute and try again.",
+      "NETWORK": "No connection to the server. Check the internet and try again.",
+      "SERVER": "Something broke on our side. Try again in a few minutes."
+    }
   },
   "footer": {
     "siteFooter": "Site footer",
@@ -444,7 +472,17 @@
     "student": "Student",
     "unlockCourse": "Unlock full course",
     "video": "Video",
-    "vocabulary": "Vocabulary"
+    "vocabulary": "Vocabulary",
+    "videoPlay": "Play",
+    "videoPause": "Pause",
+    "videoMute": "Mute",
+    "videoUnmute": "Unmute",
+    "videoSeek": "Seek",
+    "videoSpeed": "Playback speed",
+    "videoFullscreen": "Fullscreen",
+    "videoLoading": "Loading the video...",
+    "videoMissing": "Oops... no video here yet",
+    "videoMissingHint": "The lesson is here; the recording for it is on its way."
   },
   "vocabulary": {
     "title": "Vocabulary",

@@ -12,6 +12,12 @@ import { ModalBody, ModalFooter, ModalHeader } from '@/components/modal';
 import { Text } from '@/components/layout';
 import { openGlobalModal } from '@/redux/slices/ui/uiSlice';
 import { ROUTES } from '@/helpers/routes';
+import {
+  authErrorText,
+  authFailure,
+  translateFieldError,
+} from '@/helpers/authErrorMessage';
+import type { AuthFailure } from '@/helpers/authErrorMessage';
 import { useSelector } from 'react-redux';
 import { selectAuthStatus } from '@/redux/slices/auth';
 import { LOADING_STATUS } from '@/helpers/lodaingStatus';
@@ -39,6 +45,14 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const loadingStatus = useSelector(selectAuthStatus);
+  /**
+   * Which failure it was, not just what it said.
+   *
+   * The sentence goes in the form's root error like any other; this is kept beside it
+   * because one of the failures has something to offer besides words - an address with no
+   * account wants the sign-up button, carrying the address that was just typed.
+   */
+  const [failure, setFailure] = React.useState<AuthFailure | null>(null);
 
   const {
     register,
@@ -118,14 +132,11 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
       onDismiss();
       navigate(redirectTo ?? ROUTES.COURSES);
     } catch (error) {
-      const message =
-        typeof error === 'string'
-          ? error
-          : error instanceof Error
-            ? error.message
-            : t('auth.loginFailed');
-
-      setError('root', { type: 'server', message });
+      setFailure(authFailure(error));
+      setError('root', {
+        type: 'server',
+        message: authErrorText(error, t, 'auth.loginFailed'),
+      });
     }
   });
 
@@ -138,7 +149,7 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
       />
 
       <form onSubmit={handleSubmitLogin} className="flex flex-col gap-4">
-        <FormField name="login-email" error={errors.email?.message}>
+        <FormField name="login-email" error={translateFieldError(errors.email?.message, t)}>
           <Input
             id="login-email"
             type="email"
@@ -149,7 +160,7 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
           />
         </FormField>
 
-        <FormField name="login-password" error={errors.password?.message}>
+        <FormField name="login-password" error={translateFieldError(errors.password?.message, t)}>
           <PasswordInput
             id="login-password"
             placeholder={t('auth.password')}
@@ -160,6 +171,28 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
         </FormField>
 
         {errors.root && <p className="text-[var(--color-error)]">{errors.root.message}</p>}
+
+        {/**
+         * The one failure with a way out that is not "try again": there is no account on
+         * this address, so offer the screen that makes one, with the address already in it.
+         */}
+        {failure === 'ACCOUNT_NOT_FOUND' ? (
+          <button
+            type="button"
+            className="self-start text-sm font-medium text-[var(--color-primary)] underline"
+            onClick={() => {
+              dispatch(
+                openGlobalModal({
+                  type: 'signup',
+                  redirectTo,
+                  prefillEmail: getValues('email'),
+                }),
+              );
+            }}
+          >
+            {t('auth.goSignUp')}
+          </button>
+        ) : null}
 
         {/**
          * Under the password, where it is wanted, and carrying whatever was typed above -

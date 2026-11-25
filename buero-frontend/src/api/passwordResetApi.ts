@@ -11,10 +11,12 @@ import { API_ENDPOINTS } from './apiEndpoints';
 /**
  * Asks for a code.
  *
- * Succeeds whether or not the address has an account - the server answers the same way
- * either way, so that this cannot be used to find out who is a customer. Which means the
- * screen must not promise that an email is on its way to *this* address; it says what it
- * can honestly say, that if the account exists the code has been sent.
+ * Refuses, rather than quietly succeeding, when there is nobody to send one to: 404
+ * `ACCOUNT_NOT_FOUND` for an address with no account, 400 `CODE_TOO_SOON` for a second ask
+ * inside the minute. It used to answer the same way whichever happened, so that the route
+ * could not be used to learn who was a customer - which `POST /auth/register` answers
+ * openly anyway, with a 409. `ResetPasswordModalPanel` reads those codes and offers the
+ * sign-up screen or the inbox accordingly.
  */
 export const requestPasswordReset = async (
   email: string,

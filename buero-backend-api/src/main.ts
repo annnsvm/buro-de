@@ -1,5 +1,10 @@
 import "reflect-metadata";
-import { ClassSerializerInterceptor, Logger, ValidationPipe } from "@nestjs/common";
+import {
+  BadRequestException,
+  ClassSerializerInterceptor,
+  Logger,
+  ValidationPipe,
+} from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
@@ -8,6 +13,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { configureHttp } from "./common/http/configure-http";
+import { AUTH_ERROR } from "./modules/auth/auth-error-codes";
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
@@ -38,6 +44,22 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      /**
+       * A refused body says so by name, not only in a sentence.
+       *
+       * class-validator writes its messages for whoever is reading them in English -
+       * "Password must be at least 9 characters" - and the frontend used to put that
+       * straight in front of a student who is studying German through Ukrainian. With a
+       * code on the body the client can say it in the reader's language instead; the
+       * messages stay for the log and for Swagger.
+       */
+      exceptionFactory: (errors) =>
+        new BadRequestException({
+          code: AUTH_ERROR.validationFailed,
+          message: errors.flatMap((error) =>
+            Object.values(error.constraints ?? {})
+          ),
+        }),
     })
   );
 
