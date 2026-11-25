@@ -18,9 +18,26 @@ export const MATERIAL_ATTACHMENT_MIME_TYPES = [
 
 export const MATERIAL_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 
-export const materialAttachmentMulterOptions: MulterOptions = {
+/**
+ * Nest's `MulterOptions` was written before `defParamCharset` existed, so it is declared
+ * here. Multer itself reads the option - see `defParamCharset` in its `index.js` - and
+ * `@types/multer` has carried it for years.
+ */
+type MulterOptionsWithCharset = MulterOptions & { defParamCharset?: string };
+
+export const materialAttachmentMulterOptions: MulterOptionsWithCharset = {
   storage: memoryStorage(),
   limits: { fileSize: MATERIAL_ATTACHMENT_MAX_BYTES },
+  /**
+   * Read the uploaded file's name as UTF-8, which is what browsers send.
+   *
+   * Multer defaults this to `latin1` - `this.defParamCharset = options.defParamCharset ||
+   * 'latin1'` - so every byte of a name outside ASCII is decoded as the wrong character.
+   * A file called `Buro_de-A2.1-1.1-Shpargalka.pdf` survives that untouched, which is why
+   * it looked fine; one called `Шпаргалка.pdf` arrives as mojibake and is stored that way,
+   * so it is also what the student downloads later.
+   */
+  defParamCharset: "utf8",
   fileFilter: (
     _req: Express.Request,
     file: Express.Multer.File,

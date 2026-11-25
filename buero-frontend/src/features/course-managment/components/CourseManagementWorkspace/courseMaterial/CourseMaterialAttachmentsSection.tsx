@@ -6,6 +6,7 @@ import {
   deleteAttachment,
   downloadAttachmentFile,
   fetchAttachments,
+  renameAttachment,
   uploadAttachment,
 } from '@/api/materialAttachmentsApi';
 import { Button, FormField, Input, Spinner } from '@/components/ui';
@@ -31,6 +32,13 @@ const ACCEPT =
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
+/**
+ * Editable, but not loud about it: transparent until hovered or focused, so a column of
+ * files still reads as a list of files rather than as a form to fill in.
+ */
+const NAME_INPUT =
+  'w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-medium text-[var(--color-text-primary)] hover:border-[var(--color-border-subtle)] focus:border-[var(--color-border-subtle)] focus:bg-[var(--color-neutral-white)] focus:outline-none disabled:opacity-60';
+
 const formatSize = (bytes: number | null | undefined): string => {
   if (bytes == null || bytes < 0) return '';
   if (bytes < 1024) return `${bytes} B`;
@@ -45,8 +53,18 @@ const attachmentIcon = (item: { kind: string; mimeType?: string | null }) => {
 };
 
 type PendingAdd =
-  | { draftId: string; kind: 'file'; file: File }
+  | { draftId: string; kind: 'file'; file: File; title: string }
   | { draftId: string; kind: 'link'; title: string; url: string };
+
+/**
+ * The name shown to the student, which is not always the name the file arrived with.
+ *
+ * A file comes called whatever the author's folder called it - a scan's serial number, a
+ * draft number, or a name that an older upload mangled on its way in. The upload fills
+ * this in from the file so nothing has to be typed, and it can be changed before saving or
+ * at any point afterwards. The file itself, and the name it downloads under, do not change.
+ */
+const titleFromFileName = (fileName: string): string => fileName.trim();
 
 export type CourseMaterialAttachmentsSectionProps = {
   courseId: string;
@@ -67,6 +85,8 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
   const [savedItems, setSavedItems] = useState<MaterialAttachment[]>([]);
   const [pendingAdds, setPendingAdds] = useState<PendingAdd[]>([]);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
+  /** Renames of already-saved attachments, applied with everything else on confirm. */
+  const [pendingRenames, setPendingRenames] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isFlushing, setIsFlushing] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -76,10 +96,15 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
 
   const pendingAddsRef = useRef(pendingAdds);
   const pendingDeleteIdsRef = useRef(pendingDeleteIds);
+  const pendingRenamesRef = useRef(pendingRenames);
   pendingAddsRef.current = pendingAdds;
   pendingDeleteIdsRef.current = pendingDeleteIds;
+  pendingRenamesRef.current = pendingRenames;
 
-  const hasDraft = pendingAdds.length > 0 || pendingDeleteIds.length > 0;
+  const hasDraft =
+    pendingAdds.length > 0 ||
+    pendingDeleteIds.length > 0 ||
+    Object.keys(pendingRenames).length > 0;
 
   useEffect(() => {
     onDraftChange?.(hasDraft);
@@ -93,6 +118,7 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
       setSavedItems(res.data);
       setPendingAdds([]);
       setPendingDeleteIds([]);
+      setPendingRenames({});
     } catch (err) {
       setError(getErrorMessage(err, 'Не вдалося завантажити файли уроку'));
     } finally {
@@ -107,20 +133,35 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
   const flushDrafts = useCallback(async () => {
     const adds = pendingAddsRef.current;
     const deletes = pendingDeleteIdsRef.current;
-    if (adds.length === 0 && deletes.length === 0) return;
+    const renames = Object.entries(pendingRenamesRef.current);
+    if (adds.length === 0 && deletes.length === 0 && renames.length === 0) return;
 
     setIsFlushing(true);
     setError(null);
     try {
       for (const add of adds) {
         if (add.kind === 'file') {
-          await uploadAttachment(courseId, moduleId, materialId, add.file);
+          /** Cleared to nothing, so fall back to what the file is actually called. */
+          await uploadAttachment(
+            courseId,
+            moduleId,
+            materialId,
+            add.file,
+            add.title.trim() || add.file.name,
+          );
         } else {
           await createLinkAttachment(courseId, moduleId, materialId, {
             title: add.title,
             url: add.url,
           });
         }
+      }
+      for (const [attachmentId, title] of renames) {
+        /** Deleting wins: renaming something on its way out would be a wasted request. */
+        if (deletes.includes(attachmentId)) continue;
+        /** Cleared to nothing: leave the name it already has rather than wipe it. */
+        if (!title.trim()) continue;
+        await renameAttachment(courseId, moduleId, materialId, attachmentId, title);
       }
       for (const attachmentId of deletes) {
         await deleteAttachment(courseId, moduleId, materialId, attachmentId);
@@ -155,7 +196,15 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
       return;
     }
     setError(null);
-    setPendingAdds((prev) => [...prev, { draftId: crypto.randomUUID(), kind: 'file', file }]);
+    setPendingAdds((prev) => [
+      ...prev,
+      {
+        draftId: crypto.randomUUID(),
+        kind: 'file',
+        file,
+        title: titleFromFileName(file.name),
+      },
+    ]);
   };
 
   const handleAddLink = () => {
@@ -205,6 +254,26 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
 
   const handleUndoRemove = (attachmentId: string) => {
     setPendingDeleteIds((prev) => prev.filter((id) => id !== attachmentId));
+  };
+
+  const handleRenamePending = (draftId: string, title: string) => {
+    setPendingAdds((prev) =>
+      prev.map((item) => (item.draftId === draftId ? { ...item, title } : item)),
+    );
+  };
+
+  /**
+   * Kept as a pending change rather than sent on every keystroke, so a rename lands with
+   * the rest of the lesson on confirm - and typing over a name does not fire a request per
+   * letter. Going back to the saved name simply drops the change.
+   */
+  const handleRenameSaved = (item: MaterialAttachment, title: string) => {
+    setPendingRenames((prev) => {
+      const next = { ...prev };
+      if (title.trim() === item.title.trim()) delete next[item.id];
+      else next[item.id] = title;
+      return next;
+    });
   };
 
   const handleRemovePending = (draftId: string) => {
@@ -292,7 +361,19 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
               >
                 <IconCmp className="h-4 w-4 shrink-0 text-[var(--color-text-secondary)]" aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">{item.title}</p>
+                  {willRemove ? (
+                    <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                      {item.title}
+                    </p>
+                  ) : (
+                    <input
+                      value={pendingRenames[item.id] ?? item.title}
+                      onChange={(event) => handleRenameSaved(item, event.target.value)}
+                      disabled={busy}
+                      aria-label={`Назва файлу: ${item.title}`}
+                      className={NAME_INPUT}
+                    />
+                  )}
                   <p className="truncate text-xs text-[var(--color-text-secondary)]">
                     {willRemove
                       ? 'Зникне після підтвердження'
@@ -345,9 +426,12 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
               mimeType: item.kind === 'file' ? item.file.type : null,
             });
             const title = item.kind === 'file' ? item.file.name : item.title;
+            /** The file's own name stays visible, so a renamed row still says what it is. */
             const detail =
               item.kind === 'file'
-                ? `${formatSize(item.file.size)}, ще не збережено`
+                ? [item.file.name, formatSize(item.file.size), 'ще не збережено']
+                    .filter(Boolean)
+                    .join(', ')
                 : `${item.url}, ще не збережено`;
             return (
               <li
@@ -356,7 +440,19 @@ const CourseMaterialAttachmentsSection: React.FC<CourseMaterialAttachmentsSectio
               >
                 <IconCmp className="h-4 w-4 shrink-0 text-[var(--color-text-secondary)]" aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">{title}</p>
+                  {item.kind === 'file' ? (
+                    <input
+                      value={item.title}
+                      onChange={(event) => handleRenamePending(item.draftId, event.target.value)}
+                      disabled={busy}
+                      aria-label={`Назва файлу: ${item.file.name}`}
+                      className={NAME_INPUT}
+                    />
+                  ) : (
+                    <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                      {title}
+                    </p>
+                  )}
                   <p className="truncate text-xs text-[var(--color-text-secondary)]">{detail}</p>
                 </div>
                 <button

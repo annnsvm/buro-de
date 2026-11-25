@@ -41,6 +41,31 @@ export const createLinkAttachment = async (
     body,
   );
 
+/**
+ * Renames an attachment that is already saved.
+ *
+ * The name a file is stored under starts as the name it was uploaded with, and that is not
+ * always a name worth showing a student - it may be a scan's serial number, or a name that
+ * came through mangled from an older upload. Only the title changes; the file itself and
+ * the name it downloads under stay as they are.
+ */
+export const renameAttachment = async (
+  courseId: string,
+  moduleId: string,
+  materialId: string,
+  attachmentId: string,
+  title: string,
+) =>
+  apiInstance.patch<MaterialAttachment>(
+    API_ENDPOINTS.courseMaterials.attachmentById(
+      courseId,
+      moduleId,
+      materialId,
+      attachmentId,
+    ),
+    { title: title.trim() },
+  );
+
 export const deleteAttachment = async (
   courseId: string,
   moduleId: string,
