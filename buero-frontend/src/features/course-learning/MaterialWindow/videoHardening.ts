@@ -147,3 +147,6 @@ export const clampVolume = (value: number): number => {
   if (!Number.isFinite(value)) return DEFAULT_VOLUME;
   return Math.min(100, Math.max(0, Math.round(value)));
 };
+
+/** How long the bar stays after a touch before it gets out of the way again. */
+export const CONTROLS_IDLE_MS = 3_000;
