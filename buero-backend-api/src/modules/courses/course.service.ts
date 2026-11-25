@@ -462,6 +462,9 @@ export class CourseService {
           ...(dto.duration_hours !== undefined && {
             durationHours: dto.duration_hours,
           }),
+          ...(dto.duration_hours_manual !== undefined && {
+            durationHoursManual: dto.duration_hours_manual,
+          }),
           ...(dto.trial_module_count !== undefined && {
             trialModuleCount: dto.trial_module_count,
           }),
@@ -510,11 +513,27 @@ export class CourseService {
           title: true,
           price: true,
           isPublished: true,
+          durationHoursManual: true,
         },
       });
       if (!existing) {
         throw new NotFoundException(`Курс з id ${id} не знайдено`);
       }
+
+      /**
+       * An author's own duration is not overwritten by the automatic sum.
+       *
+       * The editor adds up the videos and saves the total whenever the course structure
+       * changes - and on simply opening the course, which syncs on load. That request
+       * carries `duration_hours` and nothing else. A request that also carries
+       * `duration_hours_manual` is the author deciding, and is always obeyed.
+       *
+       * Enforced here rather than left to the editor because the rule is about the course,
+       * not about one screen: an older browser tab, or a second client, would otherwise
+       * quietly undo a figure somebody typed on purpose.
+       */
+      const automaticWrite = dto.duration_hours_manual === undefined;
+      const keepTheirNumber = automaticWrite && existing.durationHoursManual;
 
       const updateData: Record<string, unknown> = {
         ...(dto.title !== undefined && { title: dto.title }),
@@ -531,8 +550,12 @@ export class CourseService {
         }),
         ...(dto.level !== undefined && { level: dto.level }),
           ...(dto.level_to !== undefined && { levelTo: dto.level_to }),
-        ...(dto.duration_hours !== undefined && {
-          durationHours: dto.duration_hours,
+        ...(dto.duration_hours !== undefined &&
+          !keepTheirNumber && {
+            durationHours: dto.duration_hours,
+          }),
+        ...(dto.duration_hours_manual !== undefined && {
+          durationHoursManual: dto.duration_hours_manual,
         }),
         ...(dto.trial_module_count !== undefined && {
           trialModuleCount: dto.trial_module_count,

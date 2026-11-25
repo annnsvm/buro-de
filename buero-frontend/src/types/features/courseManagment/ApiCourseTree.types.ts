@@ -8,6 +8,9 @@ export type ApiCourseTreeResponse = {
   price?: number | null;
   durationHours?: number | null;
   duration_hours?: number | null;
+  /** Whether the hours above were typed rather than summed from the videos. */
+  durationHoursManual?: boolean | null;
+  duration_hours_manual?: boolean | null;
   level?: string | null;
   /** Top of the level range, when the course covers more than one. */
   levelTo?: string | null;

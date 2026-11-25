@@ -275,7 +275,21 @@ model Course {
   /// course may run from A2 to B1. Null means it sits at `level` alone. Together the two
   /// describe a range, which is what the catalogue draws and filters on.
   levelTo          Level?         @map("level_to")
+  /// How long the course is, in whole hours, as the catalogue shows it.
+  ///
+  /// Normally not typed by anyone: the editor adds up the length of every video and writes
+  /// the total here whenever the course structure changes. That is right nearly always and
+  /// wrong in the cases a sum cannot know about - a course whose work is in the writing
+  /// tasks rather than the watching, or one still being filmed, where the honest figure is
+  /// the one the author intends rather than the one uploaded so far.
   durationHours    Int?           @map("duration_hours")
+  /// Whether the hours above were set by hand.
+  ///
+  /// Without this the automatic sum would quietly overwrite the author's own figure the
+  /// next time anything in the course moved - including simply opening it in the editor,
+  /// which syncs on load. True means the sum stops writing and the number stands until the
+  /// author puts it back to automatic.
+  durationHoursManual Boolean     @default(false) @map("duration_hours_manual")
   /// How many modules from the start of the course a trial opens.
   ///
   /// On the course rather than in the code because the right number depends on how long the

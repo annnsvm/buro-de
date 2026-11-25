@@ -32,6 +32,14 @@ export const createCourseSchema = z.object({
 
   price: z.string().trim(),
   durationHours: z.string().trim().optional().or(z.literal('')),
+  /**
+   * Whether the hours above were typed rather than worked out.
+   *
+   * False, the ordinary case, means the editor keeps the figure in step with the videos.
+   * True means the author has given their own and the sum stops writing over it - which it
+   * otherwise would on the next structure change, or on merely reopening the course.
+   */
+  durationHoursManual: z.boolean(),
 
   level: z.union([levelSchema, z.literal('')]),
   /**

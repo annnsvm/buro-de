@@ -17,6 +17,7 @@ export const mapCourseToForm = (data: ApiCourseTreeResponse): CreateCourseFormVa
   const levelToRaw = data.levelTo != null ? String(data.levelTo) : '';
 
   const durationRaw = data.durationHours ?? data.duration_hours;
+  const durationManualRaw = data.durationHoursManual ?? data.duration_hours_manual;
   const trialRaw = data.trialModuleCount ?? data.trial_module_count;
   const priceNum = data.price;
 
@@ -33,6 +34,7 @@ export const mapCourseToForm = (data: ApiCourseTreeResponse): CreateCourseFormVa
       durationRaw != null && Number.isFinite(Number(durationRaw))
         ? String(durationRaw)
         : '',
+    durationHoursManual: durationManualRaw === true,
     level: isLevel(levelRaw) ? levelRaw : '',
     levelTo: isLevel(levelToRaw) ? levelToRaw : '',
     /**

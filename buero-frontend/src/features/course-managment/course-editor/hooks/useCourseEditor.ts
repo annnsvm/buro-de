@@ -10,8 +10,26 @@ import { useCourseEditorStructureDnd } from './useCourseEditorStructureDnd';
 export const useCourseEditor = () => {
   const router = useCourseEditorRouter();
   const state = useCourseEditorState();
+  /**
+   * Stable, and it has to be.
+   *
+   * Written inline this was a new function on every render, which gave
+   * `syncCourseDurationHours` a new identity on every render, which re-ran the effect that
+   * loads the course - and that effect sets state, so it rendered again. The editor fetched
+   * the same course until the rate limiter cut it off, and showed an empty course because
+   * every request after the first few came back 429.
+   *
+   * `getValues` is stable, so this is too.
+   */
+  const { getValues } = state;
+  const getIsDurationManual = useCallback(
+    () => getValues('durationHoursManual') === true,
+    [getValues],
+  );
+
   const tree = useCourseEditorTree({
     setValue: state.setValue,
+    getIsDurationManual,
     setModules: state.setModules,
     setIsCoursePublished: state.setIsCoursePublished,
   });
@@ -63,6 +81,8 @@ export const useCourseEditor = () => {
     setPriceCurrencySymbol,
     setValue,
     computedDurationMinutes,
+    watchedDurationHours,
+    watchedDurationManual,
     watchedVideoLessonsCount,
     coverFile,
     coverPreviewUrl,
@@ -244,6 +264,8 @@ export const useCourseEditor = () => {
       setPriceCurrencySymbol,
       setValue,
       computedDurationMinutes,
+      watchedDurationHours,
+      watchedDurationManual,
       watchedVideoLessonsCount,
       watchedTrialModuleCount,
       watchedIsIntegration,

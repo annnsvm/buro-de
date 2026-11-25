@@ -7,10 +7,20 @@ import type { UseCourseEditorTreeParams } from '@/types/features/courseManagment
 
 export const useCourseEditorTree = ({
   setValue,
+  getIsDurationManual,
   setModules,
   setIsCoursePublished,
-}: UseCourseEditorTreeParams) => {  const syncCourseDurationHours = useCallback(
+}: UseCourseEditorTreeParams) => {  /**
+   * Keeps the course's hours in step with the videos in it.
+   *
+   * Runs on every structure change and on opening the course, which is what makes the
+   * figure trustworthy without anyone maintaining it - and is exactly why it has to stand
+   * down when the author has given their own. The server refuses such a write as well; the
+   * check here is so the form on screen is not changed under them either.
+   */
+  const syncCourseDurationHours = useCallback(
     async (cid: string, nextModules: Modules[]) => {
+      if (getIsDurationManual()) return;
       const hours = hoursFromVideos(nextModules);
       try {
         await courseApi.patchCourse(cid, {
@@ -18,9 +28,15 @@ export const useCourseEditorTree = ({
         });
         setValue('durationHours', hours === null ? '' : String(hours), { shouldDirty: false });
       } catch {
+        /**
+         * Left unsaid on purpose. This runs behind whatever the author was actually doing -
+         * adding a lesson, opening the course - and a figure in a tile that is briefly out
+         * of date is not worth an error message interrupting that. The next change syncs it.
+         */
+        void 0;
       }
     },
-    [setValue],
+    [setValue, getIsDurationManual],
   );
 
   const fetchCourseTree = useCallback(
