@@ -18,6 +18,7 @@ import {
   verifySignupThunk,
 } from '@/redux/slices/auth/authThunks';
 import { ROUTES } from '@/helpers/routes';
+import { authErrorText, translateFieldError } from '@/helpers/authErrorMessage';
 import { LOADING_STATUS } from '@/helpers/lodaingStatus';
 import { useSelector } from 'react-redux';
 import { selectAuthStatus } from '@/redux/slices/auth';
@@ -37,10 +38,16 @@ type PendingCheckoutPayload = {
 
 export type SignUpModalPanelProps = {
   redirectTo?: string;
+  /** Carried over from a screen that already asked for it - see `ModalRoot`. */
+  prefillEmail?: string;
   onDismiss: () => void;
 };
 
-const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({ redirectTo, onDismiss }) => {
+const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({
+  redirectTo,
+  prefillEmail,
+  onDismiss,
+}) => {
   const { t, i18n } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -60,7 +67,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({ redirectTo, onDismi
     resolver: zodResolver(signUpSchema),
     defaultValues: {
       name: '',
-      email: '',
+      email: prefillEmail ?? '',
       password: '',
     },
   });
@@ -140,22 +147,19 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({ redirectTo, onDismi
       setResent(false);
       setStep('verify');
     } catch (error) {
-      const message =
-        typeof error === 'string'
-          ? error
-          : error instanceof Error
-            ? error.message
-            : t('auth.signUpFailed');
-
-      setError('root', { type: 'server', message });
+      setError('root', {
+        type: 'server',
+        message: authErrorText(error, t, 'auth.signUpFailed'),
+      });
     }
   });
 
   const onVerify = async (event: React.FormEvent) => {
     event.preventDefault();
     const code = verifyCode.replace(/\D/g, '');
+    /** Caught here rather than sent, so six digits is what the server is ever asked about. */
     if (code.length !== 6) {
-      setVerifyError(t('auth.verifyFailed'));
+      setVerifyError(t('auth.errors.CODE_WRONG'));
       return;
     }
 
@@ -164,13 +168,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({ redirectTo, onDismi
       await dispatch(verifySignupThunk({ email: pendingEmail, code })).unwrap();
       await finishAuthenticated();
     } catch (error) {
-      const message =
-        typeof error === 'string'
-          ? error
-          : error instanceof Error
-            ? error.message
-            : t('auth.verifyFailed');
-      setVerifyError(message);
+      setVerifyError(authErrorText(error, t, 'auth.verifyFailed'));
     }
   };
 
@@ -180,13 +178,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({ redirectTo, onDismi
       await dispatch(resendSignupCodeThunk({ email: pendingEmail })).unwrap();
       setResent(true);
     } catch (error) {
-      const message =
-        typeof error === 'string'
-          ? error
-          : error instanceof Error
-            ? error.message
-            : t('auth.verifyFailed');
-      setVerifyError(message);
+      setVerifyError(authErrorText(error, t, 'auth.verifyFailed'));
     }
   };
 
@@ -256,7 +248,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({ redirectTo, onDismi
       <ModalHeader title={t('auth.signUpTitle')} description={t('auth.signUpDescription')} className="mb-8" />
 
       <form onSubmit={onSubmit} className="relative flex flex-col gap-4">
-        <FormField name="name" error={errors.name?.message}>
+        <FormField name="name" error={translateFieldError(errors.name?.message, t)}>
           <Input
             id="signup-name"
             type="text"
@@ -267,7 +259,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({ redirectTo, onDismi
           />
         </FormField>
 
-        <FormField name="email" error={errors.email?.message}>
+        <FormField name="email" error={translateFieldError(errors.email?.message, t)}>
           <Input
             id="signup-email"
             type="email"
@@ -278,7 +270,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({ redirectTo, onDismi
           />
         </FormField>
 
-        <FormField name="password" error={errors.password?.message}>
+        <FormField name="password" error={translateFieldError(errors.password?.message, t)}>
           <PasswordInput
             id="signup-password"
             placeholder={t('auth.password')}

@@ -17,6 +17,12 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { UserWithoutPassword } from "./types/user-response.type";
 import { Language, Role } from "src/generated/prisma/enums";
 import { User } from "src/generated/prisma/client";
+import {
+  AUTH_ERROR,
+  badRequest,
+  notFound,
+  unauthorized,
+} from "../auth/auth-error-codes";
 
 const SALT_ROUNDS = 10;
 
@@ -283,9 +289,20 @@ export class UserService {
     return this.getProfile(userId);
   }
 
+  /**
+   * Finds an account by address, the same way registration stored it.
+   *
+   * Registration writes `dto.email.toLowerCase()`, and `email` is a plain `String` column -
+   * case-sensitive in Postgres, with no `citext` anywhere in the schema. This lookup used
+   * to pass the address through exactly as typed, so an account created as
+   * `Anna@Gmail.com` was stored as `anna@gmail.com` and then could not be found by the
+   * address its owner had just typed. Login answered "invalid credentials", which sent the
+   * student to reset a password that was never the problem - and the reset, which does
+   * lowercase, worked and still did not let them in.
+   */
   async findUserByEmailWithPassword(email: string): Promise<User | null> {
     const user = await this.prisma.user.findFirst({
-      where: { email: email, deletedAt: null },
+      where: { email: email.trim().toLowerCase(), deletedAt: null },
     });
     if (!user) return null;
     return user;
@@ -306,14 +323,20 @@ export class UserService {
     newPassword: string,
   ): Promise<UserWithoutPassword> {
     const user = await this.findUserByIdWithPassword(userId);
-    if (!user) throw new NotFoundException("User not found");
+    if (!user) {
+      throw notFound(AUTH_ERROR.accountNotFound, "User not found");
+    }
     const valid = await this.validatePassword(user, currentPassword);
     if (!valid) {
-      throw new UnauthorizedException("Invalid current password");
+      throw unauthorized(
+        AUTH_ERROR.wrongPassword,
+        "Invalid current password",
+      );
     }
     const same = await bcrypt.compare(newPassword, user.passwordHash);
     if (same) {
-      throw new BadRequestException(
+      throw badRequest(
+        AUTH_ERROR.samePassword,
         "New password must be different from the current password",
       );
     }
@@ -327,7 +350,9 @@ export class UserService {
       data: { revokedAt: new Date() },
     });
     const updated = await this.findUserById(userId);
-    if (!updated) throw new NotFoundException("User not found");
+    if (!updated) {
+      throw notFound(AUTH_ERROR.accountNotFound, "User not found");
+    }
     return updated;
   }
 }

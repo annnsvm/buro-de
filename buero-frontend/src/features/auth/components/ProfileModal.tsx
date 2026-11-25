@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -10,6 +11,7 @@ import { apiInstance } from '@/api/apiInstance';
 import { ICON_NAMES } from '@/helpers/iconNames';
 import { profileSchema, type ProfileFormValues } from '@/features/profile/validation/profileSchema';
 import type { ProfileModalProps } from '@/types/features/userProfile/ProfileModal.types';
+import { authErrorText } from '@/helpers/authErrorMessage';
 
 
 
@@ -36,6 +38,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   onProfileSave,
   onAvatarSelect,
 }) => {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser);
   const userError = useAppSelector(selectUserError);
@@ -149,9 +152,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
       onProfileSave?.(payload);
       handleClose();
 
-    } catch (e: any) {
-      const msg = e.response?.data?.message || (typeof e === 'string' ? e : 'Update failed');
-      setFormError(msg);
+    } catch (e: unknown) {
+      /**
+       * Changing the password here fails the same handful of ways it fails at the front
+       * door - the current one typed wrong, the new one being the old one - and used to
+       * show the server's own English sentence for each. It names them now, so this reads
+       * in the student's language like the rest of the auth screens.
+       */
+      setFormError(authErrorText(e, t, 'auth.profileUpdateFailed'));
     }
   });
 

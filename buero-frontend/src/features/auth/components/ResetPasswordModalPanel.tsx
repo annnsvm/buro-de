@@ -5,13 +5,17 @@ import { Button, FormField, Input, PasswordInput, Spinner } from '@/components/u
 import { ModalBody, ModalFooter, ModalHeader } from '@/components/modal';
 import { Text } from '@/components/layout';
 import { openGlobalModal } from '@/redux/slices/ui/uiSlice';
-import { getErrorMessage } from '@/helpers/getErrorMessage';
+import { authErrorText, authFailure } from '@/helpers/authErrorMessage';
+import type { AuthFailure } from '@/helpers/authErrorMessage';
 import { requestPasswordReset, resetPassword } from '@/api/passwordResetApi';
 
 export type ResetPasswordModalPanelProps = {
   prefillEmail?: string;
   onDismiss: () => void;
 };
+
+/** The server's rule, checked here so a weak password costs no round trip. */
+const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*[0-9]).{9,}$/;
 
 /**
  * Getting back in after forgetting the password.
@@ -21,10 +25,17 @@ export type ResetPasswordModalPanelProps = {
  * a form that asked for all three at once would be a form they had to come back to with
  * half of it already stale.
  *
- * The first step cannot say "we sent a code to you" - the server answers the same way
- * whether or not the address has an account, on purpose, so that this is not a way of
- * finding out who has bought the course. So the screen says what is actually true: if
- * there is an account, the code is on its way.
+ * What this screen used to do badly was fail. The server answered "code sent" however the
+ * first step went - unknown address, cooldown, anything - so the screen said a code was on
+ * its way and then waited for digits that would never arrive. The second step was as blunt:
+ * one sentence, "invalid or expired", for a code that had run out of time, a code with a
+ * typo in it, and no code at all. Each of those wants something different done about it.
+ *
+ * So the server names each failure now and this screen answers with the way out rather than
+ * only with words: an address with no account gets the sign-up button, a code that has
+ * expired or been guessed away gets the button that asks for a new one, and a second ask
+ * inside the cooldown goes straight on to the step that uses the code already sitting in
+ * the inbox.
  */
 const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
   prefillEmail,
@@ -39,42 +50,110 @@ const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Not a problem, just something worth knowing - a code already sent, or sent again. */
+  const [notice, setNotice] = useState<string | null>(null);
+  const [failure, setFailure] = useState<AuthFailure | null>(null);
   const [done, setDone] = useState(false);
 
   const locale = i18n.language === 'uk' ? 'uk' : 'en';
 
+  const clearMessages = () => {
+    setError(null);
+    setNotice(null);
+    setFailure(null);
+  };
+
+  /**
+   * Asks the server for a code. Answers whether the screen may move on to using one.
+   *
+   * A refusal inside the cooldown counts as "yes": nothing new was sent, but a code from a
+   * minute ago is in the inbox and the step that takes it is where the student needs to be.
+   */
+  const sendCode = async (): Promise<boolean> => {
+    setBusy(true);
+    clearMessages();
+    try {
+      await requestPasswordReset(email.trim(), locale);
+      return true;
+    } catch (err: unknown) {
+      const kind = authFailure(err);
+      setFailure(kind);
+      if (kind === 'CODE_TOO_SOON') {
+        setNotice(t('auth.errors.CODE_TOO_SOON'));
+        return true;
+      }
+      setError(authErrorText(err, t, 'auth.resetRequestFailed'));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const askForCode = async (event: React.FormEvent) => {
     event.preventDefault();
     if (busy || !email.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await requestPasswordReset(email.trim(), locale);
+    if (await sendCode()) {
+      setCode('');
       setStep('code');
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, t('auth.resetRequestFailed')));
-    } finally {
-      setBusy(false);
+    }
+  };
+
+  /** From the second step, when the code there turned out to be unusable. */
+  const askForNewCode = async () => {
+    if (busy) return;
+    setCode('');
+    const sent = await sendCode();
+    if (sent) {
+      setNotice((already) => already ?? t('auth.verifyResent'));
     }
   };
 
   const setNewPassword = async (event: React.FormEvent) => {
     event.preventDefault();
     if (busy || !code.trim() || !password) return;
+
+    /** Said here rather than fetched: the rule is on the screen already. */
+    if (!PASSWORD_RULE.test(password)) {
+      setNotice(null);
+      setFailure(null);
+      setError(t('auth.errors.VALIDATION_FAILED'));
+      return;
+    }
+
     setBusy(true);
-    setError(null);
+    clearMessages();
     try {
       await resetPassword(email.trim(), code.trim(), password);
       setDone(true);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, t('auth.resetFailed')));
+      setFailure(authFailure(err));
+      setError(authErrorText(err, t, 'auth.resetFailed'));
     } finally {
       setBusy(false);
     }
   };
 
+  const goToSignUp = () => {
+    dispatch(openGlobalModal({ type: 'signup', prefillEmail: email.trim() }));
+  };
+
+  /** The three refusals that are answered by a fresh code rather than by retyping. */
+  const needsNewCode =
+    failure === 'CODE_EXPIRED' ||
+    failure === 'CODE_ATTEMPTS_SPENT' ||
+    failure === 'CODE_NOT_REQUESTED';
+
   const FIELD =
     'rounded-[12px] bg-[var(--opacity-neutral-darkest-5)] px-4 py-2 text-[1.125rem] leading-[1.5] text-[var(--color-text-primary)] placeholder:text-[var(--opacity-neutral-darkest-60)]';
+
+  const messages = (
+    <>
+      {error ? <p className="text-[var(--color-error)]">{error}</p> : null}
+      {notice ? (
+        <p className="text-[var(--color-text-secondary)]">{notice}</p>
+      ) : null}
+    </>
+  );
 
   /**
    * Done, and the way on is the login - the server has signed every session out, including
@@ -105,7 +184,9 @@ const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
       <ModalHeader
         title={t('auth.resetTitle')}
         description={
-          step === 'email' ? t('auth.resetDescription') : t('auth.resetCodeSent')
+          step === 'email'
+            ? t('auth.resetDescription')
+            : t('auth.resetCodeSent', { email: email.trim() })
         }
         className="mb-8"
       />
@@ -117,7 +198,10 @@ const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
               id="reset-email"
               type="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                clearMessages();
+              }}
               placeholder={t('auth.email')}
               autoComplete="email"
               autoFocus
@@ -125,7 +209,21 @@ const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
             />
           </FormField>
 
-          {error ? <p className="text-[var(--color-error)]">{error}</p> : null}
+          {messages}
+
+          {/**
+           * Nobody is on this address, so there is no password to reset and no point
+           * offering to send anything again. The screen that helps is the other one.
+           */}
+          {failure === 'ACCOUNT_NOT_FOUND' ? (
+            <button
+              type="button"
+              className="self-start text-sm font-medium text-[var(--color-primary)] underline"
+              onClick={goToSignUp}
+            >
+              {t('auth.goSignUp')}
+            </button>
+          ) : null}
 
           <Button
             type="submit"
@@ -167,7 +265,28 @@ const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
             {t('auth.resetPasswordRule')}
           </Text>
 
-          {error ? <p className="text-[var(--color-error)]">{error}</p> : null}
+          {messages}
+
+          {needsNewCode ? (
+            <button
+              type="button"
+              className="self-start text-sm font-medium text-[var(--color-primary)] underline disabled:opacity-50"
+              onClick={askForNewCode}
+              disabled={busy}
+            >
+              {t('auth.resetRequestNewCode')}
+            </button>
+          ) : null}
+
+          {failure === 'ACCOUNT_NOT_FOUND' ? (
+            <button
+              type="button"
+              className="self-start text-sm font-medium text-[var(--color-primary)] underline"
+              onClick={goToSignUp}
+            >
+              {t('auth.goSignUp')}
+            </button>
+          ) : null}
 
           <Button
             type="submit"
@@ -184,7 +303,7 @@ const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
             className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
             onClick={() => {
               setStep('email');
-              setError(null);
+              clearMessages();
               setCode('');
             }}
           >

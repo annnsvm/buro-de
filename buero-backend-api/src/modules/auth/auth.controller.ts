@@ -31,6 +31,7 @@ import { Response, Request } from "express";
 import { RegisterDto } from "./dto/register.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { CurrentUser } from "./decorators/current-user.decorator";
+import { AUTH_ERROR, notFound, unauthorized } from "./auth-error-codes";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -103,13 +104,16 @@ export class AuthController {
   @ApiOperation({
     summary: "Попросити код для нового пароля",
     description:
-      "Надсилає 6-значний код на пошту акаунта. Відповідь однакова незалежно від того, " +
-      "чи існує такий акаунт - інакше цей роут став би способом дізнатися, хто " +
-      "зареєстрований. Код дійсний 15 хвилин; доки його не використано, старий пароль " +
-      "працює далі.",
+      "Надсилає 6-значний код на пошту акаунта. Якщо акаунта з такою поштою немає - " +
+      "404 ACCOUNT_NOT_FOUND: ту саму інформацію /auth/register і так віддає відкрито " +
+      "(409), тому ховати її тут означало лише вводити в оману того, хто помилився " +
+      "адресою. Від зловживання роут захищає ліміт 3 запити на хвилину. Код дійсний " +
+      "15 хвилин; доки його не використано, старий пароль працює далі.",
   })
   @ApiBody({ type: ForgotPasswordDto })
-  @ApiResponse({ status: 200, description: "Код надіслано, якщо акаунт існує" })
+  @ApiResponse({ status: 200, description: "Код надіслано" })
+  @ApiResponse({ status: 400, description: "Код уже надсилали менш як хвилину тому (CODE_TOO_SOON)" })
+  @ApiResponse({ status: 404, description: "Немає акаунта з такою поштою (ACCOUNT_NOT_FOUND)" })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.passwordResetService.request(dto.email, dto.locale);
   }
@@ -140,13 +144,30 @@ export class AuthController {
   })
   @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 200, description: "Успішний вхід, токени в cookie" })
-  @ApiResponse({ status: 401, description: "Невірний email або пароль" })
+  @ApiResponse({ status: 401, description: "Невірний пароль (WRONG_PASSWORD)" })
+  @ApiResponse({ status: 404, description: "Немає акаунта з такою поштою (ACCOUNT_NOT_FOUND)" })
   @ApiResponse({ status: 429, description: "Too Many Requests - перевищено ліміт спроб" })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.userService.findUserByEmailWithPassword(dto.email);
-    if (!user) throw new UnauthorizedException("Invalid credentials");
+    /**
+     * The two failures are told apart on purpose.
+     *
+     * The usual reason to blur them is to stop the route being used to learn who has an
+     * account - but `POST /auth/register` answers that same question openly with a 409, so
+     * there is nothing here left to protect. What it cost was real: someone who signed up
+     * with a different address, or mistyped this one, was told their password was wrong and
+     * went off to reset a password that worked fine.
+     */
+    if (!user) {
+      throw notFound(
+        AUTH_ERROR.accountNotFound,
+        "No account uses this email address",
+      );
+    }
     const valid = await this.userService.validatePassword(user, dto.password);
-    if (!valid) throw new UnauthorizedException("Invalid credentials");
+    if (!valid) {
+      throw unauthorized(AUTH_ERROR.wrongPassword, "Invalid credentials");
+    }
     const accessToken = this.userService.signAccessToken(user.id, user.role);
     const refreshToken = await this.userService.createRefreshToken(user.id);
     this.cookieService.setAuthCookies(res, accessToken, refreshToken);
