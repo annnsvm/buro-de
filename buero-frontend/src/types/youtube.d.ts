@@ -23,6 +23,9 @@ declare global {
     unMute?: () => void;
     isMuted?: () => boolean;
     setPlaybackRate?: (rate: number) => void;
+    /** 0-100. Ignored on iOS, where the level belongs to the hardware buttons. */
+    setVolume?: (volume: number) => void;
+    getVolume?: () => number;
   };
 
   interface Window {

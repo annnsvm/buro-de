@@ -115,3 +115,35 @@ export const formatClock = (seconds: number | null | undefined): string => {
   const pad = (n: number) => String(n).padStart(2, '0');
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 };
+
+/** Where the player starts, when it has nothing else to say. */
+export const DEFAULT_VOLUME = 100;
+
+/**
+ * Whether this browser lets a page set the volume at all.
+ *
+ * iOS hands the level to the hardware buttons and makes the `volume` setter do nothing -
+ * WebKit implements it as a no-op - so a slider there would move and change nothing, which
+ * is worse than not offering one. Muting still works, and stays.
+ *
+ * Asked of the browser rather than of the user agent string: a silent element is given a
+ * level and read back, so what is being tested is the behaviour itself. A browser that
+ * starts allowing it will be believed the day it does, and one that stops will be believed
+ * too, without anyone editing a list of devices.
+ */
+export const canSetVolume = (): boolean => {
+  if (typeof document === 'undefined') return false;
+  try {
+    const probe = document.createElement('audio');
+    probe.volume = 0.5;
+    return probe.volume === 0.5;
+  } catch {
+    return false;
+  }
+};
+
+/** Keeps a level inside the range the player accepts, whatever the input hands over. */
+export const clampVolume = (value: number): number => {
+  if (!Number.isFinite(value)) return DEFAULT_VOLUME;
+  return Math.min(100, Math.max(0, Math.round(value)));
+};

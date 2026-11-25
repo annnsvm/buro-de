@@ -482,7 +482,9 @@
     "videoFullscreen": "Fullscreen",
     "videoLoading": "Loading the video...",
     "videoMissing": "Oops... no video here yet",
-    "videoMissingHint": "The lesson is here; the recording for it is on its way."
+    "videoMissingHint": "The lesson is here; the recording for it is on its way.",
+    "videoExitFullscreen": "Exit fullscreen",
+    "videoVolume": "Volume"
   },
   "vocabulary": {
     "title": "Vocabulary",
