@@ -81,7 +81,12 @@ export class MaterialAttachmentsController {
       courseId,
       moduleId,
     );
-    return this.materialAttachmentService.list(courseId, moduleId, materialId);
+    return this.materialAttachmentService.list(
+      courseId,
+      moduleId,
+      materialId,
+      user.role,
+    );
   }
 
   @Get(":attachmentId/download")
@@ -119,6 +124,7 @@ export class MaterialAttachmentsController {
       moduleId,
       materialId,
       attachmentId,
+      user.role,
     );
     return new StreamableFile(file.buffer, {
       type: file.mimeType,
@@ -159,6 +165,7 @@ export class MaterialAttachmentsController {
   @ApiResponse({ status: 403, description: "Teachers only" })
   @ApiResponse({ status: 404, description: "Course, module or material not found" })
   async upload(
+    @CurrentUser() user: UserWithoutPassword,
     @Param("courseId") courseId: string,
     @Param("moduleId") moduleId: string,
     @Param("materialId") materialId: string,
@@ -172,6 +179,7 @@ export class MaterialAttachmentsController {
       courseId,
       moduleId,
       materialId,
+      user.role,
       file,
       title,
     );
@@ -196,6 +204,7 @@ export class MaterialAttachmentsController {
   @ApiResponse({ status: 403, description: "Teachers only" })
   @ApiResponse({ status: 404, description: "Course, module or material not found" })
   createLink(
+    @CurrentUser() user: UserWithoutPassword,
     @Param("courseId") courseId: string,
     @Param("moduleId") moduleId: string,
     @Param("materialId") materialId: string,
@@ -205,6 +214,7 @@ export class MaterialAttachmentsController {
       courseId,
       moduleId,
       materialId,
+      user.role,
       dto,
     );
   }
@@ -227,6 +237,7 @@ export class MaterialAttachmentsController {
   @ApiResponse({ status: 403, description: "Teachers only" })
   @ApiResponse({ status: 404, description: "Attachment not found" })
   update(
+    @CurrentUser() user: UserWithoutPassword,
     @Param("courseId") courseId: string,
     @Param("moduleId") moduleId: string,
     @Param("materialId") materialId: string,
@@ -238,6 +249,7 @@ export class MaterialAttachmentsController {
       moduleId,
       materialId,
       attachmentId,
+      user.role,
       dto,
     );
   }
@@ -260,6 +272,7 @@ export class MaterialAttachmentsController {
   @ApiResponse({ status: 403, description: "Teachers only" })
   @ApiResponse({ status: 404, description: "Attachment not found" })
   delete(
+    @CurrentUser() user: UserWithoutPassword,
     @Param("courseId") courseId: string,
     @Param("moduleId") moduleId: string,
     @Param("materialId") materialId: string,
@@ -270,6 +283,7 @@ export class MaterialAttachmentsController {
       moduleId,
       materialId,
       attachmentId,
+      user.role,
     );
   }
 }

@@ -49,12 +49,29 @@ export class MaterialAttachmentService {
     );
   }
 
+  /**
+   * Who is asking, which decides whether a draft exists.
+   *
+   * `findOne` hides an unpublished material from everyone but a teacher, and every method
+   * here used to call it without saying who the viewer was - so it always answered as if a
+   * student were asking. That was harmless while a new material was published the moment it
+   * was created. Once creation started leaving it a draft, so that a half-written lesson
+   * would not appear in front of students, it stopped being harmless: a teacher could not
+   * list or add files on any lesson they had just made, because the lesson they were
+   * looking at did not exist as far as this service was concerned.
+   */
   async list(
     courseId: string,
     moduleId: string,
     materialId: string,
+    viewerRole: Role,
   ): Promise<SerializedAttachment[]> {
-    await this.courseMaterialService.findOne(courseId, moduleId, materialId);
+    await this.courseMaterialService.findOne(
+      courseId,
+      moduleId,
+      materialId,
+      viewerRole,
+    );
     const items = await this.prisma.materialAttachment.findMany({
       where: { materialId },
       orderBy: { orderIndex: "asc" },
@@ -66,13 +83,19 @@ export class MaterialAttachmentService {
     courseId: string,
     moduleId: string,
     materialId: string,
+    viewerRole: Role,
     file: Express.Multer.File,
     title?: string,
   ): Promise<SerializedAttachment> {
     if (!file) {
       throw new BadRequestException("File is required");
     }
-    await this.courseMaterialService.findOne(courseId, moduleId, materialId);
+    await this.courseMaterialService.findOne(
+      courseId,
+      moduleId,
+      materialId,
+      viewerRole,
+    );
 
     const publicId = randomUUID();
     const uploaded = await this.cloudinaryService.uploadFile(file.buffer, {
@@ -104,9 +127,15 @@ export class MaterialAttachmentService {
     courseId: string,
     moduleId: string,
     materialId: string,
+    viewerRole: Role,
     dto: CreateMaterialLinkAttachmentDto,
   ): Promise<SerializedAttachment> {
-    await this.courseMaterialService.findOne(courseId, moduleId, materialId);
+    await this.courseMaterialService.findOne(
+      courseId,
+      moduleId,
+      materialId,
+      viewerRole,
+    );
     const nextOrderIndex = await this.nextOrderIndex(materialId);
     const attachment = await this.prisma.materialAttachment.create({
       data: {
@@ -125,6 +154,7 @@ export class MaterialAttachmentService {
     moduleId: string,
     materialId: string,
     attachmentId: string,
+    viewerRole: Role,
     dto: UpdateMaterialAttachmentDto,
   ): Promise<SerializedAttachment> {
     const existing = await this.findOwned(
@@ -132,6 +162,7 @@ export class MaterialAttachmentService {
       moduleId,
       materialId,
       attachmentId,
+      viewerRole,
     );
     const attachment = await this.prisma.materialAttachment.update({
       where: { id: existing.id },
@@ -147,12 +178,14 @@ export class MaterialAttachmentService {
     moduleId: string,
     materialId: string,
     attachmentId: string,
+    viewerRole: Role,
   ): Promise<{ buffer: Buffer; fileName: string; mimeType: string }> {
     const existing = await this.findOwned(
       courseId,
       moduleId,
       materialId,
       attachmentId,
+      viewerRole,
     );
     if (existing.kind !== AttachmentKind.file) {
       throw new BadRequestException("This attachment is a link, not a file");
@@ -175,12 +208,14 @@ export class MaterialAttachmentService {
     moduleId: string,
     materialId: string,
     attachmentId: string,
+    viewerRole: Role,
   ): Promise<{ deleted: true; id: string }> {
     const existing = await this.findOwned(
       courseId,
       moduleId,
       materialId,
       attachmentId,
+      viewerRole,
     );
     if (existing.storageKey) {
       const [resourceType, ...publicIdParts] = existing.storageKey.split(":");
@@ -198,8 +233,14 @@ export class MaterialAttachmentService {
     moduleId: string,
     materialId: string,
     attachmentId: string,
+    viewerRole: Role,
   ) {
-    await this.courseMaterialService.findOne(courseId, moduleId, materialId);
+    await this.courseMaterialService.findOne(
+      courseId,
+      moduleId,
+      materialId,
+      viewerRole,
+    );
     const attachment = await this.prisma.materialAttachment.findFirst({
       where: { id: attachmentId, materialId },
     });
