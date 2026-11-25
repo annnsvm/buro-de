@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -38,6 +38,7 @@ type Built = {
 
 let built: Built[] = [];
 const calls = { play: 0, pause: 0, mute: 0, unMute: 0, destroy: 0 };
+const volumeSetTo: number[] = [];
 let playerState = 2;
 
 const installFakeYoutube = () => {
@@ -65,6 +66,8 @@ const installFakeYoutube = () => {
         },
         isMuted: () => false,
         setPlaybackRate: () => undefined,
+        setVolume: (level: number) => void volumeSetTo.push(level),
+        getVolume: () => 100,
       };
       built.push({ host, options });
       options.events?.onReady?.({ target: handle });
@@ -86,6 +89,7 @@ beforeEach(() => {
   calls.mute = 0;
   calls.unMute = 0;
   calls.destroy = 0;
+  volumeSetTo.length = 0;
   playerState = 2;
   apiLoads = () => Promise.resolve();
   installFakeYoutube();
@@ -277,5 +281,174 @@ describe('when YouTube will not cooperate', () => {
     });
 
     expect(onUnavailable).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Where the player's own layers are allowed to reach, and what "fullscreen" means on a
+ * phone. Both were reported from a real iPhone, one after the other.
+ */
+describe('on a phone', () => {
+  /**
+   * The bar was drawn straight over the open burger menu.
+   *
+   * The workspace header is `sticky z-20`, which makes it a stacking context, and the menu
+   * lives inside it - so the menu's own `z-50` is sealed inside a layer numbered 20. The
+   * player's bar carried `z-20` in the page's own context and came later in the document,
+   * and at equal numbers the later element wins. Isolating keeps this component's layers
+   * to itself, which is where they always belonged.
+   */
+  it('keeps its own layers to itself', async () => {
+    draw();
+
+    const shell = await screen.findByTestId('hardened-video');
+
+    expect(shell.className).toContain('isolate');
+  });
+
+  /**
+   * iPhone Safari has no `requestFullscreen` for an ordinary element, and a YouTube embed
+   * is an iframe rather than a `<video>`, so there is nothing native to ask. The call was
+   * written optionally, so the button did nothing at all and said nothing about it.
+   */
+  it('covers the page itself when the browser cannot', async () => {
+    draw();
+    const shell = await screen.findByTestId('hardened-video');
+    expect(Element.prototype.requestFullscreen).toBeUndefined();
+
+    await userEvent.click(screen.getByTestId('hardened-video-fullscreen'));
+
+    expect(shell.className).toContain('fixed');
+    expect(shell.className).toContain('inset-0');
+  });
+
+  it('gives that back on a second press', async () => {
+    draw();
+    const shell = await screen.findByTestId('hardened-video');
+
+    await userEvent.click(screen.getByTestId('hardened-video-fullscreen'));
+    await userEvent.click(screen.getByTestId('hardened-video-fullscreen'));
+
+    expect(shell.className).not.toContain('fixed');
+  });
+
+  it('says which way the button goes', async () => {
+    draw();
+    const button = screen.getByTestId('hardened-video-fullscreen');
+    expect(button).toHaveAttribute('aria-label', 'На весь екран');
+
+    await userEvent.click(button);
+
+    expect(button).toHaveAttribute('aria-label', 'Вийти з повного екрана');
+  });
+});
+
+describe('where the browser does have fullscreen', () => {
+  /** Preferred when it exists, because it hides the browser's own chrome as well. */
+  it('asks the browser rather than covering the page', async () => {
+    const request = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(Element.prototype, 'requestFullscreen', {
+      configurable: true,
+      writable: true,
+      value: request,
+    });
+
+    try {
+      draw();
+      const shell = await screen.findByTestId('hardened-video');
+
+      await userEvent.click(screen.getByTestId('hardened-video-fullscreen'));
+
+      expect(request).toHaveBeenCalled();
+      expect(shell.className).not.toContain('fixed');
+    } finally {
+      delete (Element.prototype as { requestFullscreen?: unknown }).requestFullscreen;
+    }
+  });
+});
+
+/**
+ * Setting the level, not only silencing it.
+ *
+ * With YouTube's control bar gone its volume slider went with it, leaving mute as the only
+ * thing a student could do - which on a listening exercise is the difference between
+ * turning a German speaker down a little and turning them off.
+ */
+describe('the volume', () => {
+  it('offers a slider where the browser allows one', async () => {
+    draw();
+
+    expect(await screen.findByTestId('hardened-video-volume')).toBeInTheDocument();
+  });
+
+  it('passes the level to the player', async () => {
+    draw();
+    await waitFor(() => expect(built).toHaveLength(1));
+
+    const slider = screen.getByTestId('hardened-video-volume');
+    fireEvent.change(slider, { target: { value: '30' } });
+
+    expect(volumeSetTo).toContain(30);
+  });
+
+  /** Dragged all the way down means silence, and the speaker icon should agree. */
+  it('mutes when dragged to zero', async () => {
+    draw();
+    await waitFor(() => expect(built).toHaveLength(1));
+
+    fireEvent.change(screen.getByTestId('hardened-video-volume'), {
+      target: { value: '0' },
+    });
+
+    expect(calls.mute).toBe(1);
+  });
+
+  /** Dragging it up is a request to hear something, so it cannot stay muted. */
+  it('unmutes when dragged back up', async () => {
+    draw();
+    await waitFor(() => expect(built).toHaveLength(1));
+    const slider = screen.getByTestId('hardened-video-volume');
+
+    fireEvent.change(slider, { target: { value: '0' } });
+    fireEvent.change(slider, { target: { value: '60' } });
+
+    expect(calls.unMute).toBeGreaterThan(0);
+    expect(volumeSetTo).toContain(60);
+  });
+
+  /** Otherwise unmuting leaves a raised speaker icon and a silent video. */
+  it('gives the level back when unmuting from zero', async () => {
+    draw();
+    await waitFor(() => expect(built).toHaveLength(1));
+
+    fireEvent.change(screen.getByTestId('hardened-video-volume'), {
+      target: { value: '0' },
+    });
+    await userEvent.click(screen.getByLabelText('Увімкнути звук'));
+
+    expect(volumeSetTo[volumeSetTo.length - 1]).toBe(100);
+  });
+
+  /**
+   * iOS gives the level to the hardware buttons and ignores the setter, so a slider there
+   * would move and change nothing. Muting still works, and stays.
+   */
+  it('is only a mute button where the level cannot be set', async () => {
+    const real = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'volume');
+    Object.defineProperty(HTMLMediaElement.prototype, 'volume', {
+      configurable: true,
+      get: () => 1,
+      set: () => undefined,
+    });
+
+    try {
+      draw();
+      await waitFor(() => expect(built).toHaveLength(1));
+
+      expect(screen.queryByTestId('hardened-video-volume')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Вимкнути звук')).toBeInTheDocument();
+    } finally {
+      if (real) Object.defineProperty(HTMLMediaElement.prototype, 'volume', real);
+    }
   });
 });

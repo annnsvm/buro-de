@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_VOLUME,
   HARDENED_PLAYER_VARS,
   PLAYBACK_RATES,
   WATERMARK_CORNERS,
   YOUTUBE_NOCOOKIE_HOST,
+  canSetVolume,
+  clampVolume,
   formatClock,
   nextPlaybackRate,
   watermarkCorner,
@@ -153,5 +156,44 @@ describe('the clock', () => {
     expect(formatClock(Number.NaN)).toBe('--:--');
     expect(formatClock(Number.POSITIVE_INFINITY)).toBe('--:--');
     expect(formatClock(-5)).toBe('--:--');
+  });
+});
+
+describe('whether the volume can be set at all', () => {
+  /**
+   * Asked of the browser, not of the user agent string. iOS gives the level to the
+   * hardware buttons and makes the setter a no-op, so a slider there would move and change
+   * nothing - and the only honest answer is not to draw one.
+   */
+  it('is true where a media element keeps the level it was given', () => {
+    expect(canSetVolume()).toBe(true);
+  });
+
+  it('is false where the setter is ignored, the way iOS ignores it', () => {
+    const real = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'volume');
+    Object.defineProperty(HTMLMediaElement.prototype, 'volume', {
+      configurable: true,
+      get: () => 1,
+      set: () => undefined,
+    });
+
+    try {
+      expect(canSetVolume()).toBe(false);
+    } finally {
+      if (real) Object.defineProperty(HTMLMediaElement.prototype, 'volume', real);
+    }
+  });
+});
+
+describe('the level itself', () => {
+  it('stays inside what the player accepts', () => {
+    expect(clampVolume(-20)).toBe(0);
+    expect(clampVolume(250)).toBe(100);
+    expect(clampVolume(42.6)).toBe(43);
+  });
+
+  it('falls back to the default rather than passing on nonsense', () => {
+    expect(clampVolume(Number.NaN)).toBe(DEFAULT_VOLUME);
+    expect(clampVolume(Number.POSITIVE_INFINITY)).toBe(DEFAULT_VOLUME);
   });
 });

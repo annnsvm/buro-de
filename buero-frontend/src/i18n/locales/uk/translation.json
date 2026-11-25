@@ -490,7 +490,9 @@
     "videoFullscreen": "На весь екран",
     "videoLoading": "Завантажуємо відео...",
     "videoMissing": "Упссс... відео ще не додано",
-    "videoMissingHint": "Урок уже є, а запис до нього з’явиться незабаром."
+    "videoMissingHint": "Урок уже є, а запис до нього з’явиться незабаром.",
+    "videoExitFullscreen": "Вийти з повного екрана",
+    "videoVolume": "Гучність"
   },
   "vocabulary": {
     "title": "Словник",

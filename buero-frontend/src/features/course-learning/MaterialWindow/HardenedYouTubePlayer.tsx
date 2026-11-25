@@ -6,10 +6,13 @@ import { useAppSelector } from '@/redux/hooks';
 import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
 import { loadYoutubeIframeApi } from '@/helpers/youtubeIframeApi';
 import {
+  DEFAULT_VOLUME,
   HARDENED_PLAYER_VARS,
   PLAYBACK_RATES,
   WATERMARK_MOVE_INTERVAL_MS,
   YOUTUBE_NOCOOKIE_HOST,
+  canSetVolume,
+  clampVolume,
   formatClock,
   nextPlaybackRate,
   watermarkCorner,
@@ -63,10 +66,24 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(DEFAULT_VOLUME);
+  /**
+   * Asked once, of the browser rather than of the user agent. iOS makes the volume setter
+   * do nothing, so a slider there would move and change nothing - worse than not having
+   * one. The mute button stays, because muting does still work.
+   */
+  const [volumeIsAdjustable] = useState(() => canSetVolume());
   const [rate, setRate] = useState(1);
   const [elapsed, setElapsed] = useState(0);
   const [duration, setDuration] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+  /**
+   * iPhone Safari has no `requestFullscreen` for an ordinary element - only iPad does, and
+   * only a `<video>` can go fullscreen natively, which a YouTube embed is not. So on a
+   * phone the button did nothing at all, silently, because the call was optional. The
+   * fallback is to cover the page with the player ourselves.
+   */
+  const [coversPage, setCoversPage] = useState(false);
   const [watermarkStep, setWatermarkStep] = useState(0);
 
   /**
@@ -136,6 +153,8 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
                 setReady(true);
                 setDuration(event.target.getDuration?.() ?? 0);
                 setMuted(Boolean(event.target.isMuted?.()));
+                const level = event.target.getVolume?.();
+                if (typeof level === 'number') setVolume(clampVolume(level));
               },
               onStateChange: (event) => {
                 if (cancelled || !window.YT) return;
@@ -222,11 +241,35 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
     if (muted) {
       player.unMute?.();
       setMuted(false);
+      /** Unmuting a slider sitting at zero would otherwise still play nothing. */
+      if (volume === 0) {
+        player.setVolume?.(DEFAULT_VOLUME);
+        setVolume(DEFAULT_VOLUME);
+      }
     } else {
       player.mute?.();
       setMuted(true);
     }
-  }, [muted]);
+  }, [muted, volume]);
+
+  /**
+   * Moving the slider off zero also unmutes: someone dragging it up is asking to hear
+   * something, and leaving them with a silent player and a raised slider is a puzzle.
+   */
+  const changeVolume = useCallback((next: number) => {
+    const player = playerRef.current;
+    if (!player) return;
+    const level = clampVolume(next);
+    player.setVolume?.(level);
+    setVolume(level);
+    if (level === 0) {
+      player.mute?.();
+      setMuted(true);
+    } else {
+      player.unMute?.();
+      setMuted(false);
+    }
+  }, []);
 
   const cycleRate = useCallback(() => {
     const player = playerRef.current;
@@ -261,11 +304,18 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
   const toggleFullscreen = useCallback(() => {
     const node = containerRef.current;
     if (!node) return;
-    if (document.fullscreenElement === node) {
-      void document.exitFullscreen?.();
-    } else {
-      void node.requestFullscreen?.();
+
+    /** Where it exists, the real thing: it hides the browser's own chrome too. */
+    if (typeof node.requestFullscreen === 'function') {
+      if (document.fullscreenElement === node) {
+        void document.exitFullscreen?.();
+      } else {
+        void node.requestFullscreen();
+      }
+      return;
     }
+
+    setCoversPage((on) => !on);
   }, []);
 
   /** Ours, because YouTube's own shortcuts are off and some of them open youtube.com. */
@@ -286,10 +336,29 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
     } else if (key === 'f') {
       event.preventDefault();
       toggleFullscreen();
+    } else if (key === 'escape' && coversPage) {
+      /** Native fullscreen has its own way out; the stand-in needs one. */
+      event.preventDefault();
+      setCoversPage(false);
     }
   };
 
   const progress = duration > 0 ? Math.min(elapsed / duration, 1) : 0;
+  const expanded = fullscreen || coversPage;
+
+  /**
+   * `isolate` is the load-bearing word.
+   *
+   * Without it the bar, the watermark and the spinner take their z-index from whatever
+   * stacking context the page happens to put them in - and on the lesson screen that is the
+   * same one the workspace header sits in, at the same level, later in the document. The
+   * burger menu lives inside that header, so its own z-50 is sealed inside a layer numbered
+   * 20, and the player's controls were drawn straight over the open menu. Isolating keeps
+   * this component's layers to itself, which is what they were always meant to be.
+   */
+  const shell = coversPage
+    ? 'fixed inset-0 z-[100] h-full w-full bg-black'
+    : 'relative isolate h-full w-full overflow-hidden bg-black';
   const BTN =
     'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/90 transition hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70';
 
@@ -297,7 +366,7 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
     <div
       ref={containerRef}
       data-testid="hardened-video"
-      className={`relative h-full w-full overflow-hidden bg-black ${className}`}
+      className={`${shell} ${coversPage ? '' : className}`}
       /** "Copy video URL" is not a right-click away. */
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={handleKeyDown}
@@ -374,9 +443,39 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
               )}
             </button>
 
-            <button type="button" onClick={toggleMute} className={BTN} aria-label={muted ? t('coursePage.videoUnmute') : t('coursePage.videoMute')}>
-              {muted ? <VolumeX className="h-4 w-4" aria-hidden /> : <Volume2 className="h-4 w-4" aria-hidden />}
-            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={toggleMute}
+                className={BTN}
+                aria-label={muted ? t('coursePage.videoUnmute') : t('coursePage.videoMute')}
+              >
+                {muted ? (
+                  <VolumeX className="h-4 w-4" aria-hidden />
+                ) : (
+                  <Volume2 className="h-4 w-4" aria-hidden />
+                )}
+              </button>
+
+              {/**
+               * Absent where it could not work. On iOS the level belongs to the hardware
+               * buttons and the setter does nothing, so the slider would move and change
+               * nothing - see `canSetVolume`.
+               */}
+              {volumeIsAdjustable ? (
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={muted ? 0 : volume}
+                  onChange={(event) => changeVolume(Number(event.target.value))}
+                  aria-label={t('coursePage.videoVolume')}
+                  data-testid="hardened-video-volume"
+                  className="h-1 w-16 cursor-pointer accent-[var(--color-lesson-accent)] sm:w-20"
+                />
+              ) : null}
+            </div>
 
             <span className="px-1 text-xs tabular-nums text-white/80" data-testid="hardened-video-clock">
               {formatClock(elapsed)} / {formatClock(duration > 0 ? duration : null)}
@@ -395,8 +494,18 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
               {rate}x
             </button>
 
-            <button type="button" onClick={toggleFullscreen} className={BTN} aria-label={t('coursePage.videoFullscreen')}>
-              {fullscreen ? <Minimize className="h-4 w-4" aria-hidden /> : <Maximize className="h-4 w-4" aria-hidden />}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className={BTN}
+              data-testid="hardened-video-fullscreen"
+              aria-label={
+                expanded
+                  ? t('coursePage.videoExitFullscreen')
+                  : t('coursePage.videoFullscreen')
+              }
+            >
+              {expanded ? <Minimize className="h-4 w-4" aria-hidden /> : <Maximize className="h-4 w-4" aria-hidden />}
             </button>
           </div>
         </div>
