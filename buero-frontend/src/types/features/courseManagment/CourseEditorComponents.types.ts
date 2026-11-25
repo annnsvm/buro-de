@@ -78,6 +78,9 @@ export type CourseEditorCourseFormTabProps = {
   setPriceCurrencySymbol: (v: CurrencySymbol) => void;
   setValue: UseFormSetValue<CreateCourseFormValues>;
   computedDurationMinutes: number;
+  /** The author's own figure, as typed, and whether it is in force. */
+  watchedDurationHours: string;
+  watchedDurationManual: boolean;
   watchedVideoLessonsCount: number;
   watchedTrialModuleCount: string;
   /** Which half of the catalogue the course is in. */

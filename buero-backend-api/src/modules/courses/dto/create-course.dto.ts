@@ -67,6 +67,19 @@ export class CreateCourseDto {
   duration_hours?: number;
 
   @ApiPropertyOptional({
+    example: false,
+    default: false,
+    description:
+      'Чи виставлено тривалість руками. За замовчуванням редактор сам підсумовує ' +
+      'тривалість усіх відео й записує її при кожній зміні структури. true означає, що ' +
+      'автор задав своє число: автоматичний підсумок більше не перезаписує його, доки ' +
+      'не надіслати false.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  duration_hours_manual?: boolean;
+
+  @ApiPropertyOptional({
     example: 2,
     default: 2,
     description:

@@ -26,6 +26,7 @@ export const useCourseEditorState = () => {
     handleSubmit,
     watch,
     setValue,
+    getValues,
     reset,
     formState: { errors, isDirty, isValid },
   } = useForm<CreateCourseFormValues>({
@@ -40,6 +41,7 @@ export const useCourseEditorState = () => {
       category: 'language',
       price: '',
       durationHours: '',
+      durationHoursManual: false,
       level: '',
       levelTo: '',
       trialModuleCount: '2',
@@ -55,6 +57,8 @@ export const useCourseEditorState = () => {
   const watchedLevelTo = watch('levelTo') ?? '';
   const watchedTrialModuleCount = watch('trialModuleCount') ?? '2';
   const watchedIsIntegration = watch('isIntegration') ?? false;
+  const watchedDurationHours = watch('durationHours') ?? '';
+  const watchedDurationManual = watch('durationHoursManual') ?? false;
   const watchedVideoLessonsCount = videoMaterialCount(modules);
   const computedDurationMinutes = videoMinutesSum(modules);
 
@@ -135,6 +139,7 @@ export const useCourseEditorState = () => {
       category: 'language',
       price: '',
       durationHours: '',
+      durationHoursManual: false,
       level: '',
       levelTo: '',
       trialModuleCount: '2',
@@ -147,6 +152,7 @@ export const useCourseEditorState = () => {
     handleSubmit,
     watch,
     setValue,
+    getValues,
     reset,
     errors,
     isDirty,
@@ -166,6 +172,8 @@ export const useCourseEditorState = () => {
     watchedIsIntegration,
     watchedVideoLessonsCount,
     computedDurationMinutes,
+    watchedDurationHours,
+    watchedDurationManual,
     coverFile,
     setCoverFile,
     coverPreviewUrl,

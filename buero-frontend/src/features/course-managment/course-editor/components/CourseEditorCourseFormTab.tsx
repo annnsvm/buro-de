@@ -36,6 +36,8 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
   setPriceCurrencySymbol,
   setValue,
   computedDurationMinutes,
+  watchedDurationHours,
+  watchedDurationManual,
   watchedVideoLessonsCount,
   watchedTrialModuleCount,
   watchedIsIntegration,
@@ -122,6 +124,16 @@ const CourseEditorCourseFormTab: React.FC<CourseEditorCourseFormTabProps> = ({
         <CourseDurationSection
           durationMinutes={computedDurationMinutes}
           videoLessonsCount={watchedVideoLessonsCount}
+          manual={watchedDurationManual}
+          hours={watchedDurationHours}
+          onHoursChange={(value) =>
+            setValue('durationHours', value, { shouldDirty: true, shouldValidate: true })
+          }
+          onManualChange={(manual) =>
+            setValue('durationHoursManual', manual, { shouldDirty: true })
+          }
+          disabled={fieldsLocked}
+          error={errors.durationHours?.message}
         />
 
         <CourseCreateActions

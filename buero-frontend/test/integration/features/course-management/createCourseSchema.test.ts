@@ -9,6 +9,7 @@ const base = {
   category: 'language' as const,
   price: '29.99',
   durationHours: '5',
+  durationHoursManual: false,
   level: 'A1' as const,
   levelTo: '' as const,
   trialModuleCount: '2',

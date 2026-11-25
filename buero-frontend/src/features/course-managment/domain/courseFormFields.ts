@@ -13,7 +13,16 @@ export const courseFormFields = (
    * an empty string would be rejected outright rather than read as "no range".
    */
   ...(values.levelTo ? { level_to: values.levelTo } : {}),
-  ...(values.durationHours?.trim()
+  /**
+   * Always sent, like the other decisions on this form: "go back to working it out" has to
+   * be sendable, not merely omittable.
+   */
+  duration_hours_manual: values.durationHoursManual,
+  /**
+   * The hours themselves only when the author owns them. On automatic the figure belongs
+   * to the running sum, and sending a stale copy of it from the form would fight that.
+   */
+  ...(values.durationHoursManual && values.durationHours?.trim()
     ? { duration_hours: Number(values.durationHours.trim()) }
     : {}),
   /**
