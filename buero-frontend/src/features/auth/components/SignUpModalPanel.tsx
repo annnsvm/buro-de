@@ -18,7 +18,12 @@ import {
   verifySignupThunk,
 } from '@/redux/slices/auth/authThunks';
 import { ROUTES } from '@/helpers/routes';
-import { authErrorText, translateFieldError } from '@/helpers/authErrorMessage';
+import {
+  authErrorText,
+  authFailure,
+  translateFieldError,
+} from '@/helpers/authErrorMessage';
+import type { AuthFailure } from '@/helpers/authErrorMessage';
 import { LOADING_STATUS } from '@/helpers/lodaingStatus';
 import { useSelector } from 'react-redux';
 import { selectAuthStatus } from '@/redux/slices/auth';
@@ -57,12 +62,23 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({
   const [verifyCode, setVerifyCode] = useState('');
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
+  /**
+   * Which failure it was, not just what it said.
+   *
+   * One of them has an answer better than words: an address that already has an account
+   * does not need registering, it needs signing in. Someone who clicked "try the course"
+   * and typed the address they have used here before is not making a mistake - they simply
+   * landed on the wrong one of two forms, and the form can hand them to the right one
+   * rather than explain.
+   */
+  const [failure, setFailure] = useState<AuthFailure | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
+    getValues,
   } = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -129,6 +145,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({
   };
 
   const onSubmit = handleSubmit(async (values) => {
+    setFailure(null);
     try {
       const locale = i18n.language.toLowerCase().startsWith('uk') ? 'uk' : 'en';
       await dispatch(
@@ -147,6 +164,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({
       setResent(false);
       setStep('verify');
     } catch (error) {
+      setFailure(authFailure(error));
       setError('root', {
         type: 'server',
         message: authErrorText(error, t, 'auth.signUpFailed'),
@@ -247,7 +265,7 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({
     <ModalBody>
       <ModalHeader title={t('auth.signUpTitle')} description={t('auth.signUpDescription')} className="mb-8" />
 
-      <form onSubmit={onSubmit} className="relative flex flex-col gap-4">
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <FormField name="name" error={translateFieldError(errors.name?.message, t)}>
           <Input
             id="signup-name"
@@ -280,9 +298,42 @@ const SignUpModalPanel: React.FC<SignUpModalPanelProps> = ({
           />
         </FormField>
 
+        {/**
+         * In the flow, like every other message on this form.
+         *
+         * It used to be pinned with `absolute bottom-16`, which meant it grew upwards from
+         * a fixed point - fine for the one short line it was written for, and not fine for
+         * anything longer. On a phone, where the box is narrow, "Ця пошта вже
+         * зареєстрована. Увійдіть або скиньте пароль." takes two or three lines and the
+         * extra ones climbed over the password field.
+         */}
         {errors.root && (
-          <p className="absolute bottom-16 left-3 text-sm text-[var(--color-error)]">{errors.root.message}</p>
+          <p className="text-sm text-[var(--color-error)]" role="alert">
+            {errors.root.message}
+          </p>
         )}
+
+        {/**
+         * The mirror of what the login form already offers when an address has no account.
+         * The address goes with them, because they have typed it once already.
+         */}
+        {failure === 'EMAIL_TAKEN' ? (
+          <button
+            type="button"
+            className="self-start text-sm font-medium text-[var(--color-primary)] underline"
+            onClick={() => {
+              dispatch(
+                openGlobalModal({
+                  type: 'login',
+                  redirectTo,
+                  prefillEmail: getValues('email'),
+                }),
+              );
+            }}
+          >
+            {t('auth.goToLogin')}
+          </button>
+        ) : null}
 
         <Button type="submit" disabled={isSubmitting} className="mt-2 w-full" variant="solid">
           {loadingStatus === LOADING_STATUS.LOADING ? <Spinner /> : t('auth.signUpButton')}

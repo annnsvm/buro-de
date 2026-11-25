@@ -34,7 +34,11 @@ const AuthGlobalDialog: React.FC<AuthGlobalDialogProps> = ({
       onExitAnimationComplete={onExitAnimationComplete}
     >
       {variant === 'login' ? (
-        <LoginModalPanel redirectTo={redirectTo} onDismiss={onRequestClose} />
+        <LoginModalPanel
+          redirectTo={redirectTo}
+          prefillEmail={prefillEmail}
+          onDismiss={onRequestClose}
+        />
       ) : variant === 'resetPassword' ? (
         <ResetPasswordModalPanel prefillEmail={prefillEmail} onDismiss={onRequestClose} />
       ) : (

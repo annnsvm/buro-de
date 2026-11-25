@@ -39,7 +39,6 @@ const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*[0-9]).{9,}$/;
  */
 const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
   prefillEmail,
-  onDismiss,
 }) => {
   const { t, i18n } = useTranslation();
   const dispatch = useAppDispatch();
@@ -171,7 +170,7 @@ const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
           type="button"
           variant="solid"
           className="w-full"
-          onClick={() => dispatch(openGlobalModal({ type: 'login' }))}
+          onClick={() => dispatch(openGlobalModal({ type: 'login', prefillEmail: email.trim() }))}
         >
           {t('auth.loginButton')}
         </Button>
@@ -316,7 +315,7 @@ const ResetPasswordModalPanel: React.FC<ResetPasswordModalPanelProps> = ({
         <button
           type="button"
           className="hover:text-[var(--color-primary)]"
-          onClick={() => dispatch(openGlobalModal({ type: 'login' }))}
+          onClick={() => dispatch(openGlobalModal({ type: 'login', prefillEmail: email.trim() }))}
         >
           <Text className="text-[1.125rem]">{t('auth.resetBackToLogin')}</Text>
         </button>

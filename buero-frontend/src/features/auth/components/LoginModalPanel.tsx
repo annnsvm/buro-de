@@ -37,10 +37,16 @@ type PendingCheckoutPayload = {
 
 export type LoginModalPanelProps = {
   redirectTo?: string;
+  /** Carried over from a screen that already asked for it - see `ModalRoot`. */
+  prefillEmail?: string;
   onDismiss: () => void;
 };
 
-const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss }) => {
+const LoginModalPanel: React.FC<LoginModalPanelProps> = ({
+  redirectTo,
+  prefillEmail,
+  onDismiss,
+}) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -63,7 +69,7 @@ const LoginModalPanel: React.FC<LoginModalPanelProps> = ({ redirectTo, onDismiss
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      email: prefillEmail ?? '',
       password: '',
     },
   });
