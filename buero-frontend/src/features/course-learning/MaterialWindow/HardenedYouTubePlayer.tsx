@@ -6,6 +6,7 @@ import { useAppSelector } from '@/redux/hooks';
 import { selectCurrentUser } from '@/redux/slices/user/userSelectors';
 import { loadYoutubeIframeApi } from '@/helpers/youtubeIframeApi';
 import {
+  CONTROLS_IDLE_MS,
   DEFAULT_VOLUME,
   HARDENED_PLAYER_VARS,
   PLAYBACK_RATES,
@@ -84,6 +85,14 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
    * fallback is to cover the page with the player ourselves.
    */
   const [coversPage, setCoversPage] = useState(false);
+  /**
+   * The bar gets out of the way while the lesson is playing.
+   *
+   * On a phone it sits over the lower part of the picture, which on a language video is
+   * often where the subtitles or the speaker are. It comes back on a touch, and stays for
+   * as long as nothing is playing - there is nothing to be in the way of then.
+   */
+  const [controlsVisible, setControlsVisible] = useState(true);
   const [watermarkStep, setWatermarkStep] = useState(0);
 
   /**
@@ -164,9 +173,14 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
                   /** Metadata has certainly arrived by now, so the length is real. */
                   setDuration(event.target.getDuration?.() ?? 0);
                 }
-                if (event.data === PAUSED) setPlaying(false);
+                /** Stopped is not "in the way": there is nothing behind them to watch. */
+                if (event.data === PAUSED) {
+                  setPlaying(false);
+                  setControlsVisible(true);
+                }
                 if (event.data === ENDED) {
                   setPlaying(false);
+                  setControlsVisible(true);
                   signalEnded();
                 }
               },
@@ -228,12 +242,54 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
     return () => document.removeEventListener('fullscreenchange', sync);
   }, []);
 
+  const revealControls = useCallback(() => setControlsVisible(true), []);
+
+  /** Out of the way once the lesson is running and nobody has touched anything. */
+  useEffect(() => {
+    if (!playing || !controlsVisible) return;
+    const id = window.setTimeout(() => setControlsVisible(false), CONTROLS_IDLE_MS);
+    return () => window.clearTimeout(id);
+  }, [playing, controlsVisible]);
+
+  /**
+   * While the player covers the page, the page underneath is held still.
+   *
+   * Without it a drag on the seek bar scrolls the lesson behind the video on iOS, and
+   * closing the player leaves the reader somewhere they never meant to go.
+   *
+   * Nothing here asks the phone to rotate, and the player does not rotate itself. It fills
+   * the screen the way the screen is being held, and turning the phone turns the video -
+   * which is what every other video on that phone already does, and so the one thing
+   * nobody has to be taught. The sizing below follows the turn on its own.
+   */
+  useEffect(() => {
+    if (!coversPage) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [coversPage]);
+
   const togglePlay = useCallback(() => {
     const player = playerRef.current;
     if (!player) return;
     if (playing) player.pauseVideo?.();
     else player.playVideo?.();
   }, [playing]);
+
+  /**
+   * On a phone the first tap is "let me see the controls", not "pause". Pausing a lesson
+   * because someone wanted to check how much was left is the kind of small annoyance that
+   * makes a player feel broken.
+   */
+  const handleSurfaceClick = useCallback(() => {
+    if (!controlsVisible) {
+      revealControls();
+      return;
+    }
+    togglePlay();
+  }, [controlsVisible, revealControls, togglePlay]);
 
   const toggleMute = useCallback(() => {
     const player = playerRef.current;
@@ -357,8 +413,21 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
    * this component's layers to itself, which is what they were always meant to be.
    */
   const shell = coversPage
-    ? 'fixed inset-0 z-[100] h-full w-full bg-black'
+    ? 'fixed left-0 top-0 z-[100] bg-black'
     : 'relative isolate h-full w-full overflow-hidden bg-black';
+
+  /**
+   * Sized in `dvh`/`dvw` rather than by `inset-0`.
+   *
+   * On iOS the box a fixed element is measured against runs underneath the browser's own
+   * bar, so stretching to it put the lower edge of the video - and the control bar with it -
+   * out of sight. The dynamic units track what is actually visible, and they measure again
+   * when the phone is turned: that is what makes the picture follow the turn, with no code
+   * arranging it.
+   */
+  const coverStyle: React.CSSProperties | undefined = coversPage
+    ? { width: '100dvw', height: '100dvh' }
+    : undefined;
   const BTN =
     'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/90 transition hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70';
 
@@ -367,6 +436,9 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
       ref={containerRef}
       data-testid="hardened-video"
       className={`${shell} ${coversPage ? '' : className}`}
+      style={coverStyle}
+      onPointerMove={revealControls}
+      onTouchStart={revealControls}
       /** "Copy video URL" is not a right-click away. */
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={handleKeyDown}
@@ -390,7 +462,7 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
       <button
         type="button"
         data-testid="hardened-video-surface"
-        onClick={togglePlay}
+        onClick={handleSurfaceClick}
         className="absolute inset-0 h-full w-full cursor-pointer bg-transparent focus:outline-none"
         aria-label={playing ? t('coursePage.videoPause') : t('coursePage.videoPlay')}
         tabIndex={-1}
@@ -408,8 +480,17 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
         </span>
       ) : null}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3 pb-3 pt-10">
-        <div className="pointer-events-auto flex flex-col gap-1.5">
+      <div
+        data-testid="hardened-video-controls"
+        className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3 pb-3 pt-10 transition-opacity duration-300 ${
+          controlsVisible ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        <div
+          className={`flex flex-col gap-1.5 ${
+            controlsVisible ? 'pointer-events-auto' : 'pointer-events-none'
+          }`}
+        >
           {/**
            * A button rather than an input: a range slider on a dark gradient needs its
            * thumb and track restyled in every browser to look like anything, and all this

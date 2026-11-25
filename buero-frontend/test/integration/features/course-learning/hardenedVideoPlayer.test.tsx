@@ -319,7 +319,7 @@ describe('on a phone', () => {
     await userEvent.click(screen.getByTestId('hardened-video-fullscreen'));
 
     expect(shell.className).toContain('fixed');
-    expect(shell.className).toContain('inset-0');
+    expect(shell.style.height).toBe('100dvh');
   });
 
   it('gives that back on a second press', async () => {
@@ -450,5 +450,159 @@ describe('the volume', () => {
     } finally {
       if (real) Object.defineProperty(HTMLMediaElement.prototype, 'volume', real);
     }
+  });
+});
+
+/**
+ * What the player does with a phone screen once it is covering it, and how it keeps out of
+ * the way while a lesson is running.
+ */
+const startPlaying = async () => {
+  await waitFor(() => expect(built).toHaveLength(1));
+  await act(async () => {
+    built[0].options.events?.onStateChange?.({
+      data: 1,
+      target: { destroy: () => undefined, getDuration: () => 750 },
+    });
+  });
+};
+
+describe('the control bar while a lesson plays', () => {
+  /**
+   * It sits over the lower part of the picture, which on a language video is often exactly
+   * where the speaker or the subtitles are.
+   */
+  it('gets out of the way on its own', async () => {
+    /** `waitFor` polls on timers, so real time has to keep driving them. */
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      draw();
+      await startPlaying();
+
+      expect(screen.getByTestId('hardened-video-controls').className).toContain(
+        'opacity-100',
+      );
+      await act(async () => {
+        vi.advanceTimersByTime(3100);
+      });
+
+      expect(screen.getByTestId('hardened-video-controls').className).toContain(
+        'opacity-0',
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /** Stopped, there is nothing behind them worth seeing, so they stay. */
+  it('stays while the lesson is paused', async () => {
+    /** `waitFor` polls on timers, so real time has to keep driving them. */
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      draw();
+      await startPlaying();
+      /**
+       * Paused first, and only then the clock. In one step the hide timer left over from
+       * playing fires before React has run the effect that would have cleared it, which is
+       * an artefact of the test rather than of the player.
+       */
+      await act(async () => {
+        built[0].options.events?.onStateChange?.({
+          data: 2,
+          target: { destroy: () => undefined, getDuration: () => 750 },
+        });
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(screen.getByTestId('hardened-video-controls').className).toContain(
+        'opacity-100',
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * The first tap asks to see the controls. Pausing the lesson because someone wanted to
+   * check how much of it was left is the kind of small annoyance that makes a player feel
+   * broken.
+   */
+  it('comes back on a tap without pausing the lesson', async () => {
+    /** `waitFor` polls on timers, so real time has to keep driving them. */
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      draw();
+      await startPlaying();
+      await act(async () => {
+        vi.advanceTimersByTime(3100);
+      });
+      calls.pause = 0;
+
+      await act(async () => {
+        screen.getByTestId('hardened-video-surface').click();
+      });
+
+      expect(screen.getByTestId('hardened-video-controls').className).toContain(
+        'opacity-100',
+      );
+      expect(calls.pause).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('covering a phone screen', () => {
+  /**
+   * `inset-0` measures against a box that on iOS runs under the browser's own bar, which
+   * put the bottom of the picture - and the control bar with it - out of sight. The dynamic
+   * units track what is actually visible.
+   */
+  it('is sized against what is actually visible', async () => {
+    draw();
+    const shell = await screen.findByTestId('hardened-video');
+
+    await userEvent.click(screen.getByTestId('hardened-video-fullscreen'));
+
+    expect(shell.style.height).toBe('100dvh');
+    expect(shell.style.width).toBe('100dvw');
+  });
+
+  /**
+   * No turning, by anyone. The player fills the screen the way the screen is being held,
+   * and the phone's own rotation turns the video - which is what every other video on that
+   * phone does. A quarter turn applied in CSS would have forced landscape on an upright
+   * phone, and it is both unfamiliar and one more thing to break.
+   */
+  it('never turns itself', async () => {
+    draw();
+    const shell = await screen.findByTestId('hardened-video');
+
+    await userEvent.click(screen.getByTestId('hardened-video-fullscreen'));
+
+    expect(shell.style.transform).toBe('');
+  });
+
+  /** Otherwise a drag on the seek bar scrolls the lesson behind the video. */
+  it('holds the page behind it still', async () => {
+    draw();
+    await screen.findByTestId('hardened-video');
+
+    await userEvent.click(screen.getByTestId('hardened-video-fullscreen'));
+
+    expect(document.body.style.overflow).toBe('hidden');
+  });
+
+  it('gives the page back when it is closed', async () => {
+    draw();
+    await screen.findByTestId('hardened-video');
+    const button = screen.getByTestId('hardened-video-fullscreen');
+
+    await userEvent.click(button);
+    await userEvent.click(button);
+
+    expect(document.body.style.overflow).not.toBe('hidden');
   });
 });
