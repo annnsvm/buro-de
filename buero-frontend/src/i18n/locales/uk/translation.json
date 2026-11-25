@@ -480,7 +480,17 @@
     "student": "Студент",
     "unlockCourse": "Відкрити весь курс",
     "video": "Відео",
-    "vocabulary": "Словник"
+    "vocabulary": "Словник",
+    "videoPlay": "Відтворити",
+    "videoPause": "Пауза",
+    "videoMute": "Вимкнути звук",
+    "videoUnmute": "Увімкнути звук",
+    "videoSeek": "Перемотати",
+    "videoSpeed": "Швидкість відтворення",
+    "videoFullscreen": "На весь екран",
+    "videoLoading": "Завантажуємо відео...",
+    "videoMissing": "Упссс... відео ще не додано",
+    "videoMissingHint": "Урок уже є, а запис до нього з’явиться незабаром."
   },
   "vocabulary": {
     "title": "Словник",

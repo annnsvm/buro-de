@@ -361,7 +361,14 @@ export const buildLearningLessonFromMaterial = (
     status: i18n.t('coursePage.inProgress'),
     title: material.title,
     description: i18n.t('coursePage.defaultDescription'),
-    videoUrl: embed || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    /**
+     * Empty when the lesson has no YouTube link, and the player says so.
+     *
+     * This used to fall back to a hard-coded video id, which was Rick Astley: a video
+     * lesson saved without its link played him to a paying student, and nothing in the
+     * editor or the logs said anything was wrong.
+     */
+    videoUrl: embed,
     attachments: mapApiAttachments(material.attachments),
   };
 };

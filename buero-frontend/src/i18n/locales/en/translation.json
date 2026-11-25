@@ -472,7 +472,17 @@
     "student": "Student",
     "unlockCourse": "Unlock full course",
     "video": "Video",
-    "vocabulary": "Vocabulary"
+    "vocabulary": "Vocabulary",
+    "videoPlay": "Play",
+    "videoPause": "Pause",
+    "videoMute": "Mute",
+    "videoUnmute": "Unmute",
+    "videoSeek": "Seek",
+    "videoSpeed": "Playback speed",
+    "videoFullscreen": "Fullscreen",
+    "videoLoading": "Loading the video...",
+    "videoMissing": "Oops... no video here yet",
+    "videoMissingHint": "The lesson is here; the recording for it is on its way."
   },
   "vocabulary": {
     "title": "Vocabulary",
