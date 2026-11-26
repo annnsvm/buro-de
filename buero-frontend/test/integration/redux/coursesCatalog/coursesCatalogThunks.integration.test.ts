@@ -100,4 +100,86 @@ describe('fetchCoursesCatalogThunk', () => {
     expect(hits).toEqual(expect.arrayContaining(['/courses', '/subscriptions/me']));
     expect(store.getState().coursesCatalog.items[0]?.isAdded).toBe(true);
   });
+
+  /**
+   * The public catalogue is one cached response for every visitor and carries no
+   * `my_access`, so this list is the only way the catalogue can know that what a student
+   * holds on a course is the free part. It was already being fetched and the type thrown
+   * away, which is why a trial and a purchase drew the same card.
+   */
+  it('keeps the kind of access, not only that there is one', async () => {
+    server.use(
+      http.get(`${TEST_API_BASE_URL}/courses`, () =>
+        HttpResponse.json([
+          { id: 'c1', title: 'Trial' },
+          { id: 'c2', title: 'Bought' },
+          { id: 'c3', title: 'Neither' },
+        ]),
+      ),
+      http.get(`${TEST_API_BASE_URL}/subscriptions/me`, () =>
+        HttpResponse.json([
+          { course_id: 'c1', access_type: 'trial' },
+          { course_id: 'c2', access_type: 'purchase' },
+        ]),
+      ),
+    );
+
+    const store = configureStore({ reducer: rootReducer });
+    setStore(store);
+    store.dispatch(
+      addUser({
+        id: 's1',
+        email: 'student@test.com',
+        name: 'Student',
+        role: 'student',
+        language: 'uk',
+      }),
+    );
+    store.dispatch({ type: 'auth/login/fulfilled' });
+
+    await store.dispatch(fetchCoursesCatalogThunk());
+
+    const byId = new Map(
+      store.getState().coursesCatalog.items.map((item) => [item.id, item]),
+    );
+
+    expect(byId.get('c1')?.accessIsTrial).toBe(true);
+    expect(byId.get('c2')?.accessIsTrial).toBe(false);
+    expect(byId.get('c3')?.accessIsTrial).toBe(false);
+    expect(byId.get('c2')?.isAdded).toBe(true);
+    expect(byId.get('c3')?.isAdded).toBe(false);
+  });
+
+  /** A student who bought after trying holds both rows; the purchase is the answer. */
+  it('does not call a bought course a trial because a trial row is still there', async () => {
+    server.use(
+      http.get(`${TEST_API_BASE_URL}/courses`, () =>
+        HttpResponse.json([{ id: 'c1', title: 'Bought after trying' }]),
+      ),
+      http.get(`${TEST_API_BASE_URL}/subscriptions/me`, () =>
+        HttpResponse.json([
+          { course_id: 'c1', access_type: 'trial' },
+          { course_id: 'c1', access_type: 'purchase' },
+        ]),
+      ),
+    );
+
+    const store = configureStore({ reducer: rootReducer });
+    setStore(store);
+    store.dispatch(
+      addUser({
+        id: 's1',
+        email: 'student@test.com',
+        name: 'Student',
+        role: 'student',
+        language: 'uk',
+      }),
+    );
+    store.dispatch({ type: 'auth/login/fulfilled' });
+
+    await store.dispatch(fetchCoursesCatalogThunk());
+
+    expect(store.getState().coursesCatalog.items[0]?.accessIsTrial).toBe(false);
+    expect(store.getState().coursesCatalog.items[0]?.isAdded).toBe(true);
+  });
 });

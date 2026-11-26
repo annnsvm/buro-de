@@ -73,14 +73,34 @@ export const fetchCoursesCatalogThunk = createAsyncThunk<
 
       const raw = Array.isArray(res.data) ? res.data : [];
       const accessRows = Array.isArray(accessRes?.data) ? accessRes.data : [];
-      const accessibleCourseIds = new Set(
-        accessRows.map(readAccessCourseId).filter((id): id is string => Boolean(id)),
-      );
+      /**
+       * The kind of access, not merely whether there is one.
+       *
+       * The public catalogue is the same cached response for every visitor and carries no
+       * `my_access` field, so this list is the only way the catalogue can learn that what
+       * a student holds on a course is a trial. It was already being fetched and the type
+       * thrown away - which is why a student on a trial was shown the same card as someone
+       * who had bought the course, with no price on it and nothing left to buy.
+       */
+      const accessTypeByCourseId = new Map<string, string>();
+      for (const row of accessRows) {
+        const courseId = readAccessCourseId(row);
+        if (!courseId) continue;
+        const accessType = String(row.access_type ?? row.accessType ?? '');
+        /** Paid access wins over a trial row on the same course, never the other way. */
+        if (accessType === 'trial' && accessTypeByCourseId.has(courseId)) continue;
+        accessTypeByCourseId.set(courseId, accessType);
+      }
 
       const items = raw.map((row) => {
         const card = mapApiCourseToCourseCard(row as CatalogCourse);
-        const hasAccess = card.isAdded === true || accessibleCourseIds.has(card.id);
-        return { ...card, isAdded: hasAccess };
+        const accessType = accessTypeByCourseId.get(card.id);
+        const hasAccess = card.isAdded === true || accessType !== undefined;
+        return {
+          ...card,
+          isAdded: hasAccess,
+          accessIsTrial: card.accessIsTrial === true || accessType === 'trial',
+        };
       });
 
       return {
