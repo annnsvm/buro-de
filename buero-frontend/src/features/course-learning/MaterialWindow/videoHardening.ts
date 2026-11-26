@@ -34,8 +34,26 @@ export const HARDENED_PLAYER_VARS: Readonly<Record<string, number>> = Object.fre
   controls: 0,
   /** Related videos, when they appear at all, stay on this channel. */
   rel: 0,
-  /** Stays in the page on iPhone instead of taking over the screen with YouTube's own UI. */
-  playsinline: 1,
+  /**
+   * On iPhone, let the video take the screen instead of staying in the page.
+   *
+   * This is the only route to a real fullscreen there, and it is not ours to choose
+   * otherwise. WebKit gives fullscreen to a `<video>` element alone, through
+   * `webkitEnterFullscreen()`; `Element.requestFullscreen` does not exist for an ordinary
+   * element on iPhone (iPad has it, iPhone does not). Our `<video>` is inside YouTube's
+   * cross-origin iframe, so we cannot call that method on it, and our own button can only
+   * stretch a div to the size of the page - which leaves Safari's address bar and tabs on
+   * screen, cannot rotate with the phone, and is what students were complaining about.
+   *
+   * `playsinline: 0` hands the decision to WebKit, which opens the system player: full
+   * screen, rotates with the phone, with Apple's controls rather than YouTube's. The
+   * hardening survives it - the system player carries no logo, no share button and no way
+   * to youtube.com - but two things do not: the watermark and our own control bar are our
+   * DOM, and the system player sits above them.
+   *
+   * Affects iOS only; every other platform ignores this parameter and keeps the bar below.
+   */
+  playsinline: 0,
   /** YouTube's keyboard shortcuts off - some of them open youtube.com. Ours replace them. */
   disablekb: 1,
   /** No annotation or card overlays, which are clickable and lead away. */
