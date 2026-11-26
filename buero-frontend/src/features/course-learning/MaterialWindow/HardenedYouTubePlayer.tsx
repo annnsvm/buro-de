@@ -19,11 +19,21 @@ import {
   watermarkCorner,
   watermarkLabel,
 } from './videoHardening';
+import { watchedEnough } from './watchedEnough';
 
 export type HardenedYouTubePlayerProps = {
   videoId: string;
   title: string;
   onEnded?: () => void;
+  /**
+   * Far enough through that the lesson may be marked complete - see `watchedEnough`.
+   *
+   * Separate from `onEnded`, and the one that does the work: `onEnded` is a single event
+   * at the last second, which a student who stops during the outro never reaches, and
+   * which the system player on iPhone may well not deliver at all. This rides on the time
+   * the player is already being polled for, so it arrives as long as the player answers.
+   */
+  onWatchedEnough?: () => void;
   /** The API did not load, or the player would not start: the caller shows a plain embed. */
   onUnavailable: () => void;
   className?: string;
@@ -52,6 +62,7 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
   videoId,
   title,
   onEnded,
+  onWatchedEnough,
   onUnavailable,
   className = '',
 }) => {
@@ -100,12 +111,20 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
    * it is built, and would otherwise keep looking at the first render's values.
    */
   const onEndedRef = useRef(onEnded);
+  const onWatchedEnoughRef = useRef(onWatchedEnough);
   const onUnavailableRef = useRef(onUnavailable);
   const endedEmittedRef = useRef(false);
+  const watchedEnoughEmittedRef = useRef(false);
   useEffect(() => {
     onEndedRef.current = onEnded;
+    onWatchedEnoughRef.current = onWatchedEnough;
     onUnavailableRef.current = onUnavailable;
-  }, [onEnded, onUnavailable]);
+  }, [onEnded, onWatchedEnough, onUnavailable]);
+
+  /** A different lesson is a different video, and has not been watched at all yet. */
+  useEffect(() => {
+    watchedEnoughEmittedRef.current = false;
+  }, [videoId]);
 
   const signalEnded = useCallback(() => {
     if (endedEmittedRef.current) return;
@@ -219,9 +238,14 @@ const HardenedYouTubePlayer: React.FC<HardenedYouTubePlayerProps> = ({
     const id = window.setInterval(() => {
       const player = playerRef.current;
       if (!player) return;
-      setElapsed(player.getCurrentTime?.() ?? 0);
+      const at = player.getCurrentTime?.() ?? 0;
+      setElapsed(at);
       const length = player.getDuration?.() ?? 0;
       if (length > 0) setDuration(length);
+      if (!watchedEnoughEmittedRef.current && watchedEnough(at, length)) {
+        watchedEnoughEmittedRef.current = true;
+        onWatchedEnoughRef.current?.();
+      }
     }, 250);
     return () => window.clearInterval(id);
   }, [playing]);

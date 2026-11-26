@@ -439,7 +439,7 @@
     "lockedModuleFallback": "More in this course",
     "lockedQuiz": "Quiz",
     "markAsComplete": "Mark as complete",
-    "markAsCompleteHint": "Watch the video to the end to enable this button.",
+    "markAsCompleteHint": "This button turns on once you have watched most of the video.",
     "missingId": "Course id is missing.",
     "needClarification": "Need clarification?",
     "nextLesson": "Next lesson",
