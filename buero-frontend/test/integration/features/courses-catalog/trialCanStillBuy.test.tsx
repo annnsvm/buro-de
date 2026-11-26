@@ -51,7 +51,27 @@ const openModalFor = (accessRows: unknown[]) => {
   server.use(
     http.get(`${TEST_API_BASE_URL}/subscriptions/me`, () => HttpResponse.json(accessRows)),
     http.get(`${TEST_API_BASE_URL}/courses/${COURSE_ID}`, () =>
-      HttpResponse.json({ id: COURSE_ID, title: 'Deutsch A1', modules: [] }),
+      HttpResponse.json({
+        id: COURSE_ID,
+        title: 'Deutsch A1',
+        /**
+         * What the server really sends: every module, with `content` and attachments
+         * stripped from the locked ones and their titles and durations kept.
+         */
+        my_access: accessRows.length
+          ? {
+              access_type: (accessRows[0] as { access_type: string }).access_type,
+              trial_module_ids: ['m1', 'm2'],
+              first_module_id: 'm1',
+            }
+          : undefined,
+        modules: [
+          { id: 'm1', title: 'Знайомство', locked: false, materials: [{ id: 'x1', title: 'Урок 1', type: 'video' }] },
+          { id: 'm2', title: 'Числа', locked: false, materials: [{ id: 'x2', title: 'Урок 2', type: 'video' }] },
+          { id: 'm3', title: 'Робота', locked: true, materials: [{ id: 'x3', title: 'Урок 3', type: 'video' }] },
+          { id: 'm4', title: 'Житло', locked: true, materials: [{ id: 'x4', title: 'Урок 4', type: 'video' }] },
+        ],
+      }),
     ),
     /** Asked for by the workspace prefetch the modal fires once access is known. */
     http.get(`${TEST_API_BASE_URL}/courses/${COURSE_ID}/progress`, () =>
@@ -158,5 +178,35 @@ describe('the course modal for a student with no access', () => {
 
     expect(await screen.findByText('Купити курс')).toBeInTheDocument();
     expect(screen.getByText('Спробувати безкоштовно')).toBeInTheDocument();
+  });
+});
+
+/**
+ * The programme on this screen is a course description, not paid content. It used to be
+ * put through `applyTrialModuleScope`, which cuts it to the modules a trial opens - so a
+ * student who had started the free part saw two modules where a stranger with no account
+ * saw the whole course. The one closest to buying was shown the least of it.
+ */
+describe('the programme in the course modal', () => {
+  it('shows every module to a student on a trial', async () => {
+    openModalFor([{ course_id: COURSE_ID, access_type: 'trial' }]);
+
+    expect(await screen.findByText('Робота')).toBeInTheDocument();
+    expect(screen.getByText('Житло')).toBeInTheDocument();
+    expect(screen.getByText('Знайомство')).toBeInTheDocument();
+  });
+
+  it('shows every module to someone with no access at all', async () => {
+    openModalFor([]);
+
+    expect(await screen.findByText('Робота')).toBeInTheDocument();
+    expect(screen.getByText('Житло')).toBeInTheDocument();
+  });
+
+  it('shows every module to someone who bought the course', async () => {
+    openModalFor([{ course_id: COURSE_ID, access_type: 'purchase' }]);
+
+    expect(await screen.findByText('Робота')).toBeInTheDocument();
+    expect(screen.getByText('Житло')).toBeInTheDocument();
   });
 });

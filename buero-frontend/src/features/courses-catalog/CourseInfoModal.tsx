@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -26,10 +26,7 @@ import {
 import { fetchCoursesCatalogThunk } from '@/redux/slices/coursesCatalog/coursesCatalogThunks';
 import { selectUserRole } from '@/redux/slices/user/userSelectors';
 import { requestCourseTrial } from '@/features/courses-catalog/courseTrialFlow';
-import {
-  applyTrialModuleScope,
-  type ApiCourseWithTree,
-} from '@/pages/CoursePage/coursePageMappers';
+import type { ApiCourseWithTree } from '@/pages/CoursePage/coursePageMappers';
 import { isCourseComingSoon } from './isCourseComingSoon';
 
 const useQuietScrollRef = () => {
@@ -229,17 +226,25 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
     lessonsCount: course.lessonsCount,
   });
 
-  const scopedCourseDetails = useMemo(() => {
-    if (!fullCourseData) return null;
-    return applyTrialModuleScope(fullCourseData as ApiCourseWithTree);
-  }, [fullCourseData]);
+  /**
+   * The whole programme, for everybody.
+   *
+   * This used to be put through `applyTrialModuleScope`, which cuts the list down to the
+   * modules a trial opens - so a student who had started the free part saw two modules
+   * where a stranger with no account at all saw the full course. The person closest to
+   * buying was shown the least of what they would be buying.
+   *
+   * Nothing here is paid content. The server strips `content` and attachments from a
+   * locked module and keeps the titles and durations on purpose, for this screen: it is a
+   * course description, and the programme is the main thing anyone reads on it.
+   */
+  const courseModules = (fullCourseData as ApiCourseWithTree | null)?.modules;
 
-  const hasAnyMaterials = scopedCourseDetails?.modules?.some(
+  const hasAnyMaterials = courseModules?.some(
     (mod) => mod.materials && mod.materials.length > 0,
   );
 
-  const rawModules =
-    hasAnyMaterials && scopedCourseDetails?.modules ? scopedCourseDetails.modules : [];
+  const rawModules = hasAnyMaterials && courseModules ? courseModules : [];
 
   const descriptionIsLong = course.description.trim().length > 140;
 
