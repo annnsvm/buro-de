@@ -12,6 +12,13 @@ export type CourseCardProps = {
   description: string;
   price: string;
   lessonsCount: number;
+  /**
+   * Whether what this student holds is a trial rather than the whole course.
+   *
+   * Answers "what have I got", and is false both for a course that was bought and for one
+   * the student has no access to at all. See `trialOnOffer` below for the other question.
+   */
+  accessIsTrial?: boolean;
   durationHours: number;
   avgVideoLessonMinutes?: number | null;
   /**
@@ -37,7 +44,15 @@ export type CourseCardProps = {
    */
   progress?: { percent: number; completed: number; total: number } | null;
   isAdded?: boolean;
-  hasTrial?: boolean;
+  /**
+   * Whether a free trial is offered on this course.
+   *
+   * Answers "what is available", which is a different question from `accessIsTrial` - one
+   * is about the course, the other about this student - and the two shared the name
+   * `hasTrial` until now. It was read as "a trial is on offer" in the catalogue and as
+   * "the access I have is a trial" on My learning, so each question has its own name.
+   */
+  trialOnOffer?: boolean;
   isPublished?: boolean;
   onClick?: () => void;
   modulesCount?: number;

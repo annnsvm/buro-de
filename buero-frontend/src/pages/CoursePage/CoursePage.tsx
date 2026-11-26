@@ -40,6 +40,7 @@ import {
   mapApiAttachments,
   resolveSelectedMaterialId,
 } from './coursePageMappers';
+import { courseProgress } from './courseProgress';
 
 /**
  * The lesson is carried as a query parameter rather than a path segment. It gives the
@@ -65,6 +66,19 @@ const CoursePage: React.FC = () => {
   const [videoCompletionSaving, setVideoCompletionSaving] = useState(false);
   const [videoCompletionError, setVideoCompletionError] = useState<string | null>(null);
   const [courseOutline, setCourseOutline] = useState<CourseModule[]>([]);
+  /**
+   * Every lesson in the course, including the ones behind the paywall.
+   *
+   * Progress is measured against the whole course rather than against the part this
+   * student can open. On a trial that is the honest figure - and the useful one: finishing
+   * the free modules showed "25 of 25, 100%", which reads as a course completed when most
+   * of it has not been seen. Against the real total the bar fills a little and stops, which
+   * is what it means.
+   *
+   * Kept apart because `course` holds only the modules the student may study; see
+   * `scopeToUnlockedModules`.
+   */
+  const [lessonsInWholeCourse, setLessonsInWholeCourse] = useState(0);
   const [lockedModuleIds, setLockedModuleIds] = useState<ReadonlySet<string>>(() => new Set());
   const [courseStructureMobileOpen, setCourseStructureMobileOpen] = useState(false);
   const mainScrollRef = useRef<SimpleBarCore | null>(null);
@@ -103,6 +117,8 @@ const CoursePage: React.FC = () => {
 
         const courseForUi = scopeToUnlockedModules(data);
         setCourse(courseForUi);
+        /** Counted before the locked modules are dropped, which is the whole point. */
+        setLessonsInWholeCourse(flattenMaterialsInOrder(data).length);
 
         // The full outline stays visible; locked modules are marked, not hidden.
         setCourseOutline(mapApiModulesToCourseStructure(data.modules ?? []));
@@ -254,19 +270,24 @@ const CoursePage: React.FC = () => {
       idx >= 0 ? idx : 0,
       flatMaterials.length,
     );
-    const total = flatMaterials.length;
-    const completedCount = flatMaterials.filter((r) =>
-      completedMaterialIds.has(r.material.id),
-    ).length;
+    const { done, total, percent } = courseProgress(
+      flatMaterials,
+      completedMaterialIds,
+      lessonsInWholeCourse,
+    );
     return {
       ...base,
-      progress: total > 0 ? Math.round((completedCount / total) * 100) : 0,
-      progressText:
-        total > 0
-          ? t('coursePage.progressCompletedText', { current: completedCount, total })
-          : t('coursePage.progressCompletedText', { current: 0, total: 0 }),
+      progress: percent,
+      progressText: t('coursePage.progressCompletedText', { current: done, total }),
     };
-  }, [course, flatMaterials, selectedMaterialId, completedMaterialIds, t]);
+  }, [
+    course,
+    flatMaterials,
+    lessonsInWholeCourse,
+    selectedMaterialId,
+    completedMaterialIds,
+    t,
+  ]);
 
   const isStudentVideoProgress =
     currentUser?.role === 'student' &&

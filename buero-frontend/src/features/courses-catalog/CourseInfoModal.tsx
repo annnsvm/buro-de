@@ -16,7 +16,7 @@ import type { CourseInfoData } from '@/types/components/modal/UIModalType.types'
 import { selectIsAuthenticated } from '@/redux/slices/auth';
 import CourseStructure from './CourseStructure';
 import { courseStructureKeyFromModules } from './courseStructure.helpers';
-import { userHasAccessToCourse } from './courseAccessModal.helpers';
+import { courseAccessKind, type CourseAccessKind } from './courseAccessModal.helpers';
 import { fetchCourseByIdThunk } from '@/redux/slices/coursesCatalog/courseDetailsThunks';
 import { clearCourseDetails } from '@/redux/slices/coursesCatalog/courseDetailsSlice';
 import {
@@ -85,7 +85,12 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
   const role = useSelector(selectUserRole);
 
   const [accessResolved, setAccessResolved] = useState(false);
-  const [hasCourseAccess, setHasCourseAccess] = useState(false);
+  /**
+   * Which kind of access, not merely whether there is any. A trial used to answer the same
+   * yes as a purchase, so this modal - the one screen where the course is actually sold -
+   * showed a student on a trial the buyer's panel and took the checkout button away.
+   */
+  const [accessKind, setAccessKind] = useState<CourseAccessKind>('none');
   const [localPublished, setLocalPublished] = useState<boolean | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -110,7 +115,7 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setAccessResolved(false);
-      setHasCourseAccess(false);
+      setAccessKind('none');
       setLocalPublished(null);
     } else {
       setLocalPublished(null);
@@ -123,7 +128,7 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
 
     if (!isAuthenticated || !isStudent) {
       setAccessResolved(true);
-      setHasCourseAccess(false);
+      setAccessKind('none');
       return;
     }
 
@@ -135,12 +140,12 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
         const list = await subscriptionApi.getMyAccess();
         if (cancelled) return;
         const arr = Array.isArray(list) ? list : [];
-        const hasAccess = userHasAccessToCourse(arr, courseId);
-        setHasCourseAccess(hasAccess);
-        if (hasAccess) prefetchCourseWorkspace(courseId);
+        const kind = courseAccessKind(arr, courseId);
+        setAccessKind(kind);
+        if (kind !== 'none') prefetchCourseWorkspace(courseId);
       } catch {
         if (!cancelled) {
-          setHasCourseAccess(false);
+          setAccessKind('none');
         }
       } finally {
         if (!cancelled) setAccessResolved(true);
@@ -161,7 +166,17 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
   };
 
   const handleTryForFree = async () => {
-    if (course.hasTrial === false) return;
+    if (course.trialOnOffer === false) return;
+    /**
+     * A student already on the trial has nothing to start: `POST /start-trial` answers
+     * 409 Conflict on an existing access row, and `requestCourseTrial` reads any failure
+     * as a dead end and drops them back on the catalogue. The free modules are already
+     * theirs, so the button opens them.
+     */
+    if (accessKind === 'trial') {
+      handleContinueLearning();
+      return;
+    }
     await requestCourseTrial(courseId, isAuthenticated, dispatch, navigate);
     handleClose();
   };
@@ -204,10 +219,10 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
 
   /**
    * A trial is a standing per-course free tier, so an active trial on another course
-   * must not hide this one's button. Courses already unlocked show "Continue learning"
-   * via `hasCourseAccess` above, so reaching here means the student may still try it.
+   * must not hide this one's button. A bought course shows "Continue learning" instead,
+   * so reaching here means the free part is still worth offering.
    */
-  const canShowTryForFree = course.hasTrial !== false;
+  const canShowTryForFree = course.trialOnOffer !== false;
 
   const comingSoon = isCourseComingSoon({
     isPublished: publishedEffective,
@@ -309,6 +324,12 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
               {totalPrice}
             </p>
             <p className="mt-1 text-base text-[var(--color-text-secondary)]">{t('courses.modal.priceNote')}</p>
+            {/**
+             * Only a bought course simply carries on. A trial falls to the last branch -
+             * price, "buy", "try" - because that is what it is: a course the student has
+             * not bought, the opening modules of which are open. It used to land on the
+             * branch above, which took the checkout button off the one screen that sells.
+             */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
               {isTeacher ? (
                 <Button
@@ -333,7 +354,7 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
                 <p className="text-sm text-[var(--color-text-secondary)]" aria-live="polite">
                   {t('courses.modal.checkingAccess')}
                 </p>
-              ) : isStudent && isAuthenticated && hasCourseAccess ? (
+              ) : isStudent && isAuthenticated && accessKind === 'full' ? (
                 <Button
                   type="button"
                   variant="solid"
@@ -371,7 +392,11 @@ const CourseInfoModal: React.FC<CourseInfoModalProps> = ({
                 </>
               )}
             </div>
-            {canShowTryForFree && !hasCourseAccess && !comingSoon && !isTeacher ? (
+            {/**
+             * Shown to a trial holder too, since the panel above is now the same one
+             * they see. The old test was "has no access at all", which a trial failed.
+             */}
+            {canShowTryForFree && accessKind !== 'full' && !comingSoon && !isTeacher ? (
               <p className="mt-3 text-base text-[var(--color-text-secondary)]">{t('courses.modal.trialNote')}</p>
             ) : null}
             <button

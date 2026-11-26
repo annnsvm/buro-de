@@ -28,6 +28,20 @@ const readAvgVideoLessonMinutes = (course: CatalogCourse): number | null => {
   return null;
 };
 
+/**
+ * Whether this student's access to the course is a trial rather than the whole thing.
+ *
+ * Read off `my_access`, which only the endpoints that know who is asking return - the
+ * student's own list and a single course. The public catalogue is the same cached response
+ * for everybody and carries no such field, so the catalogue list fills this in from the
+ * access list it fetches alongside.
+ */
+const readAccessIsTrial = (course: CatalogCourse): boolean => {
+  const access = course.my_access;
+  if (!access || typeof access !== 'object') return false;
+  return (access as { access_type?: string }).access_type === 'trial';
+};
+
 const readIsPublished = (course: CatalogCourse): boolean | undefined => {
   const raw = course as Record<string, unknown>;
   if (typeof raw.isPublished === 'boolean') return raw.isPublished;
@@ -79,11 +93,12 @@ export const mapApiCourseToCourseInfo = (course: CatalogCourse): CourseInfoData 
     durationHours: Number.isFinite(durationHours) && durationHours > 0 ? durationHours : 1,
     avgVideoLessonMinutes: readAvgVideoLessonMinutes(course),
     isIntegration: course.isIntegration === true,
-    hasTrial:
-      !!course.my_access &&
-      typeof course.my_access === 'object' &&
-      'access_type' in course.my_access &&
-      (course.my_access as { access_type?: string }).access_type === 'trial',
+    /**
+     * `hasTrial` used to be set here, to this same expression - the student's access being
+     * a trial. That is not what the name meant to the card, which read it as "a trial is
+     * on offer", so the value is now under the name that asks the question it answers.
+     */
+    accessIsTrial: readAccessIsTrial(course),
     variant: 'my-learning',
   };
 };
@@ -140,6 +155,7 @@ export const mapApiCourseToCourseCard = (course: CatalogCourse): CourseCardProps
     isIntegration: course.isIntegration === true,
     isPublished: readIsPublished(course),
     isAdded,
+    accessIsTrial: readAccessIsTrial(course),
   };
 };
 

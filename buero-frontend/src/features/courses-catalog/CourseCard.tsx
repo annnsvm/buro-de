@@ -36,7 +36,8 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
     rating,
     isAdded,
     progress,
-    hasTrial = true,
+    trialOnOffer = true,
+    accessIsTrial = false,
     isPublished,
     variant = '',
     modulesCount: modulesCountProp,
@@ -87,7 +88,8 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
         durationHours,
         rating,
         isAdded,
-        hasTrial,
+        trialOnOffer,
+        accessIsTrial,
         isPublished,
       },
     });
@@ -115,13 +117,36 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
    * so having a trial on another course must not hide the button here. Courses the
    * student already has access to render "Continue learning" via `isAdded` instead.
    */
-  const canShowTrialButton = hasTrial;
+  const canShowTrialButton = trialOnOffer;
 
   const handleTrialClick = async (e: MouseEvent) => {
     e.stopPropagation();
     if (!canShowTrialButton) return;
+    /**
+     * A student already on the trial has nothing to start, and must not be asked to.
+     * `POST /start-trial` answers 409 Conflict on an existing access row, and
+     * `requestCourseTrial` reads any failure as a dead end and drops them back on the
+     * catalogue - so the button would look broken to exactly the people it is for. The
+     * free modules are already theirs; this opens them.
+     */
+    if (accessIsTrial) {
+      prefetchCourseWorkspace(id);
+      navigate(`${ROUTES.COURSES}/${id}`);
+      return;
+    }
     await requestCourseTrial(id, isAuthenticated, dispatch, navigate);
   };
+
+  const continueLearningButton = (
+    <LinkBtn
+      to={`${ROUTES.COURSES}/${id}`}
+      variant="dark"
+      className="!px-6 !py-3 !text-base"
+      onMouseEnter={() => prefetchCourseWorkspace(id)}
+    >
+      {t('courses.continueLearning')}
+    </LinkBtn>
+  );
 
   const comingSoon = isCourseComingSoon({ isPublished, lessonsCount });
 
@@ -282,14 +307,13 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
               </div>
             </div>
           ) : null}
-          <LinkBtn
-            to={`${ROUTES.COURSES}/${id}`}
-            variant="dark"
-            className="!px-6 !py-3 !text-base"
-            onMouseEnter={() => prefetchCourseWorkspace(id)}
-          >
-            {t('courses.continueLearning')}
-          </LinkBtn>
+          {/**
+           * Only a course that was bought simply carries on. A trial is an unbought
+           * course the student happens to have opened part of, so it gets the catalogue's
+           * own panel - the price, "try" and "buy" - under a progress bar that counts the
+           * whole course. "25 of 111" above "buy" is the whole argument.
+           */}
+          {accessIsTrial ? purchaseActions : continueLearningButton}
         </>
       );
       break;
@@ -297,16 +321,12 @@ const CourseCard: FC<CourseCardProps> = (rawProps) => {
 
     case 'catalog': {
       if (isAdded) {
-        buttonsComponent = (
-          <LinkBtn
-            to={`${ROUTES.COURSES}/${id}`}
-            variant="dark"
-            className="!px-6 !py-3 !text-base"
-            onMouseEnter={() => prefetchCourseWorkspace(id)}
-          >
-            {t('courses.continueLearning')}
-          </LinkBtn>
-        );
+        /**
+         * "Has" used to cover both a purchase and a trial, and the two were drawn
+         * identically: "continue learning", no price, nothing left to buy. The free part
+         * of a course was therefore the last thing the catalogue would offer anybody.
+         */
+        buttonsComponent = accessIsTrial ? purchaseActions : continueLearningButton;
       } else {
         buttonsComponent = purchaseActions;
       }
