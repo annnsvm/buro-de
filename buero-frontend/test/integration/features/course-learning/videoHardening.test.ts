@@ -55,8 +55,20 @@ describe('what the player is told', () => {
     expect(HARDENED_PLAYER_VARS.rel).toBe(0);
   });
 
-  it('stays inside the page on a phone', () => {
-    expect(HARDENED_PLAYER_VARS.playsinline).toBe(1);
+  /**
+   * The one setting here that is not about hardening, and the one that is not ours to
+   * choose. On iPhone, WebKit gives fullscreen to a `<video>` element alone, through
+   * `webkitEnterFullscreen()` - `Element.requestFullscreen` does not exist there for an
+   * ordinary element. Our `<video>` is inside YouTube's cross-origin iframe, out of reach,
+   * so our own fullscreen button could only stretch a div over the page: Safari's address
+   * bar still on screen, no rotation with the phone. Handing the decision to WebKit opens
+   * the system player instead, which is what a plain YouTube link does.
+   *
+   * It costs the watermark and our control bar for as long as the system player is up -
+   * both are our DOM and it sits above them.
+   */
+  it('lets the system player take the screen on a phone', () => {
+    expect(HARDENED_PLAYER_VARS.playsinline).toBe(0);
   });
 
   /**
