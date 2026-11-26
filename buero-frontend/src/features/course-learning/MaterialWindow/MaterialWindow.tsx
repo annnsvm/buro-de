@@ -7,6 +7,7 @@ import useModal from '@/components/modal/context/useModal';
 import { lessonContent } from './MaterialWindow.data';
 import HardenedYouTubePlayer from './HardenedYouTubePlayer';
 import LessonVideoMissing from './LessonVideoMissing';
+import { unlockAtSeconds } from './watchedEnough';
 import LessonAttachments from './LessonAttachments';
 import LessonNotes from './LessonNotes';
 import type { LearningPageProps } from '@/types/features/learning/LearningPage.types';
@@ -83,9 +84,14 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
     return () => window.removeEventListener('message', handleMessage);
   }, [isPlaying, usePlainIframe, signalEnded]);
 
+  /**
+   * The plain embed reports nothing, so the only thing left is the clock - and it runs to
+   * the same mark the real player uses, rather than to the full length of the lesson.
+   */
   useEffect(() => {
     if (!isPlaying || !usePlainIframe) return;
-    const sec = fallbackMarkReadyAfterSeconds;
+    if (fallbackMarkReadyAfterSeconds == null) return;
+    const sec = unlockAtSeconds(fallbackMarkReadyAfterSeconds);
     if (sec == null || sec < 1) return;
     const t = window.setTimeout(() => signalEnded(), sec * 1000);
     return () => window.clearTimeout(t);
@@ -115,6 +121,7 @@ const LazyYouTubeEmbed: React.FC<LazyYouTubeEmbedProps> = ({
         videoId={videoId}
         title={title}
         onEnded={signalEnded}
+        onWatchedEnough={signalEnded}
         /** The API would not load, or the video refused to start: show the plain embed. */
         onUnavailable={() => setUsePlainIframe(true)}
         className={`min-h-[200px] ${videoFrameRadiusClass}`}
@@ -165,16 +172,21 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
 }) => {
   const { t } = useTranslation();
   const { pushUiModal } = useModal();
-  const [videoEnded, setVideoEnded] = useState(false);
+  /**
+   * Whether the lesson may be recorded as done. Not "the video ended": it turns on a few
+   * minutes from the end, by `watchedEnough`, so nobody has to sit through the outro to
+   * get credit for a lesson they have watched.
+   */
+  const [canMarkComplete, setCanMarkComplete] = useState(false);
 
   const isVideoLesson = String(lesson.materialType ?? lesson.type).toLowerCase() === 'video';
 
   useEffect(() => {
-    setVideoEnded(false);
+    setCanMarkComplete(false);
   }, [lesson.materialId, lesson.videoUrl]);
 
-  const handleVideoEnded = useCallback(() => {
-    setVideoEnded(true);
+  const handleWatchedEnough = useCallback(() => {
+    setCanMarkComplete(true);
   }, []);
 
   const handleNextLessonClick = () => {
@@ -193,7 +205,7 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
       : t('coursePage.inProgress')
     : lesson.status;
 
-  const markButtonDisabled = isVideoCompletionSaving || !videoEnded;
+  const markButtonDisabled = isVideoCompletionSaving || !canMarkComplete;
 
   return (
     <article className="flex-1 bg-[var(--color-surface-section)] py-8 md:py-12" aria-label={lesson.title}>
@@ -240,7 +252,7 @@ const MaterialWindow: React.FC<LearningPageProps> = ({
                 key={lesson.materialId ?? lesson.videoUrl}
                 videoUrl={lesson.videoUrl}
                 title={lesson.title}
-                onVideoEnded={isVideoLesson ? handleVideoEnded : undefined}
+                onVideoEnded={isVideoLesson ? handleWatchedEnough : undefined}
                 fallbackMarkReadyAfterSeconds={fallbackMarkReadyAfterSeconds}
               />
             </div>
